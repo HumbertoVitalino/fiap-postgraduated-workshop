@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Fiap.Workshop.Domain/Fiap.Workshop.Domain.csproj" Id="b2636e43-620a-4f9d-8c96-ec7b94716792" />
+    <Project Path="src/Fiap.Workshop.Application/Fiap.Workshop.Application.csproj" Id="48e6ac90-1245-4438-9fb5-d48437adb329" />
+    <Project Path="src/Fiap.Workshop.Infrastructure/Fiap.Workshop.Infrastructure.csproj" Id="4c0c805d-6615-4c89-8f17-ff5b6f43f4dc" />
+    <Project Path="src/Fiap.Workshop.Api/Fiap.Workshop.Api.csproj" Id="ea35a10e-f8a6-4147-b93b-f6e11b057603" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Fiap.Workshop.UnitTests/Fiap.Workshop.UnitTests.csproj" Id="acef1008-af59-4874-8d62-437cff075bc9" />
+    <Project Path="tests/Fiap.Workshop.IntegrationTests/Fiap.Workshop.IntegrationTests.csproj" Id="43f42dfa-c0ec-4b4d-8cec-31bc0ee7883c" />
+    <Project Path="tests/Fiap.Workshop.FunctionalTests/Fiap.Workshop.FunctionalTests.csproj" Id="07ac1678-fe86-4166-aae0-8c0e55e3929c" />
+  </Folder>
+</Solution>
