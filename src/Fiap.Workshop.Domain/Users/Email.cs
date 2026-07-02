@@ -6,9 +6,12 @@ public sealed class Email : ValueObject
 {
     public const int MaxLength = 256;
 
-    public string Value { get; }
+    public string Value { get; private set; }
 
-    internal Email(string value) => Value = value;
+    private Email(string value)
+    {
+        Value = value;
+    }
 
     public static Email Create(string email)
     {

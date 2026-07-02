@@ -21,20 +21,24 @@ public sealed class CreateUserUseCase(
         Output output = new();
 
         var email = Email.Create(input.Email);
+
         if (await _repository.ExistsWithEmailAsync(email, cancellationToken))
         {
             _logger.LogWarning(
                 "Create user failed: email already in use. Email: {Email} | CorrelationId: {CorrelationId}",
-                input.Email, input.CorrelationId);
+                input.Email, input.CorrelationId
+            );
+
             output.AddErrorMessage(UserErrors.EmailAlreadyInUse);
             return output;
         }
 
         var user = User.Create(input.Email, input.Name, input.Role);
+
         await _repository.AddAsync(user, cancellationToken);
 
-        var committed = await _repository.UnitOfWork.CommitAsync(cancellationToken);
-        if (!committed)
+        var isSaved = await _repository.UnitOfWork.CommitAsync(cancellationToken);
+        if (!isSaved)
         {
             _logger.LogWarning(
                 "Create user failed: could not persist. Email: {Email} | CorrelationId: {CorrelationId}",

@@ -14,24 +14,35 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+        services.AddRepositories(configuration);
+        services.AddServices();
 
-        services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
 
-        services.AddScoped<IJwtService, JwtService>();
 
         services.AddHttpContextAccessor();
-        services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         return services;
     }
 
-    public static IServiceProvider MigrateDatabase(this IServiceProvider services)
+    private static IServiceCollection AddRepositories(this IServiceCollection services, IConfiguration config)
     {
-        using var scope = services.CreateScope();
-        scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+        var connectionString = config.GetConnectionString("DefaultConnection");
+        services.AddDbContext<AppDbContext>(options =>
+        {
+            options.UseSqlServer(connectionString);
+        });
+
+        services.AddScoped<IUserRepository, UserRepository>();
+
+        return services;
+    }
+
+    private static IServiceCollection AddServices(this IServiceCollection services)
+    {
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IJwtService, JwtService>();
+
         return services;
     }
 }

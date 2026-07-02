@@ -5,6 +5,13 @@ namespace Fiap.Workshop.Application.UseCases.Users.CreateUser.Mapper;
 
 internal static class CreateUserMapper
 {
-    internal static UserResponse MapToOutput(this User user) =>
-        new(user.Id, user.Name, user.Email.Value, user.Role.ToString());
+    internal static UserResponse MapToOutput(this User user)
+    {
+        return new(
+            user.Id,
+            user.Name,
+            user.Email.Value,
+            user.Role.ToString()
+        );
+    }
 }

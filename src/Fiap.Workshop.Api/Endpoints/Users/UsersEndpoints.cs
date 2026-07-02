@@ -1,10 +1,8 @@
-using Asp.Versioning;
 using Asp.Versioning.Builder;
 using Fiap.Workshop.Api.Mappers.Users;
 using Fiap.Workshop.Api.Requests.Users;
 using Fiap.Workshop.Api.Validators.Users;
 using Fiap.Workshop.Application.Commons;
-using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.Users.GetUserById.Boundaries;
 using Microsoft.AspNetCore.Mvc;
@@ -20,49 +18,55 @@ public static class UsersEndpoints
             .WithTags("Users")
             .RequireAuthorization("UserOnly");
 
-        group.MapPost("", async (
-            CreateUserRequest request,
-            ICreateUserUseCase useCase,
-            CreateUserRequestValidator validator,
-            [FromHeader(Name = "X-Correlation-Id")] Guid? correlationId,
-            CancellationToken cancellationToken) =>
-        {
-            var validation = validator.Validate(request);
-            if (!validation.IsValid)
+        group.MapPost("",
+            async (
+                [FromBody] CreateUserRequest request,
+                [FromServices] ICreateUserUseCase useCase,
+                CreateUserRequestValidator validator,
+                [FromHeader(Name = "x-correlation-id")] Guid? correlationId,
+                CancellationToken cancellationToken
+            ) =>
             {
-                Output validationOutput = new();
-                validationOutput.AddErrorMessages(validation.Errors.Select(e => e.ErrorMessage));
-                return Results.BadRequest(validationOutput);
-            }
+                var validation = validator.Validate(request);
+                if (!validation.IsValid)
+                {
+                    Output validationOutput = new();
+                    validationOutput.AddErrorMessages(validation.Errors.Select(e => e.ErrorMessage));
+                    return Results.BadRequest(validationOutput);
+                }
 
-            var output = await useCase.ExecuteAsync(request.MapToInput(correlationId), cancellationToken);
+                var output = await useCase.ExecuteAsync(request.MapToInput(correlationId), cancellationToken);
 
-            if (!output.IsValid)
-                return Results.BadRequest(output);
+                if (!output.IsValid)
+                    return Results.BadRequest(output);
 
-            return Results.Created($"/api/v1/users/{output.GetResult<UserResponse>()!.Id}", output);
-        })
-        .AllowAnonymous()
-        .WithName("CreateUser")
-        .Produces<Output>(StatusCodes.Status201Created)
-        .Produces<Output>(StatusCodes.Status400BadRequest);
+                return Results.Created();
+            })
+            .AllowAnonymous()
+            .WithName("CreateUser")
+            .Produces<Output>(StatusCodes.Status201Created)
+            .Produces<Output>(StatusCodes.Status400BadRequest
+        );
 
-        group.MapGet("{id:guid}", async (
-            Guid id,
-            IGetUserByIdUseCase useCase,
-            [FromHeader(Name = "X-Correlation-Id")] Guid? correlationId,
-            CancellationToken cancellationToken) =>
-        {
-            var output = await useCase.ExecuteAsync(new GetUserByIdInput(id, correlationId ?? Guid.NewGuid()), cancellationToken);
+        group.MapGet("{id:guid}",
+            async (
+                [FromRoute] Guid id,
+                [FromServices] IGetUserByIdUseCase useCase,
+                [FromHeader(Name = "x-correlation-id")] Guid? correlationId,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var output = await useCase.ExecuteAsync(new GetUserByIdInput(id, correlationId ?? Guid.NewGuid()), cancellationToken);
 
-            if (!output.IsValid)
-                return Results.NotFound(output);
+                if (!output.IsValid)
+                    return Results.NotFound(output);
 
-            return Results.Ok(output);
-        })
-        .WithName("GetUserById")
-        .Produces<Output>()
-        .Produces<Output>(StatusCodes.Status404NotFound);
+                return Results.Ok(output);
+            })
+            .WithName("GetUserById")
+            .Produces<Output>()
+            .Produces<Output>(StatusCodes.Status404NotFound
+        );
 
         return app;
     }
