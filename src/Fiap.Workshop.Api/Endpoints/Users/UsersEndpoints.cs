@@ -23,7 +23,7 @@ public static class UsersEndpoints
                 [FromBody] CreateUserRequest request,
                 [FromServices] ICreateUserUseCase useCase,
                 CreateUserRequestValidator validator,
-                [FromHeader(Name = "x-correlation-id")] Guid? correlationId,
+                [FromHeader(Name = "x-correlation-id")] Guid correlationId,
                 CancellationToken cancellationToken
             ) =>
             {

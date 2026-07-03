@@ -13,7 +13,7 @@ public sealed class CreateUserUseCase(
     ILogger<CreateUserUseCase> logger
 ) : ICreateUserUseCase
 {
-    private readonly IUserRepository _repository = repository;
+    private readonly IUserRepository _userRepository = repository;
     private readonly ILogger<CreateUserUseCase> _logger = logger;
 
     public async Task<Output> ExecuteAsync(CreateUserInput input, CancellationToken cancellationToken = default)
@@ -22,7 +22,7 @@ public sealed class CreateUserUseCase(
 
         var email = Email.Create(input.Email);
 
-        if (await _repository.ExistsWithEmailAsync(email, cancellationToken))
+        if (await _userRepository.ExistsWithEmailAsync(email, cancellationToken))
         {
             _logger.LogWarning(
                 "Create user failed: email already in use. Email: {Email} | CorrelationId: {CorrelationId}",
@@ -35,9 +35,9 @@ public sealed class CreateUserUseCase(
 
         var user = User.Create(input.Email, input.Name, input.Role);
 
-        await _repository.AddAsync(user, cancellationToken);
+        await _userRepository.AddAsync(user, cancellationToken);
 
-        var isSaved = await _repository.UnitOfWork.CommitAsync(cancellationToken);
+        var isSaved = await _userRepository.UnitOfWork.CommitAsync(cancellationToken);
         if (!isSaved)
         {
             _logger.LogWarning(
