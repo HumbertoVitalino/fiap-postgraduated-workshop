@@ -1,6 +1,7 @@
 using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.Users.CreateUser.Boundaries;
+using Fiap.Workshop.Domain.Users;
 using Fiap.Workshop.IntegrationTests.Fixtures;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +18,7 @@ public sealed class CreateUserUseCaseTests(DatabaseFixture fixture)
         // Arrange
         using var scope = fixture.Services.CreateScope();
         var useCase = scope.ServiceProvider.GetRequiredService<ICreateUserUseCase>();
-        var input = new CreateUserInput("John Doe", $"{Guid.NewGuid():N}@example.com");
+        var input = new CreateUserInput(Guid.NewGuid(), "John Doe", "email@email.com", UserRole.User);
 
         // Act
         var output = await useCase.ExecuteAsync(input);
@@ -38,10 +39,10 @@ public sealed class CreateUserUseCaseTests(DatabaseFixture fixture)
         var useCase = scope.ServiceProvider.GetRequiredService<ICreateUserUseCase>();
         var email = $"{Guid.NewGuid():N}@example.com";
 
-        await useCase.ExecuteAsync(new CreateUserInput("First User", email));
+        await useCase.ExecuteAsync(new CreateUserInput(Guid.NewGuid() ,"First User", email, UserRole.User));
 
         // Act
-        var output = await useCase.ExecuteAsync(new CreateUserInput("Second User", email));
+        var output = await useCase.ExecuteAsync(new CreateUserInput(Guid.NewGuid(), "Second User", email, UserRole.User));
 
         // Assert
         output.IsValid.Should().BeFalse();

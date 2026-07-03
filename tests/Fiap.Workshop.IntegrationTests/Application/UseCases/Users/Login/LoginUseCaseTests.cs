@@ -2,6 +2,7 @@ using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.Users.CreateUser.Boundaries;
 using Fiap.Workshop.Application.UseCases.Users.Login.Boundaries;
+using Fiap.Workshop.Domain.Users;
 using Fiap.Workshop.IntegrationTests.Fixtures;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +22,7 @@ public sealed class LoginUseCaseTests(DatabaseFixture fixture)
         var loginUseCase = scope.ServiceProvider.GetRequiredService<ILoginUseCase>();
 
         var email = $"{Guid.NewGuid():N}@example.com";
-        await createUseCase.ExecuteAsync(new CreateUserInput("Alice", email));
+        await createUseCase.ExecuteAsync(new CreateUserInput(Guid.NewGuid(), "Alice", email, UserRole.User));
 
         // Act
         var output = await loginUseCase.ExecuteAsync(new LoginInput(email));

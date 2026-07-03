@@ -1,3 +1,4 @@
+using AutoFixture;
 using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.Interfaces;
 using Fiap.Workshop.Application.Interfaces.Repositories;
@@ -15,6 +16,7 @@ public sealed class CreateUserUseCaseTests
 {
     private readonly Mock<IUserRepository> _repositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Fixture _fixture = new();
     private readonly CreateUserUseCase _sut;
 
     public CreateUserUseCaseTests()
@@ -29,10 +31,14 @@ public sealed class CreateUserUseCaseTests
     public async Task ExecuteAsync_ValidInput_ReturnsSuccessOutputWithUserResponse()
     {
         // Arrange
-        var input = new CreateUserInput("John Doe", "john@example.com");
+        var input = _fixture.Build<CreateUserInput>()
+            .With(x => x.Email, "test@hotmail.com")
+            .Create();
+
         _repositoryMock
             .Setup(r => r.ExistsWithEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
+
         _unitOfWorkMock
             .Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
@@ -44,8 +50,8 @@ public sealed class CreateUserUseCaseTests
         output.IsValid.Should().BeTrue();
         output.Result.Should().BeOfType<UserResponse>();
         var response = (UserResponse)output.Result!;
-        response.Name.Should().Be("John Doe");
-        response.Email.Should().Be("john@example.com");
+        response.Name.Should().Be(input.Name);
+        response.Email.Should().Be(input.Email);
         _repositoryMock.Verify(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -54,7 +60,10 @@ public sealed class CreateUserUseCaseTests
     public async Task ExecuteAsync_DuplicateEmail_ReturnsInvalidOutputWithEmailInUseError()
     {
         // Arrange
-        var input = new CreateUserInput("John Doe", "john@example.com");
+        var input = _fixture.Build<CreateUserInput>()
+            .With(x => x.Email, "test@hotmail.com")
+            .Create();
+
         _repositoryMock
             .Setup(r => r.ExistsWithEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
@@ -73,10 +82,14 @@ public sealed class CreateUserUseCaseTests
     public async Task ExecuteAsync_CommitFails_ReturnsInvalidOutput()
     {
         // Arrange
-        var input = new CreateUserInput("John Doe", "john@example.com");
+        var input = _fixture.Build<CreateUserInput>()
+            .With(x => x.Email, "test@hotmail.com")
+            .Create();
+
         _repositoryMock
             .Setup(r => r.ExistsWithEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
+
         _unitOfWorkMock
             .Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
