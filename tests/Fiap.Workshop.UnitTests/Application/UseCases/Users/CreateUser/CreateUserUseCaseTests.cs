@@ -44,7 +44,7 @@ public sealed class CreateUserUseCaseTests
             .ReturnsAsync(true);
 
         // Act
-        var output = await _sut.ExecuteAsync(input);
+        var output = await _sut.ExecuteAsync(input, CancellationToken.None);
 
         // Assert
         output.IsValid.Should().BeTrue();
@@ -69,7 +69,7 @@ public sealed class CreateUserUseCaseTests
             .ReturnsAsync(true);
 
         // Act
-        var output = await _sut.ExecuteAsync(input);
+        var output = await _sut.ExecuteAsync(input, CancellationToken.None);
 
         // Assert
         output.IsValid.Should().BeFalse();
@@ -95,7 +95,7 @@ public sealed class CreateUserUseCaseTests
             .ReturnsAsync(false);
 
         // Act
-        var output = await _sut.ExecuteAsync(input);
+        var output = await _sut.ExecuteAsync(input, CancellationToken.None);
 
         // Assert
         output.IsValid.Should().BeFalse();
