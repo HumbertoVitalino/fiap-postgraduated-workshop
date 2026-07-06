@@ -3,6 +3,7 @@ using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.UseCases.Users.GetUserById;
 using Fiap.Workshop.Application.UseCases.Users.GetUserById.Boundaries;
 using Fiap.Workshop.Domain.Users;
+using Fiap.Workshop.UnitTests.Domain.Users;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -14,6 +15,7 @@ public sealed class GetUserByIdUseCaseTests
 {
     private readonly Mock<IUserRepository> _repositoryMock;
     private readonly GetUserByIdUseCase _sut;
+    private readonly FakePasswordHasher _passwordHasher = new();
 
     public GetUserByIdUseCaseTests()
     {
@@ -25,7 +27,8 @@ public sealed class GetUserByIdUseCaseTests
     public async Task ExecuteAsync_ExistingUser_ReturnsSuccessOutputWithUserResponse()
     {
         // Arrange
-        var user = User.Create("john@example.com", "John Doe");
+        var password = HashedPassword.CreateFromRaw("ValidPass123", _passwordHasher);
+        var user = User.Create("john@example.com", "John Doe", password);
         var input = new GetUserByIdInput(user.Id);
         _repositoryMock
             .Setup(r => r.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))

@@ -8,27 +8,36 @@ namespace Fiap.Workshop.UnitTests.Domain.Users;
 
 public sealed class UserTests
 {
+    private const string ValidPassword = "ValidPass123";
+
+    private readonly FakePasswordHasher _passwordHasher = new();
+
     [Fact(DisplayName = "Create >> Should Return User With Correct Properties >> When Input Is Valid")]
     public void Create_ValidData_ReturnsUserWithCorrectProperties()
     {
         // Arrange
         const string name = "John Doe";
         const string email = "john@example.com";
+        var password = HashedPassword.CreateFromRaw(ValidPassword, _passwordHasher);
 
         // Act
-        var user = User.Create(email, name);
+        var user = User.Create(email, name, password);
 
         // Assert
         user.Id.Should().NotBeEmpty();
         user.Name.Should().Be(name);
         user.Email.Value.Should().Be(email);
+        user.Password.Should().Be(password);
     }
 
     [Fact(DisplayName = "Create >> Should Raise UserCreatedEvent >> When User Is Created")]
     public void Create_ValidData_RaisesUserCreatedEvent()
     {
+        // Arrange
+        var password = HashedPassword.CreateFromRaw(ValidPassword, _passwordHasher);
+
         // Act
-        var user = User.Create("john@example.com", "John Doe");
+        var user = User.Create("john@example.com", "John Doe", password);
 
         // Assert
         user.GetDomainEvents().Should().ContainSingle()
@@ -41,8 +50,11 @@ public sealed class UserTests
     [InlineData(null)]
     public void Create_EmptyName_ThrowsDomainException(string? name)
     {
+        // Arrange
+        var password = HashedPassword.CreateFromRaw(ValidPassword, _passwordHasher);
+
         // Act
-        var act = () => User.Create("john@example.com", name!);
+        var act = () => User.Create("john@example.com", name!, password);
 
         // Assert
         act.Should().Throw<DomainException>().WithMessage(UserErrors.NameEmpty);
@@ -51,8 +63,11 @@ public sealed class UserTests
     [Fact(DisplayName = "Create >> Should Throw DomainException >> When Email Is Invalid")]
     public void Create_InvalidEmail_ThrowsDomainException()
     {
+        // Arrange
+        var password = HashedPassword.CreateFromRaw(ValidPassword, _passwordHasher);
+
         // Act
-        var act = () => User.Create("not-an-email", "John Doe");
+        var act = () => User.Create("not-an-email", "John Doe", password);
 
         // Assert
         act.Should().Throw<DomainException>().WithMessage(UserErrors.EmailInvalidFormat);
@@ -62,7 +77,8 @@ public sealed class UserTests
     public void UpdateEmail_ValidEmail_ChangesEmail()
     {
         // Arrange
-        var user = User.Create("old@example.com", "John Doe");
+        var password = HashedPassword.CreateFromRaw(ValidPassword, _passwordHasher);
+        var user = User.Create("old@example.com", "John Doe", password);
         const string newEmail = "new@example.com";
 
         // Act
@@ -76,7 +92,8 @@ public sealed class UserTests
     public void UpdateEmail_InvalidEmail_ThrowsDomainException()
     {
         // Arrange
-        var user = User.Create("old@example.com", "John Doe");
+        var password = HashedPassword.CreateFromRaw(ValidPassword, _passwordHasher);
+        var user = User.Create("old@example.com", "John Doe", password);
 
         // Act
         var act = () => user.UpdateEmail("invalid");
@@ -89,12 +106,52 @@ public sealed class UserTests
     public void ClearDomainEvents_RemovesAllEvents()
     {
         // Arrange
-        var user = User.Create("john@example.com", "John Doe");
+        var password = HashedPassword.CreateFromRaw(ValidPassword, _passwordHasher);
+        var user = User.Create("john@example.com", "John Doe", password);
 
         // Act
         user.ClearDomainEvents();
 
         // Assert
         user.GetDomainEvents().Should().BeEmpty();
+    }
+
+    [Fact(DisplayName = "VerifyPassword >> Should Return True >> When Raw Password Matches Hash")]
+    public void VerifyPassword_MatchingPassword_ReturnsTrue()
+    {
+        // Arrange
+        var password = HashedPassword.CreateFromRaw(ValidPassword, _passwordHasher);
+        var user = User.Create("john@example.com", "John Doe", password);
+
+        // Act & Assert
+        user.VerifyPassword(ValidPassword, _passwordHasher).Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "VerifyPassword >> Should Return False >> When Raw Password Does Not Match Hash")]
+    public void VerifyPassword_NonMatchingPassword_ReturnsFalse()
+    {
+        // Arrange
+        var password = HashedPassword.CreateFromRaw(ValidPassword, _passwordHasher);
+        var user = User.Create("john@example.com", "John Doe", password);
+
+        // Act & Assert
+        user.VerifyPassword("WrongPass123", _passwordHasher).Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "Rehydrate >> Should Return User Without Raising Events >> When Called")]
+    public void Rehydrate_ValidData_ReturnsUserWithoutRaisingEvents()
+    {
+        // Arrange
+        var id = Guid.NewGuid();
+        var passwordHash = _passwordHasher.Hash(ValidPassword);
+
+        // Act
+        var user = User.Rehydrate(id, "john@example.com", "John Doe", passwordHash, UserRole.Admin);
+
+        // Assert
+        user.Id.Should().Be(id);
+        user.Role.Should().Be(UserRole.Admin);
+        user.GetDomainEvents().Should().BeEmpty();
+        user.VerifyPassword(ValidPassword, _passwordHasher).Should().BeTrue();
     }
 }

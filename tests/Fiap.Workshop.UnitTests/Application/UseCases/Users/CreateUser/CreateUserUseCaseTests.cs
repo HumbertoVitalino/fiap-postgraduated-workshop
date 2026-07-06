@@ -14,8 +14,11 @@ namespace Fiap.Workshop.UnitTests.Application.UseCases.Users.CreateUser;
 
 public sealed class CreateUserUseCaseTests
 {
+    private const string ValidPassword = "ValidPass123";
+
     private readonly Mock<IUserRepository> _repositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IPasswordHasher> _passwordHasherMock;
     private readonly Fixture _fixture = new();
     private readonly CreateUserUseCase _sut;
 
@@ -23,8 +26,10 @@ public sealed class CreateUserUseCaseTests
     {
         _repositoryMock = new Mock<IUserRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _passwordHasherMock = new Mock<IPasswordHasher>();
         _repositoryMock.Setup(r => r.UnitOfWork).Returns(_unitOfWorkMock.Object);
-        _sut = new CreateUserUseCase(_repositoryMock.Object, NullLogger<CreateUserUseCase>.Instance);
+        _passwordHasherMock.Setup(h => h.Hash(It.IsAny<string>())).Returns("hashed-password");
+        _sut = new CreateUserUseCase(_repositoryMock.Object, _passwordHasherMock.Object, NullLogger<CreateUserUseCase>.Instance);
     }
 
     [Fact(DisplayName = "ExecuteAsync >> Should Return Success Output With User Response >> When Input Is Valid")]
@@ -33,6 +38,7 @@ public sealed class CreateUserUseCaseTests
         // Arrange
         var input = _fixture.Build<CreateUserInput>()
             .With(x => x.Email, "test@hotmail.com")
+            .With(x => x.Password, ValidPassword)
             .Create();
 
         _repositoryMock
@@ -62,6 +68,7 @@ public sealed class CreateUserUseCaseTests
         // Arrange
         var input = _fixture.Build<CreateUserInput>()
             .With(x => x.Email, "test@hotmail.com")
+            .With(x => x.Password, ValidPassword)
             .Create();
 
         _repositoryMock
@@ -84,6 +91,7 @@ public sealed class CreateUserUseCaseTests
         // Arrange
         var input = _fixture.Build<CreateUserInput>()
             .With(x => x.Email, "test@hotmail.com")
+            .With(x => x.Password, ValidPassword)
             .Create();
 
         _repositoryMock
