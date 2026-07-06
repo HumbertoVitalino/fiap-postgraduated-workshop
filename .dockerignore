@@ -1,0 +1,10 @@
+.git/
+.github/
+tests/
+**/.vs/
+**/.idea/
+**/bin/
+**/obj/
+**/*.user
+.env
+docker-compose.tests.yml
