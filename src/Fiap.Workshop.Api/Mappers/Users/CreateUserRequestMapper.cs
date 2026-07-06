@@ -10,6 +10,7 @@ internal static class CreateUserRequestMapper
             correlationId,
             request.Name,
             request.Email,
+            request.Password,
             request.Role
         );
 }

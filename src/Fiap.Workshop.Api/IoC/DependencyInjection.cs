@@ -39,11 +39,10 @@ public static class DependencyInjection
             options.ApiVersionReader = new UrlSegmentApiVersionReader();
         });
 
-        services.AddAuthorization(options =>
-        {
-            options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-            options.AddPolicy("UserOnly", policy => policy.RequireRole("User", "Admin"));
-        });
+        services.AddAuthorizationBuilder()
+            .AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"))
+            .AddPolicy("UserOnly", policy => policy.RequireRole("User", "Admin"));
+
         services.AddProblemDetails();
 
         services.AddScoped<CreateUserRequestValidator>();

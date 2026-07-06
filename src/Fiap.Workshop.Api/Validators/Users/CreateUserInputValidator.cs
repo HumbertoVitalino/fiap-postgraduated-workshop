@@ -16,5 +16,15 @@ public sealed class CreateUserRequestValidator : AbstractValidator<CreateUserReq
             .NotEmpty()
             .MaximumLength(Email.MaxLength)
             .EmailAddress();
+
+        RuleFor(x => x.Password)
+            .NotEmpty().WithMessage("The password is required.")
+            .MinimumLength(10).WithMessage("The password must be at least 8 characters long.")
+            .Matches("[A-Z]").WithMessage("The password must contain at least one uppercase letter.")
+            .Matches("[a-z]").WithMessage("The password must contain at least one lowercase letter.")
+            .Matches("[0-9]").WithMessage("The password must contain at least one number.");
+
+        RuleFor(x => x.PasswordConfirmation)
+            .Equal(x => x.Password).WithMessage("The password and confirmation do not match.");
     }
 }

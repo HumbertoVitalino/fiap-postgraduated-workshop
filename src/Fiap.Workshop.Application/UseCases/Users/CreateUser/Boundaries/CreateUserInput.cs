@@ -6,5 +6,6 @@ public sealed record CreateUserInput(
     Guid CorrelationId,
     string Name,
     string Email,
+    string Password,
     UserRole Role
 );
