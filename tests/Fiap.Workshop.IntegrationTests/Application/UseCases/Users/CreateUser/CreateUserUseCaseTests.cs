@@ -18,7 +18,7 @@ public sealed class CreateUserUseCaseTests(DatabaseFixture fixture)
         // Arrange
         using var scope = fixture.Services.CreateScope();
         var useCase = scope.ServiceProvider.GetRequiredService<ICreateUserUseCase>();
-        var input = new CreateUserInput(Guid.NewGuid(), "John Doe", "email@email.com", UserRole.User);
+        var input = new CreateUserInput(Guid.NewGuid(), "John Doe", "email@email.com", "ValidPass123", UserRole.User);
 
         // Act
         var output = await useCase.ExecuteAsync(input);
@@ -39,10 +39,10 @@ public sealed class CreateUserUseCaseTests(DatabaseFixture fixture)
         var useCase = scope.ServiceProvider.GetRequiredService<ICreateUserUseCase>();
         var email = $"{Guid.NewGuid():N}@example.com";
 
-        await useCase.ExecuteAsync(new CreateUserInput(Guid.NewGuid() ,"First User", email, UserRole.User));
+        await useCase.ExecuteAsync(new CreateUserInput(Guid.NewGuid() ,"First User", email, "ValidPass123", UserRole.User));
 
         // Act
-        var output = await useCase.ExecuteAsync(new CreateUserInput(Guid.NewGuid(), "Second User", email, UserRole.User));
+        var output = await useCase.ExecuteAsync(new CreateUserInput(Guid.NewGuid(), "Second User", email, "ValidPass123", UserRole.User));
 
         // Assert
         output.IsValid.Should().BeFalse();

@@ -22,7 +22,7 @@ public sealed class GetUserByIdUseCaseTests(DatabaseFixture fixture)
         var getUseCase = scope.ServiceProvider.GetRequiredService<IGetUserByIdUseCase>();
 
         var createOutput = await createUseCase.ExecuteAsync(
-            new CreateUserInput(Guid.NewGuid(), "Jane Doe", $"{Guid.NewGuid():N}@example.com", UserRole.User));
+            new CreateUserInput(Guid.NewGuid(), "Jane Doe", $"{Guid.NewGuid():N}@example.com", "ValidPass123", UserRole.User));
 
         var created = (createOutput.Result as UserResponse)!;
 
