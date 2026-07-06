@@ -11,7 +11,7 @@ internal sealed class UserRepository(AppDbContext context) : IUserRepository
 {
     public IUnitOfWork UnitOfWork => context;
 
-    public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         var model = await context.Users
             .AsNoTracking()
@@ -20,7 +20,7 @@ internal sealed class UserRepository(AppDbContext context) : IUserRepository
         return model?.MapToDomain();
     }
 
-    public async Task<User?> GetByEmailAsync(Email email, CancellationToken cancellationToken = default)
+    public async Task<User?> GetByEmailAsync(Email email, CancellationToken cancellationToken)
     {
         var model = await context.Users
             .AsNoTracking()
@@ -29,10 +29,10 @@ internal sealed class UserRepository(AppDbContext context) : IUserRepository
         return model?.MapToDomain();
     }
 
-    public async Task<bool> ExistsWithEmailAsync(Email email, CancellationToken cancellationToken = default) =>
+    public async Task<bool> ExistsWithEmailAsync(Email email, CancellationToken cancellationToken) =>
         await context.Users.AnyAsync(u => u.Email == email.Value, cancellationToken);
 
-    public async Task AddAsync(User entity, CancellationToken cancellationToken = default)
+    public async Task AddAsync(User entity, CancellationToken cancellationToken)
     {
         context.EnqueueDomainEvents(entity.GetDomainEvents());
         entity.ClearDomainEvents();

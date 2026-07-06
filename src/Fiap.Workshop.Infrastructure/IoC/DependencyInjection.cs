@@ -1,5 +1,6 @@
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.Interfaces.Services;
+using Fiap.Workshop.Domain.Users;
 using Fiap.Workshop.Infrastructure.Repositories;
 using Fiap.Workshop.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -42,6 +43,7 @@ public static class DependencyInjection
     {
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IJwtService, JwtService>();
+        services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 
         return services;
     }
