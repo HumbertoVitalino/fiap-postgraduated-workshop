@@ -10,10 +10,12 @@ namespace Fiap.Workshop.Application.UseCases.Users.CreateUser;
 
 public sealed class CreateUserUseCase(
     IUserRepository repository,
+    IPasswordHasher passwordHasher,
     ILogger<CreateUserUseCase> logger
 ) : ICreateUserUseCase
 {
     private readonly IUserRepository _userRepository = repository;
+    private readonly IPasswordHasher _passwordHasher = passwordHasher;
     private readonly ILogger<CreateUserUseCase> _logger = logger;
 
     public async Task<Output> ExecuteAsync(CreateUserInput input, CancellationToken cancellationToken)
@@ -21,7 +23,6 @@ public sealed class CreateUserUseCase(
         Output output = new();
 
         var email = Email.Create(input.Email);
-
         if (await _userRepository.ExistsWithEmailAsync(email, cancellationToken))
         {
             _logger.LogWarning(
@@ -34,7 +35,7 @@ public sealed class CreateUserUseCase(
             return output;
         }
 
-        var user = User.Create(input.Email, input.Name, input.Role);
+        var user = input.MapToDomain(_passwordHasher);
 
         await _userRepository.AddAsync(user, cancellationToken);
 

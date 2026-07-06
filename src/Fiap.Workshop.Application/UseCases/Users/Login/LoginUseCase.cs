@@ -11,11 +11,13 @@ namespace Fiap.Workshop.Application.UseCases.Users.Login;
 
 public sealed class LoginUseCase(
     IUserRepository userRepository,
+    IPasswordHasher passwordHasher,
     IJwtService jwtService,
     ILogger<LoginUseCase> logger
 ) : ILoginUseCase
 {
     private readonly IUserRepository _userRepository = userRepository;
+    private readonly IPasswordHasher _passwordHasher = passwordHasher;
     private readonly IJwtService _jwtService = jwtService;
     private readonly ILogger<LoginUseCase> _logger = logger;
 
@@ -25,12 +27,12 @@ public sealed class LoginUseCase(
 
         var email = Email.Create(input.Email);
         var user = await _userRepository.GetByEmailAsync(email, cancellationToken);
-        if (user is null)
+        if (user is null || !user.VerifyPassword(input.Password, _passwordHasher))
         {
             _logger.LogWarning(
-                "Login failed: user not found. Email: {Email} | CorrelationId: {CorrelationId}",
+                "Login failed: invalid credentials. Email: {Email} | CorrelationId: {CorrelationId}",
                 input.Email, input.CorrelationId);
-            output.AddErrorMessage("Invalid credentials.");
+            output.AddErrorMessage(UserErrors.InvalidCredentials);
             return output;
         }
 

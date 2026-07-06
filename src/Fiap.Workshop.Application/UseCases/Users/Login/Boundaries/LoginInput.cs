@@ -1,3 +1,3 @@
 namespace Fiap.Workshop.Application.UseCases.Users.Login.Boundaries;
 
-public sealed record LoginInput(string Email, Guid CorrelationId = default);
+public sealed record LoginInput(string Email, string Password, Guid CorrelationId = default);
