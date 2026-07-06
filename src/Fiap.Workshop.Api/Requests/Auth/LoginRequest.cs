@@ -1,3 +1,3 @@
 namespace Fiap.Workshop.Api.Requests.Auth;
 
-public sealed record LoginRequest(string Email);
+public sealed record LoginRequest(string Email, string Password);

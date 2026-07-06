@@ -19,7 +19,7 @@ public sealed class CreateUserRequestValidator : AbstractValidator<CreateUserReq
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("The password is required.")
-            .MinimumLength(10).WithMessage("The password must be at least 8 characters long.")
+            .MinimumLength(10).WithMessage("The password must be at least 10 characters long.")
             .Matches("[A-Z]").WithMessage("The password must contain at least one uppercase letter.")
             .Matches("[a-z]").WithMessage("The password must contain at least one lowercase letter.")
             .Matches("[0-9]").WithMessage("The password must contain at least one number.");

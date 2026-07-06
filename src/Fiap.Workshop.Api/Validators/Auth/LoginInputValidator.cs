@@ -12,5 +12,8 @@ public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
             .NotEmpty()
             .MaximumLength(Email.MaxLength)
             .EmailAddress();
+
+        RuleFor(x => x.Password)
+            .NotEmpty();
     }
 }
