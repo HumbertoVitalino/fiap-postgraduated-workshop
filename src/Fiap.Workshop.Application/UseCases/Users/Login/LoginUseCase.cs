@@ -30,13 +30,17 @@ public sealed class LoginUseCase(
         if (user is null || !user.VerifyPassword(input.Password, _passwordHasher))
         {
             _logger.LogWarning(
-                "Login failed: invalid credentials. Email: {Email} | CorrelationId: {CorrelationId}",
-                input.Email, input.CorrelationId);
+                "[{CorrelationId}] | Login failed: invalid credentials. Email: {Email}",
+                input.Email,
+                input.CorrelationId
+            );
+
             output.AddErrorMessage(UserErrors.InvalidCredentials);
             return output;
         }
 
         var token = _jwtService.GenerateToken(user.Id.ToString(), user.Email.Value, user.Role.ToString());
+
         output.AddResult(new LoginResponse(token));
         return output;
     }
