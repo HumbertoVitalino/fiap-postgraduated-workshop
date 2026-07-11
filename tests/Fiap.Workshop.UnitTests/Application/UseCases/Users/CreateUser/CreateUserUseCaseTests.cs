@@ -42,7 +42,7 @@ public sealed class CreateUserUseCaseTests
             .Create();
 
         _repositoryMock
-            .Setup(r => r.ExistsWithEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.ExistsWithEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         _unitOfWorkMock
@@ -72,7 +72,7 @@ public sealed class CreateUserUseCaseTests
             .Create();
 
         _repositoryMock
-            .Setup(r => r.ExistsWithEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.ExistsWithEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         // Act
@@ -95,7 +95,7 @@ public sealed class CreateUserUseCaseTests
             .Create();
 
         _repositoryMock
-            .Setup(r => r.ExistsWithEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.ExistsWithEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         _unitOfWorkMock

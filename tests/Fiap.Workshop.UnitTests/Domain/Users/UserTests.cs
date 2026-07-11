@@ -26,8 +26,21 @@ public sealed class UserTests
         // Assert
         user.Id.Should().NotBeEmpty();
         user.Name.Should().Be(name);
-        user.Email.Value.Should().Be(email);
+        user.Email.Should().Be(email);
         user.Password.Should().Be(password);
+    }
+
+    [Fact(DisplayName = "Create >> Should Return User With Normalized Email >> When Email Has Whitespace Or Mixed Case")]
+    public void Create_EmailWithWhitespaceOrMixedCase_ReturnsUserWithNormalizedEmail()
+    {
+        // Arrange
+        var password = HashedPassword.CreateFromRaw(ValidPassword, _passwordHasher);
+
+        // Act
+        var user = User.Create("  John@Example.COM  ", "John Doe", password);
+
+        // Assert
+        user.Email.Should().Be("john@example.com");
     }
 
     [Fact(DisplayName = "Create >> Should Raise UserCreatedEvent >> When User Is Created")]
@@ -60,19 +73,6 @@ public sealed class UserTests
         act.Should().Throw<DomainException>().WithMessage(UserErrors.NameEmpty);
     }
 
-    [Fact(DisplayName = "Create >> Should Throw DomainException >> When Email Is Invalid")]
-    public void Create_InvalidEmail_ThrowsDomainException()
-    {
-        // Arrange
-        var password = HashedPassword.CreateFromRaw(ValidPassword, _passwordHasher);
-
-        // Act
-        var act = () => User.Create("not-an-email", "John Doe", password);
-
-        // Assert
-        act.Should().Throw<DomainException>().WithMessage(UserErrors.EmailInvalidFormat);
-    }
-
     [Fact(DisplayName = "UpdateEmail >> Should Change Email >> When New Email Is Valid")]
     public void UpdateEmail_ValidEmail_ChangesEmail()
     {
@@ -85,21 +85,21 @@ public sealed class UserTests
         user.UpdateEmail(newEmail);
 
         // Assert
-        user.Email.Value.Should().Be(newEmail);
+        user.Email.Should().Be(newEmail);
     }
 
-    [Fact(DisplayName = "UpdateEmail >> Should Throw DomainException >> When New Email Is Invalid")]
-    public void UpdateEmail_InvalidEmail_ThrowsDomainException()
+    [Fact(DisplayName = "UpdateEmail >> Should Normalize Email >> When New Email Has Whitespace Or Mixed Case")]
+    public void UpdateEmail_EmailWithWhitespaceOrMixedCase_NormalizesEmail()
     {
         // Arrange
         var password = HashedPassword.CreateFromRaw(ValidPassword, _passwordHasher);
         var user = User.Create("old@example.com", "John Doe", password);
 
         // Act
-        var act = () => user.UpdateEmail("invalid");
+        user.UpdateEmail("  New@Example.COM  ");
 
         // Assert
-        act.Should().Throw<DomainException>().WithMessage(UserErrors.EmailInvalidFormat);
+        user.Email.Should().Be("new@example.com");
     }
 
     [Fact(DisplayName = "ClearDomainEvents >> Should Remove All Events >> When Called")]
