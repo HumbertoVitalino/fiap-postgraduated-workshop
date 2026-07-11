@@ -25,7 +25,7 @@ public sealed class LoginUseCase(
     {
         Output output = new();
 
-        var email = Email.Create(input.Email);
+        var email = input.Email.Trim().ToLowerInvariant();
         var user = await _userRepository.GetByEmailAsync(email, cancellationToken);
         if (user is null || !user.VerifyPassword(input.Password, _passwordHasher))
         {
@@ -39,7 +39,7 @@ public sealed class LoginUseCase(
             return output;
         }
 
-        var token = _jwtService.GenerateToken(user.Id.ToString(), user.Email.Value, user.Role.ToString());
+        var token = _jwtService.GenerateToken(user.Id.ToString(), user.Email, user.Role.ToString());
 
         output.AddResult(new LoginResponse(token));
         return output;

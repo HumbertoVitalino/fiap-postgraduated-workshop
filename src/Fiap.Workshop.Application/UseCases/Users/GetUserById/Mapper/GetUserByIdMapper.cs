@@ -6,5 +6,5 @@ namespace Fiap.Workshop.Application.UseCases.Users.GetUserById.Mapper;
 internal static class GetUserByIdMapper
 {
     internal static UserResponse MapToOutput(this User user) =>
-        new(user.Id, user.Name, user.Email.Value, user.Role.ToString());
+        new(user.Id, user.Name, user.Email, user.Role.ToString());
 }
