@@ -25,7 +25,8 @@ Regra de dependência: `Domain` não referencia nada; `Application` referencia `
 ## 2. Stack e pacotes principais
 
 - **.NET 10** / C# `latest`, `Nullable` habilitado, `TreatWarningsAsErrors=true`, `EnforceCodeStyleInBuild=true` (`Directory.Build.props`)
-- **API**: Minimal APIs, `Asp.Versioning.Http` (versionamento via segmento de URL `/api/v{version}/...`), `Scalar.AspNetCore` (UI de docs, substitui Swagger UI), `Microsoft.AspNetCore.OpenApi`
+- **API**: Minimal APIs, `Asp.Versioning.Http` (versionamento via segmento de URL `/api/v{version}/...`), `Microsoft.AspNetCore.OpenApi` (gera o documento OpenAPI em `/openapi/v1.json`), `Swashbuckle.AspNetCore.SwaggerUI` (só a UI, em `/swagger` — trocado do Scalar em 2026-07-11, mantendo a geração do doc como estava)
+- **Logging**: `Serilog.AspNetCore` (instalado em 2026-07-11) — substitui o provider padrão do `Microsoft.Extensions.Logging` via `builder.Host.UseSerilog(...)` no `Program.cs`; usa bootstrap logger + `try/catch/finally` em volta do host pra capturar falhas de startup (ex.: banco indisponível na migration automática) antes mesmo do DI terminar de montar; sink Console configurado via `appsettings.json` (`Serilog` section, `ReadFrom.Configuration`); `app.UseSerilogRequestLogging()` loga cada requisição HTTP. Todo `ILogger<T>` já injetado nos use cases continua funcionando sem mudança nenhuma — a troca foi só na composição, não no código de Application/Domain.
 - **Validação**: FluentValidation (validators na camada Api, um por Request)
 - **Auth**: JWT Bearer (`Microsoft.AspNetCore.Authentication.JwtBearer`), policies `AdminOnly` e `UserOnly`
 - **Hashing de senha**: `BCrypt.Net-Next` (work factor 12), via `IPasswordHasher` (Domain) / `BCryptPasswordHasher` (Infrastructure)
@@ -150,7 +151,7 @@ Ambos os grupos usam header `x-correlation-id` (obrigatório em `CreateUser`, op
 `AddApi()`: JWT Bearer, `AddApiVersioning` (URL segment reader, versão default 1), `AddAuthorizationBuilder` com policies `AdminOnly` (role `Admin`) e `UserOnly` (roles `User`/`Admin`), `AddProblemDetails`, registra os `*RequestValidator` como `Scoped`, configura OpenAPI com security scheme Bearer.
 
 ### `Program.cs`
-Pipeline: `AddControllers` (não usado, pois tudo é Minimal API — resquício de template), `AddApplication → AddInfrastructure → AddApi`, migração automática do banco no boot, `MapOpenApi + MapScalarApiReference` (docs em `/scalar`), `UseExceptionHandler`, `UseHttpsRedirection`, `UseAuthentication`, `UseAuthorization`, `MapEndpoints()`.
+Pipeline: `AddControllers` (não usado, pois tudo é Minimal API — resquício de template), `AddApplication → AddInfrastructure → AddApi`, migração automática do banco no boot, `MapOpenApi + UseSwaggerUI` (docs em `/swagger`, aponta pro JSON em `/openapi/v1.json`), `UseExceptionHandler`, `UseHttpsRedirection`, `UseAuthentication`, `UseAuthorization`, `UseSerilogRequestLogging`, `MapEndpoints()`.
 
 ## 7. Docker / Deploy
 
@@ -206,14 +207,15 @@ Como funciona hoje, de ponta a ponta:
 
 ### Plano para a próxima sessão: e-mail de boas-vindas ao criar usuário
 
-Discutido e ainda não implementado — retomar aqui:
+Discutido e ainda não implementado — retomar aqui (já foi prototipado uma vez em 2026-07-10 como exercício de compreensão e revertido de propósito; o desenho abaixo continua válido):
 
 1. **Corrigir o bug do `CommitAsync`** (separar `try/catch` do `SaveChangesAsync` do `try/catch` do `DispatchAsync`) — pré-requisito antes de qualquer handler ir para produção.
 2. **Enriquecer `UserCreatedEvent`**: hoje só tem `UserId`; para mandar e-mail é preciso `Email`/`Name`. Decisão tomada: preferir "evento gordo" (`UserCreatedEvent(Guid UserId, string Email, string Name)`) em vez de o handler re-consultar o `IUserRepository` — mais barato e captura o estado exatamente como era no momento da criação.
-3. **`IEmailService`** — nova interface em `Application/Interfaces/Services/` (mesmo padrão de `IJwtService`), algo como `SendWelcomeEmailAsync(string email, string name)`.
+3. **`IEmailService`** — nova interface em `Application/Interfaces/Services/`, algo como `SendWelcomeEmailAsync(string email, string name)`.
 4. **Implementação em Infrastructure**: como não há provedor de e-mail configurado (`.env` não tem SMTP/SendGrid), começar com um `LoggingEmailService` que só loga o envio — ponto de extensão pronto para um provedor real depois.
 5. **Handler**: `SendWelcomeEmailOnUserCreated : IDomainEventHandler<UserCreatedEvent>` — colocar em **Application** (não Infrastructure), já que só orquestra uma chamada a uma abstração (`IEmailService`), sem detalhe técnico nenhum. Registrar no DI de `AddApplication()`.
 6. Ponderar (não decidido ainda): o dispatch síncrono faz o `POST /users` esperar o "envio" do e-mail antes de responder. Para um provedor de e-mail real (chamada HTTP externa), isso adiciona latência à resposta. Para o workshop, começar síncrono é aceitável — mas vale registrar que, se algum dia isso incomodar, a evolução natural é official Outbox pattern + worker em background, não o dispatcher atual.
+7. **Testar em 3 camadas**: unit test em `User` (evento carrega os dados certos), unit test no handler (mock de `IEmailService`), integration test ponta a ponta (spy de `IEmailService` sobrescrevendo `LoggingEmailService` via DI no `DatabaseFixture`, criando usuário via `ICreateUserUseCase` de verdade). Esse desenho de teste em camadas já foi validado no protótipo revertido.
 
 ## 12. Remoção do VO `Email` — concluída em 2026-07-10
 
