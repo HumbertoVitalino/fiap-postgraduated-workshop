@@ -28,7 +28,7 @@ public sealed class AppDbContext(
             entity.HasKey(u => u.Id);
 
             entity.Property(u => u.Email)
-                .HasMaxLength(Email.MaxLength)
+                .HasMaxLength(User.EmailMaxLength)
                 .IsRequired();
 
             entity.HasIndex(u => u.Email)
