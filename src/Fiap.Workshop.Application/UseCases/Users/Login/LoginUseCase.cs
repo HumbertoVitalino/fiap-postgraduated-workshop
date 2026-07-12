@@ -25,8 +25,7 @@ public sealed class LoginUseCase(
     {
         Output output = new();
 
-        var email = input.Email.Trim().ToLowerInvariant();
-        var user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+        var user = await _userRepository.GetByEmailAsync(input.Email, cancellationToken);
         if (user is null || !user.VerifyPassword(input.Password, _passwordHasher))
         {
             _logger.LogWarning(

@@ -41,7 +41,8 @@ public static class UsersEndpoints
                     return Results.BadRequest(output);
 
                 return Results.Created();
-            })
+            }
+        )
         .AllowAnonymous()
         .WithName("CreateUser")
         .Produces<Output>(StatusCodes.Status201Created)
@@ -62,7 +63,8 @@ public static class UsersEndpoints
                     return Results.NotFound(output);
 
                 return Results.Ok(output);
-            })
+            }
+        )
         .WithName("GetUserById")
         .Produces<Output>()
         .Produces<Output>(StatusCodes.Status404NotFound

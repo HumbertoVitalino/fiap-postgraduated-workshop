@@ -18,24 +18,27 @@ public static class AuthEndpoints
             .WithTags("Auth")
             .AllowAnonymous();
 
-        group.MapPost("login", async (
-            LoginRequest request,
-            ILoginUseCase useCase,
-            LoginRequestValidator validator,
-            [FromHeader(Name = "X-Correlation-Id")] Guid? correlationId,
-            CancellationToken cancellationToken) =>
-        {
-            var validation = validator.Validate(request);
-            if (!validation.IsValid)
-                return Results.Unauthorized();
+        group.MapPost("login",
+            async (
+                [FromBody] LoginRequest request,
+                [FromServices] ILoginUseCase useCase,
+                LoginRequestValidator validator,
+                [FromHeader(Name = "x-correlation-id")] Guid correlationId,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var validation = validator.Validate(request);
+                if (!validation.IsValid)
+                    return Results.Unauthorized();
 
-            var output = await useCase.ExecuteAsync(request.MapToInput(correlationId), cancellationToken);
+                var output = await useCase.ExecuteAsync(request.MapToInput(correlationId), cancellationToken);
 
-            if (!output.IsValid)
-                return Results.Unauthorized();
+                if (!output.IsValid)
+                    return Results.Unauthorized();
 
-            return Results.Ok(output);
-        })
+                return Results.Ok(output);
+            }
+        )
         .WithName("Login")
         .Produces<Output>()
         .Produces(StatusCodes.Status401Unauthorized);

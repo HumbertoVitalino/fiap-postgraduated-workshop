@@ -46,8 +46,16 @@ public sealed class User : AggregateRoot<Guid>
         return user;
     }
 
-    public static User Rehydrate(Guid id, string email, string name, string passwordHash, UserRole role) =>
-        new(id, email, name, HashedPassword.FromHash(passwordHash), role);
+    public static User Rehydrate(Guid id, string email, string name, string passwordHash, UserRole role)
+    {
+        return new(
+            id,
+            email,
+            name,
+            HashedPassword.FromHash(passwordHash),
+            role
+        );
+    }
 
     public bool VerifyPassword(string rawPassword, IPasswordHasher passwordHasher) =>
         Password.Matches(rawPassword, passwordHasher);
