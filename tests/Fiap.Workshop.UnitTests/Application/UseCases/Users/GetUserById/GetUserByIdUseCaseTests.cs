@@ -29,13 +29,13 @@ public sealed class GetUserByIdUseCaseTests
         // Arrange
         var password = HashedPassword.CreateFromRaw("ValidPass123", _passwordHasher);
         var user = User.Create("john@example.com", "John Doe", password);
-        var input = new GetUserByIdInput(user.Id);
+        var input = new GetUserByIdInput(user.Id, Guid.NewGuid());
         _repositoryMock
             .Setup(r => r.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         // Act
-        var output = await _sut.ExecuteAsync(input);
+        var output = await _sut.ExecuteAsync(input, CancellationToken.None);
 
         // Assert
         output.IsValid.Should().BeTrue();
@@ -50,13 +50,13 @@ public sealed class GetUserByIdUseCaseTests
     public async Task ExecuteAsync_NonExistingUser_ReturnsInvalidOutputWithNotFoundError()
     {
         // Arrange
-        var input = new GetUserByIdInput(Guid.NewGuid());
+        var input = new GetUserByIdInput(Guid.NewGuid(), Guid.NewGuid());
         _repositoryMock
             .Setup(r => r.GetByIdAsync(input.Id, It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult<User?>(null));
 
         // Act
-        var output = await _sut.ExecuteAsync(input);
+        var output = await _sut.ExecuteAsync(input, CancellationToken.None);
 
         // Assert
         output.IsValid.Should().BeFalse();

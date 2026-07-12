@@ -22,12 +22,13 @@ public sealed class LoginUseCaseTests(DatabaseFixture fixture)
         using var scope = fixture.Services.CreateScope();
         var createUseCase = scope.ServiceProvider.GetRequiredService<ICreateUserUseCase>();
         var loginUseCase = scope.ServiceProvider.GetRequiredService<ILoginUseCase>();
+        var correlationId = Guid.NewGuid();
 
-        var email = $"{Guid.NewGuid():N}@example.com";
+        var email = $"{correlationId:N}@example.com";
         await createUseCase.ExecuteAsync(new CreateUserInput(Guid.NewGuid(), "Alice", email, ValidPassword, UserRole.User));
 
         // Act
-        var output = await loginUseCase.ExecuteAsync(new LoginInput(email, ValidPassword));
+        var output = await loginUseCase.ExecuteAsync(new LoginInput(correlationId, email, ValidPassword));
 
         // Assert
         output.IsValid.Should().BeTrue();
@@ -44,7 +45,7 @@ public sealed class LoginUseCaseTests(DatabaseFixture fixture)
         var useCase = scope.ServiceProvider.GetRequiredService<ILoginUseCase>();
 
         // Act
-        var output = await useCase.ExecuteAsync(new LoginInput("nobody@example.com", ValidPassword));
+        var output = await useCase.ExecuteAsync(new LoginInput(Guid.NewGuid(), "nobody@example.com", ValidPassword));
 
         // Assert
         output.IsValid.Should().BeFalse();
@@ -58,12 +59,13 @@ public sealed class LoginUseCaseTests(DatabaseFixture fixture)
         using var scope = fixture.Services.CreateScope();
         var createUseCase = scope.ServiceProvider.GetRequiredService<ICreateUserUseCase>();
         var loginUseCase = scope.ServiceProvider.GetRequiredService<ILoginUseCase>();
+        var correlationId = Guid.NewGuid();
 
-        var email = $"{Guid.NewGuid():N}@example.com";
-        await createUseCase.ExecuteAsync(new CreateUserInput(Guid.NewGuid(), "Alice", email, ValidPassword, UserRole.User));
+        var email = $"{correlationId:N}@example.com";
+        await createUseCase.ExecuteAsync(new CreateUserInput(correlationId, "Alice", email, ValidPassword, UserRole.User));
 
         // Act
-        var output = await loginUseCase.ExecuteAsync(new LoginInput(email, "WrongPass123"));
+        var output = await loginUseCase.ExecuteAsync(new LoginInput(correlationId, email, "WrongPass123"));
 
         // Assert
         output.IsValid.Should().BeFalse();

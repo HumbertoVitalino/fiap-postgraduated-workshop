@@ -5,6 +5,10 @@ namespace Fiap.Workshop.Api.Mappers.Auth;
 
 internal static class LoginRequestMapper
 {
-    internal static LoginInput MapToInput(this LoginRequest request, Guid? correlationId = null) =>
-        new(request.Email, request.Password, correlationId ?? Guid.NewGuid());
+    internal static LoginInput MapToInput(this LoginRequest request, Guid correlationId)
+        => new(
+            correlationId,
+            request.Email,
+            request.Password
+        );
 }

@@ -22,7 +22,7 @@ public sealed class CreateUserUseCase(
     {
         Output output = new();
 
-        var email = Email.Create(input.Email);
+        var email = input.Email.Trim().ToLowerInvariant();
         if (await _userRepository.ExistsWithEmailAsync(email, cancellationToken))
         {
             _logger.LogWarning(

@@ -23,7 +23,7 @@ internal static class CreateUserMapper
         return new(
             user.Id,
             user.Name,
-            user.Email.Value,
+            user.Email,
             user.Role.ToString()
         );
     }

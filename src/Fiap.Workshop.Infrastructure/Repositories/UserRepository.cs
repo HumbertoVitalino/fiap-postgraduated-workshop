@@ -20,17 +20,17 @@ internal sealed class UserRepository(AppDbContext context) : IUserRepository
         return model?.MapToDomain();
     }
 
-    public async Task<User?> GetByEmailAsync(Email email, CancellationToken cancellationToken)
+    public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken)
     {
         var model = await context.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Email == email.Value, cancellationToken);
+            .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
         return model?.MapToDomain();
     }
 
-    public async Task<bool> ExistsWithEmailAsync(Email email, CancellationToken cancellationToken) =>
-        await context.Users.AnyAsync(u => u.Email == email.Value, cancellationToken);
+    public async Task<bool> ExistsWithEmailAsync(string email, CancellationToken cancellationToken) =>
+        await context.Users.AnyAsync(u => u.Email == email, cancellationToken);
 
     public async Task AddAsync(User entity, CancellationToken cancellationToken)
     {

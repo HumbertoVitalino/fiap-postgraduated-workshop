@@ -41,32 +41,32 @@ public static class UsersEndpoints
                     return Results.BadRequest(output);
 
                 return Results.Created();
-            })
-            .AllowAnonymous()
-            .WithName("CreateUser")
-            .Produces<Output>(StatusCodes.Status201Created)
-            .Produces<Output>(StatusCodes.Status400BadRequest
-        );
+            }
+        )
+        .AllowAnonymous()
+        .WithName("CreateUser")
+        .Produces<Output>(StatusCodes.Status201Created)
+        .Produces<Output>(StatusCodes.Status400BadRequest);
 
         group.MapGet("{id:guid}",
             async (
                 [FromRoute] Guid id,
                 [FromServices] IGetUserByIdUseCase useCase,
-                [FromHeader(Name = "x-correlation-id")] Guid? correlationId,
+                [FromHeader(Name = "x-correlation-id")] Guid correlationId,
                 CancellationToken cancellationToken
             ) =>
             {
-                var output = await useCase.ExecuteAsync(new GetUserByIdInput(id, correlationId ?? Guid.NewGuid()), cancellationToken);
+                var output = await useCase.ExecuteAsync(new GetUserByIdInput(id, correlationId), cancellationToken);
 
                 if (!output.IsValid)
                     return Results.NotFound(output);
 
                 return Results.Ok(output);
-            })
-            .WithName("GetUserById")
-            .Produces<Output>()
-            .Produces<Output>(StatusCodes.Status404NotFound
-        );
+            }
+        )
+        .WithName("GetUserById")
+        .Produces<Output>()
+        .Produces<Output>(StatusCodes.Status404NotFound);
 
         return app;
     }

@@ -10,7 +10,7 @@ public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
     {
         RuleFor(x => x.Email)
             .NotEmpty()
-            .MaximumLength(Email.MaxLength)
+            .MaximumLength(User.EmailMaxLength)
             .EmailAddress();
 
         RuleFor(x => x.Password)
