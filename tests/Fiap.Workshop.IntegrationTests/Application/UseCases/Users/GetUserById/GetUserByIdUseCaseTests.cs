@@ -27,7 +27,7 @@ public sealed class GetUserByIdUseCaseTests(DatabaseFixture fixture)
         var created = (createOutput.Result as UserResponse)!;
 
         // Act
-        var output = await getUseCase.ExecuteAsync(new GetUserByIdInput(created.Id));
+        var output = await getUseCase.ExecuteAsync(new GetUserByIdInput(created.Id, Guid.NewGuid()));
 
         // Assert
         output.IsValid.Should().BeTrue();
@@ -45,7 +45,7 @@ public sealed class GetUserByIdUseCaseTests(DatabaseFixture fixture)
         var useCase = scope.ServiceProvider.GetRequiredService<IGetUserByIdUseCase>();
 
         // Act
-        var output = await useCase.ExecuteAsync(new GetUserByIdInput(Guid.NewGuid()));
+        var output = await useCase.ExecuteAsync(new GetUserByIdInput(Guid.NewGuid(), Guid.NewGuid()));
 
         // Assert
         output.IsValid.Should().BeFalse();

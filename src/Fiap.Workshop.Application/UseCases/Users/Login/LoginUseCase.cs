@@ -25,18 +25,21 @@ public sealed class LoginUseCase(
     {
         Output output = new();
 
-        var email = Email.Create(input.Email);
-        var user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+        var user = await _userRepository.GetByEmailAsync(input.Email, cancellationToken);
         if (user is null || !user.VerifyPassword(input.Password, _passwordHasher))
         {
             _logger.LogWarning(
-                "Login failed: invalid credentials. Email: {Email} | CorrelationId: {CorrelationId}",
-                input.Email, input.CorrelationId);
+                "[{CorrelationId}] | Login failed: invalid credentials. Email: {Email}",
+                input.Email,
+                input.CorrelationId
+            );
+
             output.AddErrorMessage(UserErrors.InvalidCredentials);
             return output;
         }
 
-        var token = _jwtService.GenerateToken(user.Id.ToString(), user.Email.Value, user.Role.ToString());
+        var token = _jwtService.GenerateToken(user.Id.ToString(), user.Email, user.Role.ToString());
+
         output.AddResult(new LoginResponse(token));
         return output;
     }

@@ -16,7 +16,7 @@ public sealed class GetUserByIdUseCase(
     private readonly IUserRepository _repository = repository;
     private readonly ILogger<GetUserByIdUseCase> _logger = logger;
 
-    public async Task<Output> ExecuteAsync(GetUserByIdInput input, CancellationToken cancellationToken = default)
+    public async Task<Output> ExecuteAsync(GetUserByIdInput input, CancellationToken cancellationToken)
     {
         Output output = new();
 
@@ -24,8 +24,11 @@ public sealed class GetUserByIdUseCase(
         if (user is null)
         {
             _logger.LogWarning(
-                "Get user failed: not found. UserId: {UserId} | CorrelationId: {CorrelationId}",
-                input.Id, input.CorrelationId);
+                "[{CorrelationId}] | Get user failed: not found. UserId: {UserId}",
+                input.CorrelationId,
+                input.Id
+            );
+
             output.AddErrorMessage(UserErrors.NotFound);
             return output;
         }

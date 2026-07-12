@@ -1,6 +1,6 @@
 # Fiap.Workshop — Contexto do Projeto
 
-> Documento vivo de contexto técnico. Atualize sempre que a arquitetura, os use cases ou as decisões de design mudarem. Última atualização: 2026-07-06.
+> Documento vivo de contexto técnico. Atualize sempre que a arquitetura, os use cases ou as decisões de design mudarem. Última atualização: 2026-07-10.
 
 ## 1. Visão geral
 
@@ -25,7 +25,8 @@ Regra de dependência: `Domain` não referencia nada; `Application` referencia `
 ## 2. Stack e pacotes principais
 
 - **.NET 10** / C# `latest`, `Nullable` habilitado, `TreatWarningsAsErrors=true`, `EnforceCodeStyleInBuild=true` (`Directory.Build.props`)
-- **API**: Minimal APIs, `Asp.Versioning.Http` (versionamento via segmento de URL `/api/v{version}/...`), `Scalar.AspNetCore` (UI de docs, substitui Swagger UI), `Microsoft.AspNetCore.OpenApi`
+- **API**: Minimal APIs, `Asp.Versioning.Http` + `Asp.Versioning.Mvc.ApiExplorer` (versionamento via segmento de URL `/api/v{version}/...`; o `ApiExplorer` com `SubstituteApiVersionInUrl = true` é o que faz `{version}` virar `1` de verdade na doc gerada — sem ele, Swagger/OpenAPI mandavam o template cru e todo request pelo Swagger UI dava 404 de roteamento, corrigido em 2026-07-12), `Microsoft.AspNetCore.OpenApi` (gera o documento OpenAPI em `/openapi/v1.json`), `Swashbuckle.AspNetCore.SwaggerUI` (só a UI, em `/swagger` — trocado do Scalar em 2026-07-11, mantendo a geração do doc como estava)
+- **Logging**: `Serilog.AspNetCore` (instalado em 2026-07-11) — substitui o provider padrão do `Microsoft.Extensions.Logging` via `builder.Host.UseSerilog(...)` no `Program.cs`; usa bootstrap logger + `try/catch/finally` em volta do host pra capturar falhas de startup (ex.: banco indisponível na migration automática) antes mesmo do DI terminar de montar; sink Console configurado via `appsettings.json` (`Serilog` section, `ReadFrom.Configuration`); `app.UseSerilogRequestLogging()` loga cada requisição HTTP. Todo `ILogger<T>` já injetado nos use cases continua funcionando sem mudança nenhuma — a troca foi só na composição, não no código de Application/Domain.
 - **Validação**: FluentValidation (validators na camada Api, um por Request)
 - **Auth**: JWT Bearer (`Microsoft.AspNetCore.Authentication.JwtBearer`), policies `AdminOnly` e `UserOnly`
 - **Hashing de senha**: `BCrypt.Net-Next` (work factor 12), via `IPasswordHasher` (Domain) / `BCryptPasswordHasher` (Infrastructure)
@@ -42,17 +43,15 @@ Regra de dependência: `Domain` não referencia nada; `Application` referencia `
 - `IAggregateRoot`, `IDomainEvent`: contratos marcadores.
 
 ### Agregado `User` (`Users/User.cs`)
-Propriedades: `Email` (VO), `Name`, `Password` (VO `HashedPassword`), `Role` (`UserRole`).
+Propriedades: `Email` (`string`), `Name`, `Password` (VO `HashedPassword`), `Role` (`UserRole`).
 
 Um único construtor **privado**; toda criação passa por fábricas nomeadas:
 - `User.Create(string email, string name, HashedPassword password, UserRole role = UserRole.User)` — valida `Name` não vazio, monta o agregado e dispara `UserCreatedEvent`. **Não conhece `IPasswordHasher`** — recebe o `HashedPassword` já pronto (quem hasheia é o mapper da Application, ver §4).
 - `User.Rehydrate(Guid id, string email, string name, string passwordHash, UserRole role)` — reconstrói um usuário já existente (vindo do banco) a partir do hash já persistido. Não dispara eventos de domínio (evento = "acabei de nascer", não "fui carregado do banco").
 - `VerifyPassword(string rawPassword, IPasswordHasher passwordHasher)` — delega para `Password.Matches(...)`.
+- `UpdateEmail(string email)` — reatribui `Email` (ninguém chama ainda, não existe endpoint de update).
 
-### Value Object `Email` (`Users/Email.cs`)
-- `MaxLength = 256`
-- `Email.Create(string)`: valida vazio, tamanho máximo e presença de `@`; normaliza para lowercase/trim.
-- Lança `DomainException` com mensagens de `UserErrors`.
+`Email` é uma propriedade `string` comum (setter privado com `field => value.Trim().ToLowerInvariant()`, C# 14 semi-auto property) — **não é mais um Value Object**. `const int EmailMaxLength = 256` também vive em `User`. Ver §12 para o histórico dessa decisão (era `Email : ValueObject` até 2026-07-10).
 
 ### Value Object `HashedPassword` (`Users/HashedPassword.cs`)
 - `MinLength = 10`.
@@ -66,7 +65,7 @@ Domain Service (interface): `Hash(string rawPassword)`, `Verify(string rawPasswo
 ### `UserRole` (enum): `User = 0`, `Admin = 1`
 
 ### `UserErrors` (constantes de mensagem)
-`NameEmpty`, `EmailEmpty`, `EmailTooLong`, `EmailInvalidFormat`, `NotFound`, `EmailAlreadyInUse`, `PasswordEmpty`, `PasswordTooShort`, `PasswordMissingUppercase`, `PasswordMissingLowercase`, `PasswordMissingDigit`, `PasswordHashEmpty`, `InvalidCredentials`.
+`NameEmpty`, `NotFound`, `EmailAlreadyInUse`, `PasswordEmpty`, `PasswordTooShort`, `PasswordMissingUppercase`, `PasswordMissingLowercase`, `PasswordMissingDigit`, `PasswordHashEmpty`, `InvalidCredentials`. (`EmailEmpty`/`EmailTooLong`/`EmailInvalidFormat` foram removidas em 2026-07-10 junto com o VO `Email`, ver §12.)
 
 ### Eventos (`Users/Events/`)
 - `UserCreatedEvent(Guid UserId)` — disparado em `User.Create`. Hoje só carrega o `UserId` ("evento magro"). Ver §11 para a mecânica completa de domain events e uma discussão sobre enriquecer esse evento.
@@ -94,7 +93,7 @@ Cada use case tem uma pasta `Boundaries/` (Input) e `Mapper/` (mapeamento entre 
 
 ### Interfaces / portas (`Interfaces/`)
 - `IUnitOfWork.CommitAsync()`
-- `Repositories/IUserRepository : IRepository<User, Guid>` — `GetByEmailAsync`, `ExistsWithEmailAsync`
+- `Repositories/IUserRepository : IRepository<User, Guid>` — `GetByEmailAsync(string email, ...)`, `ExistsWithEmailAsync(string email, ...)` (recebem `string` normalizado pelo use case, não mais o VO `Email`)
 - `Abstractions/IRepository<T, TId>` — CRUD genérico + `UnitOfWork`
 - `Services/ICurrentUserService` — `UserId`, `Email`, `Role`, `IsAuthenticated` (lido do `ClaimsPrincipal`)
 - `Services/IDomainEventDispatcher.DispatchAsync(events)`
@@ -152,7 +151,7 @@ Ambos os grupos usam header `x-correlation-id` (obrigatório em `CreateUser`, op
 `AddApi()`: JWT Bearer, `AddApiVersioning` (URL segment reader, versão default 1), `AddAuthorizationBuilder` com policies `AdminOnly` (role `Admin`) e `UserOnly` (roles `User`/`Admin`), `AddProblemDetails`, registra os `*RequestValidator` como `Scoped`, configura OpenAPI com security scheme Bearer.
 
 ### `Program.cs`
-Pipeline: `AddControllers` (não usado, pois tudo é Minimal API — resquício de template), `AddApplication → AddInfrastructure → AddApi`, migração automática do banco no boot, `MapOpenApi + MapScalarApiReference` (docs em `/scalar`), `UseExceptionHandler`, `UseHttpsRedirection`, `UseAuthentication`, `UseAuthorization`, `MapEndpoints()`.
+Pipeline: `AddControllers` (não usado, pois tudo é Minimal API — resquício de template), `AddApplication → AddInfrastructure → AddApi`, migração automática do banco no boot, `MapOpenApi + UseSwaggerUI` (docs em `/swagger`, aponta pro JSON em `/openapi/v1.json`), `UseExceptionHandler`, `UseHttpsRedirection`, `UseAuthentication`, `UseAuthorization`, `UseSerilogRequestLogging`, `MapEndpoints()`.
 
 ## 7. Docker / Deploy
 
@@ -171,7 +170,7 @@ Pipeline: `AddControllers` (não usado, pois tudo é Minimal API — resquício 
 
 ## 9. Pendências conhecidas
 
-1. **Correlation-id inconsistente**: obrigatório (`[FromHeader]` sem `?`) no endpoint `CreateUser`, opcional (`Guid?`) em `GetUserById` e `Login`.
+1. **Correlation-id inconsistente**: obrigatório (`[FromHeader]` sem `?`) em `CreateUser` e `GetUserById` (ajustado em 2026-07-10); ainda opcional (`Guid?`) em `Login`. Falta alinhar o `Login` — combinado que fica para depois.
 2. **`.env` versionado no git** com segredos de exemplo (SA_PASSWORD, Jwt SecretKey) — confirmar se é intencional para o workshop ou se deveria ir para `.gitignore`.
 3. **Mocking duplicado nos testes**: `Fiap.Workshop.UnitTests.csproj` referencia tanto `Moq` quanto `NSubstitute`; os testes atuais usam apenas `Moq`. Vale decidir um padrão único.
 4. **`Fiap.Workshop.FunctionalTests`** existe como projeto mas não tem nenhum arquivo de teste ainda — scaffold vazio.
@@ -208,11 +207,27 @@ Como funciona hoje, de ponta a ponta:
 
 ### Plano para a próxima sessão: e-mail de boas-vindas ao criar usuário
 
-Discutido e ainda não implementado — retomar aqui:
+Discutido e ainda não implementado — retomar aqui (já foi prototipado uma vez em 2026-07-10 como exercício de compreensão e revertido de propósito; o desenho abaixo continua válido):
 
 1. **Corrigir o bug do `CommitAsync`** (separar `try/catch` do `SaveChangesAsync` do `try/catch` do `DispatchAsync`) — pré-requisito antes de qualquer handler ir para produção.
 2. **Enriquecer `UserCreatedEvent`**: hoje só tem `UserId`; para mandar e-mail é preciso `Email`/`Name`. Decisão tomada: preferir "evento gordo" (`UserCreatedEvent(Guid UserId, string Email, string Name)`) em vez de o handler re-consultar o `IUserRepository` — mais barato e captura o estado exatamente como era no momento da criação.
-3. **`IEmailService`** — nova interface em `Application/Interfaces/Services/` (mesmo padrão de `IJwtService`), algo como `SendWelcomeEmailAsync(string email, string name)`.
+3. **`IEmailService`** — nova interface em `Application/Interfaces/Services/`, algo como `SendWelcomeEmailAsync(string email, string name)`.
 4. **Implementação em Infrastructure**: como não há provedor de e-mail configurado (`.env` não tem SMTP/SendGrid), começar com um `LoggingEmailService` que só loga o envio — ponto de extensão pronto para um provedor real depois.
 5. **Handler**: `SendWelcomeEmailOnUserCreated : IDomainEventHandler<UserCreatedEvent>` — colocar em **Application** (não Infrastructure), já que só orquestra uma chamada a uma abstração (`IEmailService`), sem detalhe técnico nenhum. Registrar no DI de `AddApplication()`.
 6. Ponderar (não decidido ainda): o dispatch síncrono faz o `POST /users` esperar o "envio" do e-mail antes de responder. Para um provedor de e-mail real (chamada HTTP externa), isso adiciona latência à resposta. Para o workshop, começar síncrono é aceitável — mas vale registrar que, se algum dia isso incomodar, a evolução natural é official Outbox pattern + worker em background, não o dispatcher atual.
+7. **Testar em 3 camadas**: unit test em `User` (evento carrega os dados certos), unit test no handler (mock de `IEmailService`), integration test ponta a ponta (spy de `IEmailService` sobrescrevendo `LoggingEmailService` via DI no `DatabaseFixture`, criando usuário via `ICreateUserUseCase` de verdade). Esse desenho de teste em camadas já foi validado no protótipo revertido.
+
+## 12. Remoção do VO `Email` — concluída em 2026-07-10
+
+Contexto: `Email : ValueObject` (Domain) e `CreateUserRequestValidator`/`LoginRequestValidator` (Api, FluentValidation) validavam formato de e-mail em paralelo — e as regras **haviam divergido** (`Email.Create` só checava `Contains('@')`; o validator usava `.EmailAddress()`, bem mais rigoroso). Discutido e decidido:
+
+- **Formato/tamanho/obrigatoriedade do e-mail só é validado na API** (`CreateUserRequestValidator`, `LoginRequestValidator`), via FluentValidation. O Domain não reaplica essa regra — diferente da decisão tomada para `HashedPassword` (§10), que mantém a política de força "em profundidade". Ou seja, `Email` e `Password` agora seguem filosofias diferentes de propósito: o e-mail é só uma string validada na borda; a senha é um invariante do agregado.
+- **`Email` deixou de ser um Value Object.** `User.Email` agora é `string` com setter privado que normaliza (`Trim().ToLowerInvariant()`) via propriedade semi-automática do C# 14 (`get; private set => field = ...`). `User.EmailMaxLength` (const `256`) substitui `Email.MaxLength`.
+- A normalização continua acontecendo sempre que `Email` é atribuído (`Create`, `Rehydrate`, `UpdateEmail`) — não é uma regra de negócio nova, só evita duplicar `.Trim().ToLowerInvariant()` no setter.
+- **`Rehydrate` foi mantido** (não removido) — ele não existe só por causa da validação de e-mail, e sim para não disparar `UserCreatedEvent` ao carregar um usuário já existente do banco (`Create` dispara, `Rehydrate` não). Removê-lo faria toda leitura de usuário reemitir o evento de criação — o que vai colidir direto com o e-mail de boas-vindas planejado no §11.
+- `CreateUserUseCase`/`LoginUseCase` normalizam o e-mail de entrada (`input.Email.Trim().ToLowerInvariant()`) antes de consultar `IUserRepository.ExistsWithEmailAsync`/`GetByEmailAsync` — necessário para que "JOAO@x.com" no login bata com o "joao@x.com" já normalizado no banco. `IUserRepository` passou a receber `string` em vez do VO `Email` nesses dois métodos.
+- `UserErrors.EmailEmpty`/`EmailTooLong`/`EmailInvalidFormat` removidas (mortas, sem `Email.Create` para lançá-las).
+- `Domain/Users/Email.cs` e `tests/.../EmailTests.cs` foram deletados. `UserTests.cs` ganhou casos de normalização (trim + lowercase em `Create`/`UpdateEmail`) no lugar dos casos de formato inválido.
+- Nenhuma migration de banco foi necessária — a coluna `Users.Email` já era `nvarchar`, o tipo do Domain é que mudou.
+
+**Revisitado no mesmo dia:** foi questionado se `IPasswordHasher` deveria seguir o mesmo caminho (sair do Domain, ir para `Application.Interfaces.Services`, `HashedPassword` virar só `FromHash(string)`). Decisão: **não** — mantido como está (`IPasswordHasher` em Domain, `HashedPassword.CreateFromRaw` orquestrando política de força + hash). Diferença chave em relação ao `Email`: `Email` tinha *divergência real* entre duas implementações da mesma regra (Domain vs. API validator); `Password` não tem — existe só um hasher (`BCryptPasswordHasher`) usado em todo lugar, sem risco de duas regras brigarem. Além disso, se `HashedPassword` virasse um wrapper opaco (`FromHash` sem `CreateFromRaw`), nada impediria alguém de empacotar uma senha em texto puro como se fosse hash — um bypass grave demais pra abrir mão da defesa em profundidade aqui. O acoplamento do `CreateUserUseCase`/`CreateUserMapper` a `IPasswordHasher` (repassando a dependência sem usá-la diretamente) foi aceito como custo estrutural necessário para preservar essa garantia — a alternativa seria o Domain resolver a dependência sozinho (Service Locator), pior ainda.
