@@ -46,8 +46,7 @@ public static class UsersEndpoints
         .AllowAnonymous()
         .WithName("CreateUser")
         .Produces<Output>(StatusCodes.Status201Created)
-        .Produces<Output>(StatusCodes.Status400BadRequest
-        );
+        .Produces<Output>(StatusCodes.Status400BadRequest);
 
         group.MapGet("{id:guid}",
             async (
@@ -67,8 +66,7 @@ public static class UsersEndpoints
         )
         .WithName("GetUserById")
         .Produces<Output>()
-        .Produces<Output>(StatusCodes.Status404NotFound
-        );
+        .Produces<Output>(StatusCodes.Status404NotFound);
 
         return app;
     }
