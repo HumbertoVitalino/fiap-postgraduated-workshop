@@ -1,6 +1,6 @@
 # Fiap.Workshop — Contexto do Projeto
 
-> Documento vivo de contexto técnico. Atualize sempre que a arquitetura, os use cases ou as decisões de design mudarem. Última atualização: 2026-07-10.
+> Documento vivo de contexto técnico. Atualize sempre que a arquitetura, os use cases ou as decisões de design mudarem. Última atualização: 2026-07-13.
 
 ## 1. Visão geral
 
@@ -176,6 +176,7 @@ Pipeline: `AddControllers` (não usado, pois tudo é Minimal API — resquício 
 4. **`Fiap.Workshop.FunctionalTests`** existe como projeto mas não tem nenhum arquivo de teste ainda — scaffold vazio.
 5. **Domain events sem consumidor** e com um bug latente no tratamento de erro do dispatch — ver §11, é a pendência mais "quente" no momento (feature de e-mail de boas-vindas planejada para a próxima sessão).
 6. **Testes de integração não foram executados de ponta a ponta** na sessão em que a feature de senha foi implementada (Docker indisponível no ambiente de trabalho) — só foram validados por compilação + pela suíte unitária (40/40 passando), que cobre a mesma lógica de domínio. Rodar `docker compose -f docker-compose.tests.yml up -d` e `dotnet test tests/Fiap.Workshop.IntegrationTests` antes de dar como 100% validado.
+7. **Escopo do Tech Challenge (Fase 1) ainda não implementado**: o enunciado (`15SOAT - Fase 1 - Tech Challenge (1).pdf`, na raiz) pede um sistema de oficina mecânica — CRUD de clientes/veículos/serviços/peças (com controle de estoque), Ordem de Serviço com máquina de estados (`Recebida → Em diagnóstico → Aguardando aprovação → Em execução → Finalizada → Entregue`), orçamento automático, validação de CPF/CNPJ e placa, cobertura de teste mínima de 80% nos domínios críticos, relatório de vulnerabilidades (SAST) e documentação DDD (Event Storming, diagramas, linguagem ubíqua). Hoje só existe o módulo de autenticação/usuário (`User`, login JWT) — nenhum agregado de negócio da oficina foi criado ainda. Ver seção "Roadmap / pendências do desafio" do `README.md` (criado em 2026-07-13) para a lista completa cobrada pelo enunciado.
 
 ## 10. Feature de senha (Password) — concluída em 2026-07-06
 
