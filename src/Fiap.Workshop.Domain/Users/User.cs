@@ -21,8 +21,10 @@ public sealed class User : AggregateRoot<Guid>
         string email,
         string name,
         HashedPassword password,
-        UserRole role
-    ) : base(id)
+        UserRole role,
+        DateTime createdAt,
+        DateTime? updatedAt
+    ) : base(id, createdAt, updatedAt)
     {
         Email = email;
         Name = name;
@@ -40,25 +42,43 @@ public sealed class User : AggregateRoot<Guid>
         if (string.IsNullOrWhiteSpace(name))
             throw new DomainException(UserErrors.NameEmpty);
 
-        var user = new User(Guid.NewGuid(), email, name, password, role);
+        var user = new User(Guid.NewGuid(), email, name, password, role, DateTime.UtcNow, null);
         user.RaiseDomainEvent(new UserCreatedEvent(user.Id));
 
         return user;
     }
 
-    public static User Rehydrate(Guid id, string email, string name, string passwordHash, UserRole role)
+    public static User Rehydrate(
+        Guid id,
+        string email,
+        string name,
+        string passwordHash,
+        UserRole role,
+        DateTime createdAt,
+        DateTime? updatedAt
+    )
     {
         return new(
             id,
             email,
             name,
             HashedPassword.FromHash(passwordHash),
-            role
+            role,
+            createdAt,
+            updatedAt
         );
     }
 
     public bool VerifyPassword(string rawPassword, IPasswordHasher passwordHasher) =>
         Password.Matches(rawPassword, passwordHasher);
 
-    public void UpdateEmail(string email) => Email = email;
+    public void UpdateEmail(string email)
+    {
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        if (normalizedEmail == Email)
+            return;
+
+        Email = normalizedEmail;
+        Touch();
+    }
 }
