@@ -144,14 +144,62 @@ public sealed class UserTests
         // Arrange
         var id = Guid.NewGuid();
         var passwordHash = _passwordHasher.Hash(ValidPassword);
+        var createdAt = DateTime.UtcNow.AddDays(-10);
+        var updatedAt = DateTime.UtcNow.AddDays(-1);
 
         // Act
-        var user = User.Rehydrate(id, "john@example.com", "John Doe", passwordHash, UserRole.Admin);
+        var user = User.Rehydrate(id, "john@example.com", "John Doe", passwordHash, UserRole.Admin, createdAt, updatedAt);
 
         // Assert
         user.Id.Should().Be(id);
         user.Role.Should().Be(UserRole.Admin);
+        user.CreatedAt.Should().Be(createdAt);
+        user.UpdatedAt.Should().Be(updatedAt);
         user.GetDomainEvents().Should().BeEmpty();
         user.VerifyPassword(ValidPassword, _passwordHasher).Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "Create >> Should Set CreatedAt And Leave UpdatedAt Null >> When User Is Created")]
+    public void Create_ValidData_SetsCreatedAtAndLeavesUpdatedAtNull()
+    {
+        // Arrange
+        var password = HashedPassword.CreateFromRaw(ValidPassword, _passwordHasher);
+        var before = DateTime.UtcNow;
+
+        // Act
+        var user = User.Create("john@example.com", "John Doe", password);
+
+        // Assert
+        user.CreatedAt.Should().BeOnOrAfter(before).And.BeOnOrBefore(DateTime.UtcNow);
+        user.UpdatedAt.Should().BeNull();
+    }
+
+    [Fact(DisplayName = "UpdateEmail >> Should Set UpdatedAt >> When Called")]
+    public void UpdateEmail_ValidEmail_SetsUpdatedAt()
+    {
+        // Arrange
+        var password = HashedPassword.CreateFromRaw(ValidPassword, _passwordHasher);
+        var user = User.Create("old@example.com", "John Doe", password);
+
+        // Act
+        user.UpdateEmail("new@example.com");
+
+        // Assert
+        user.UpdatedAt.Should().NotBeNull();
+        user.UpdatedAt!.Value.Should().BeOnOrBefore(DateTime.UtcNow);
+    }
+
+    [Fact(DisplayName = "UpdateEmail >> Should Not Touch UpdatedAt >> When New Email Is The Same As Current")]
+    public void UpdateEmail_SameEmail_DoesNotSetUpdatedAt()
+    {
+        // Arrange
+        var password = HashedPassword.CreateFromRaw(ValidPassword, _passwordHasher);
+        var user = User.Create("john@example.com", "John Doe", password);
+
+        // Act
+        user.UpdateEmail("  John@Example.COM  ");
+
+        // Assert
+        user.UpdatedAt.Should().BeNull();
     }
 }
