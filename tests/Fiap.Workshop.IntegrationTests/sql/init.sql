@@ -14,6 +14,7 @@ BEGIN
         Password    NVARCHAR(200)    NOT NULL DEFAULT '',
         Role        NVARCHAR(20)     NOT NULL DEFAULT 'User',
         CreatedAt   DATETIME2        NOT NULL DEFAULT GETUTCDATE(),
+        UpdatedAt   DATETIME2        NULL,
         CONSTRAINT PK_Users PRIMARY KEY (Id)
     );
 
@@ -36,5 +37,14 @@ IF NOT EXISTS (
 )
 BEGIN
     ALTER TABLE Users ADD Password NVARCHAR(200) NOT NULL DEFAULT '';
+END
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID('Users') AND name = 'UpdatedAt'
+)
+BEGIN
+    ALTER TABLE Users ADD UpdatedAt DATETIME2 NULL;
 END
 GO
