@@ -37,7 +37,7 @@ Regra de dependência: `Domain` não referencia nada; `Application` referencia `
 ## 3. Camada de Domínio (`Fiap.Workshop.Domain`)
 
 ### Abstrações (`Abstractions/`)
-- `AggregateRoot<TId>`: base com `Id`, lista interna de `IDomainEvent`, `RaiseDomainEvent`, `GetDomainEvents`, `ClearDomainEvents`.
+- `AggregateRoot<TId>`: base com `Id`, `CreatedAt` (`DateTime`, imutável, definido no construtor), `UpdatedAt` (`DateTime?`, só muda via `Touch()` protegido — chamado explicitamente pelos métodos de comportamento do agregado concreto, nunca por infra/mapper), lista interna de `IDomainEvent`, `RaiseDomainEvent`, `GetDomainEvents`, `ClearDomainEvents`. `CreatedAt`/`UpdatedAt` são conceitos de domínio aqui (não só auditoria) porque regras futuras como garantia e desconto por tempo de cadastro dependem deles.
 - `ValueObject`: igualdade estrutural via `GetEqualityComponents()`.
 - `DomainException(string message)`: exceção de domínio simples.
 - `IAggregateRoot`, `IDomainEvent`: contratos marcadores.
@@ -47,9 +47,9 @@ Propriedades: `Email` (`string`), `Name`, `Password` (VO `HashedPassword`), `Rol
 
 Um único construtor **privado**; toda criação passa por fábricas nomeadas:
 - `User.Create(string email, string name, HashedPassword password, UserRole role = UserRole.User)` — valida `Name` não vazio, monta o agregado e dispara `UserCreatedEvent`. **Não conhece `IPasswordHasher`** — recebe o `HashedPassword` já pronto (quem hasheia é o mapper da Application, ver §4).
-- `User.Rehydrate(Guid id, string email, string name, string passwordHash, UserRole role)` — reconstrói um usuário já existente (vindo do banco) a partir do hash já persistido. Não dispara eventos de domínio (evento = "acabei de nascer", não "fui carregado do banco").
+- `User.Rehydrate(Guid id, string email, string name, string passwordHash, UserRole role, DateTime createdAt, DateTime? updatedAt)` — reconstrói um usuário já existente (vindo do banco) a partir do hash, `CreatedAt` e `UpdatedAt` já persistidos. Não dispara eventos de domínio (evento = "acabei de nascer", não "fui carregado do banco").
 - `VerifyPassword(string rawPassword, IPasswordHasher passwordHasher)` — delega para `Password.Matches(...)`.
-- `UpdateEmail(string email)` — reatribui `Email` (ninguém chama ainda, não existe endpoint de update).
+- `UpdateEmail(string email)` — reatribui `Email` e chama `Touch()` (ninguém chama ainda, não existe endpoint de update).
 
 `Email` é uma propriedade `string` comum (setter privado com `field => value.Trim().ToLowerInvariant()`, C# 14 semi-auto property) — **não é mais um Value Object**. `const int EmailMaxLength = 256` também vive em `User`. Ver §12 para o histórico dessa decisão (era `Email : ValueObject` até 2026-07-10).
 
@@ -101,20 +101,25 @@ Cada use case tem uma pasta `Boundaries/` (Input) e `Mapper/` (mapeamento entre 
 - `Abstractions/IDomainEventHandler<TEvent>` — infraestrutura de handlers de evento de domínio (nenhum handler concreto implementado ainda — ver §11)
 
 ### DTOs (`DTOs/Users/`)
-- `UserResponse(Id, Name, Email, Role)`
+- `UserResponse(Id, Name, Email, Role)` — tem um `FromUser(User)` estático, mas `CreateUserMapper`/`GetUserByIdMapper` ainda usam extension methods próprios (`MapToOutput`) que duplicam exatamente essa mesma construção; `UpdateEmailUseCase` é o primeiro a reusar `UserResponse.FromUser` em vez de duplicar de novo — os outros dois não foram tocados (fora do escopo do que foi pedido), mas valeria consolidar depois.
 - `LoginResponse(Token)`
 
+### Use case `UpdateEmail` (`UseCases/Users/UpdateEmail/`)
+- `UpdateEmailInput(CorrelationId, UserId, Email)` — self-service: `UserId` vem de `ICurrentUserService.UserId` na API, nunca de um `{id}` de rota (evita IDOR de escrita; ver observação sobre `GetUserById` abaixo).
+- `UpdateEmailUseCase`: busca o usuário por `UserId`; se o e-mail normalizado já for o atual, retorna sucesso sem tocar no repositório (idempotência de PATCH, evita write desnecessário); senão checa `ExistsWithEmailAsync` (excluindo implicitamente o próprio usuário, já que nesse ponto o e-mail é necessariamente diferente do atual) antes de chamar `user.UpdateEmail(...)` + `Update` + `CommitAsync`.
+- `User.UpdateEmail` (domínio) também tem sua própria guarda de no-op: só reatribui `Email` e chama `Touch()` (`UpdatedAt = UtcNow`) se o e-mail normalizado for diferente do atual — é o invariante de domínio (vale para qualquer chamador), a checagem do use case é só para não disparar a checagem de unicidade indevidamente.
+
 ### Composição (`IoC/DependencyInjection.cs`)
-`AddApplication()` registra os 3 use cases como `Scoped`.
+`AddApplication()` registra os 4 use cases como `Scoped`.
 
 ## 5. Camada de Infraestrutura (`Fiap.Workshop.Infrastructure`)
 
 ### Persistência (EF Core, SQL Server)
 - `AppDbContext` (implementa `IUnitOfWork`): `DbSet<UserModel> Users`; `CommitAsync` faz `SaveChangesAsync`, e se houver dispatcher e eventos pendentes, dispara `IDomainEventDispatcher.DispatchAsync` **após** o commit; captura exceções (inclusive as do dispatch) e retorna `false` — ver §11 para o problema que isso causa quando houver handlers registrados.
-- `UserModel` (`Repositories/Models/`): `Id`, `Email`, `Name`, `Password` (hash, `nvarchar(200)`), `Role`, `CreatedAt` (default `GETUTCDATE()` no banco).
+- `UserModel` (`Repositories/Models/`): `Id`, `Email`, `Name`, `Password` (hash, `nvarchar(200)`), `Role`, `CreatedAt` (`DateTime`, não nulo), `UpdatedAt` (`DateTime?`). Ambos vêm do domínio via `MapToModel`/`MapToDomain` — não há mais default de banco (`GETUTCDATE()` foi removido); o `User` é a única fonte de verdade para essas datas.
 - Mapeamento tabela `Users`: `Email` único (`HasIndex().IsUnique()`), `MaxLength(256)`; `Name` `MaxLength(100)`; `Password` `MaxLength(200)`; `Role` `MaxLength(20)`.
 - `UserRepository : IUserRepository` — usa `AsNoTracking()` para leituras, mapeia Model↔Domain via `DomainMappers.MapToDomain` (usa `User.Rehydrate`) / `ModelMappers.MapToModel`; enfileira eventos de domínio no `AppDbContext` antes de limpar.
-- Migrations: `InitialCreate` (2026-06-28), `AddRoleToUsers` (2026-06-29), `AddPasswordToUsers` (2026-07-06, coluna `Password nvarchar(200)` default `""`, gerada via `dotnet ef migrations add`).
+- Migrations: `InitialCreate` (2026-06-28), `AddRoleToUsers` (2026-06-29), `AddPasswordToUsers` (2026-07-06, coluna `Password nvarchar(200)` default `""`), `AddUpdatedAtToUsers` (2026-07-18, adiciona `UpdatedAt datetime2` nulo e remove o default `GETUTCDATE()` de `CreatedAt`, já que o domínio passou a controlar essa data), todas geradas via `dotnet ef migrations add --project src/Fiap.Workshop.Infrastructure --startup-project src/Fiap.Workshop.Api`.
 - `Program.cs` roda `dbContext.Database.MigrateAsync()` automaticamente no startup (não usa migrations manuais em produção — atenção ao usar em cenário real).
 - `Fiap.Workshop.Api.csproj` também referencia `Microsoft.EntityFrameworkCore.Design` (necessário porque a Api é o startup project usado pela ferramenta `dotnet ef` para gerar migrations).
 
@@ -135,7 +140,8 @@ Minimal APIs organizadas por feature em `Endpoints/{Feature}/*Endpoints.cs`, reg
 
 **Users** (`/api/v{version}/users`, grupo com `RequireAuthorization("UserOnly")`)
 - `POST /` — `CreateUser`. Marcado `.AllowAnonymous()` (sobrescreve a policy do grupo — cadastro público). Valida com `CreateUserRequestValidator`, chama `ICreateUserUseCase`. Retorna `201 Created` ou `400 BadRequest`.
-- `GET /{id:guid}` — `GetUserById`. Exige autenticação (`UserOnly`). Retorna `200 Ok` ou `404 NotFound`.
+- `GET /{id:guid}` — `GetUserById`. Exige autenticação (`UserOnly`), mas **sem checagem de dono** — qualquer usuário autenticado lê o perfil de qualquer outro por id. É um gap de autorização conhecido (IDOR de leitura), não corrigido aqui porque não foi pedido; ver decisão de `PATCH me/email` abaixo, que optou por não repetir esse padrão numa rota de escrita.
+- `PATCH /me/email` — `UpdateEmail`. `{id}` não vem da rota, vem de `ICurrentUserService.UserId` (self-service only — decisão explícita para não abrir um IDOR de escrita). Valida com `UpdateEmailRequestValidator`, chama `IUpdateEmailUseCase`. Retorna `200 Ok` (inclusive quando o e-mail já é o mesmo — no-op idempotente) ou `400 BadRequest` (e-mail inválido, já em uso, ou usuário não encontrado).
 
 **Auth** (`/api/v{version}/auth`, `AllowAnonymous`)
 - `POST /login` — valida `LoginRequest`, chama `ILoginUseCase`. Retorna `200 Ok` com token ou `401 Unauthorized`.

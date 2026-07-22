@@ -51,6 +51,7 @@ public static class DependencyInjection
 
         services.AddScoped<CreateUserRequestValidator>();
         services.AddScoped<LoginRequestValidator>();
+        services.AddScoped<UpdateEmailRequestValidator>();
 
         services.AddOpenApi(options =>
         {
