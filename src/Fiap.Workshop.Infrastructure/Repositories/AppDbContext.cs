@@ -47,8 +47,9 @@ public sealed class AppDbContext(
                 .IsRequired();
 
             entity.Property(u => u.CreatedAt)
-                .HasDefaultValueSql("GETUTCDATE()")
                 .IsRequired();
+
+            entity.Property(u => u.UpdatedAt);
         });
     }
 

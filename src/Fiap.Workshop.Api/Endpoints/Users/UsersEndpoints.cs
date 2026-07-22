@@ -3,6 +3,7 @@ using Fiap.Workshop.Api.Mappers.Users;
 using Fiap.Workshop.Api.Requests.Users;
 using Fiap.Workshop.Api.Validators.Users;
 using Fiap.Workshop.Application.Commons;
+using Fiap.Workshop.Application.Interfaces.Services;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.Users.GetUserById.Boundaries;
 using Microsoft.AspNetCore.Mvc;
@@ -67,6 +68,36 @@ public static class UsersEndpoints
         .WithName("GetUserById")
         .Produces<Output>()
         .Produces<Output>(StatusCodes.Status404NotFound);
+
+        group.MapPatch("me/email",
+            async (
+                [FromBody] UpdateEmailRequest request,
+                [FromServices] IUpdateEmailUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                UpdateEmailRequestValidator validator,
+                [FromHeader(Name = "x-correlation-id")] Guid correlationId,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var validation = validator.Validate(request);
+                if (!validation.IsValid)
+                {
+                    Output validationOutput = new();
+                    validationOutput.AddErrorMessages(validation.Errors.Select(e => e.ErrorMessage));
+                    return Results.BadRequest(validationOutput);
+                }
+
+                var output = await useCase.ExecuteAsync(request.MapToInput(currentUser.UserId, correlationId), cancellationToken);
+
+                if (!output.IsValid)
+                    return Results.BadRequest(output);
+
+                return Results.Ok(output);
+            }
+        )
+        .WithName("UpdateEmail")
+        .Produces<Output>()
+        .Produces<Output>(StatusCodes.Status400BadRequest);
 
         return app;
     }
