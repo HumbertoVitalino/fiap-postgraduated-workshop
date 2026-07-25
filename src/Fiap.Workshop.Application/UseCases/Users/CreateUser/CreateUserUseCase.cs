@@ -22,7 +22,7 @@ public sealed class CreateUserUseCase(
     {
         Output output = new();
 
-        if (await _userRepository.ExistsWithEmailAsync(email, cancellationToken))
+        if (await _userRepository.ExistsWithEmailAsync(input.Email, cancellationToken))
         {
             _logger.LogWarning(
                 "[{CorrelationId}] | Create user failed: email already in use. Email: {Email}",
