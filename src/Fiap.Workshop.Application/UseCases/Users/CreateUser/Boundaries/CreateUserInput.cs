@@ -10,14 +10,14 @@ public sealed class CreateUserInput(
     UserRole role
 )
 {
-    public Guid CorrelationId { get; private set; } = correlationId;
-    public string Name { get; private set; } = name;
-    public string Password { get; private set; } = password;
-    public UserRole Role { get; private set; } = role;
+    public Guid CorrelationId { get; init; } = correlationId;
+    public string Name { get; init; } = name;
+    public string Password { get; init; } = password;
+    public UserRole Role { get; init; } = role;
 
     public string Email
     {
         get;
-        private set => field = value.Trim().ToLowerInvariant();
+        init => field = value.Trim().ToLowerInvariant();
     } = email;
 }
