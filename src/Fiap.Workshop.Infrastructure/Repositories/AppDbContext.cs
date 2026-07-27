@@ -4,12 +4,14 @@ using Fiap.Workshop.Domain.Abstractions;
 using Fiap.Workshop.Domain.Users;
 using Fiap.Workshop.Infrastructure.Repositories.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Fiap.Workshop.Infrastructure.Repositories;
 
 public sealed class AppDbContext(
     DbContextOptions<AppDbContext> options,
-    IDomainEventDispatcher? dispatcher = null
+    IDomainEventDispatcher dispatcher,
+    ILogger<AppDbContext> logger
 ) : DbContext(options), IUnitOfWork
 {
     private readonly List<IDomainEvent> _pendingEvents = [];
@@ -18,6 +20,38 @@ public sealed class AppDbContext(
 
     internal void EnqueueDomainEvents(IEnumerable<IDomainEvent> events) =>
         _pendingEvents.AddRange(events);
+
+    public async Task<bool> CommitAsync(CancellationToken cancellationToken = default)
+    {
+        bool result;
+
+        try
+        {
+            result = await base.SaveChangesAsync(cancellationToken) > 0;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to commit changes to the database.");
+            return false;
+        }
+
+        if (_pendingEvents.Count > 0)
+        {
+            var events = _pendingEvents.ToList();
+            _pendingEvents.Clear();
+
+            try
+            {
+                await dispatcher.DispatchAsync(events, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to dispatch domain events after commit.");
+            }
+        }
+
+        return result;
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,26 +85,5 @@ public sealed class AppDbContext(
 
             entity.Property(u => u.UpdatedAt);
         });
-    }
-
-    public async Task<bool> CommitAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var result = await base.SaveChangesAsync(cancellationToken) > 0;
-
-            if (dispatcher is not null && _pendingEvents.Count > 0)
-            {
-                var events = _pendingEvents.ToList();
-                _pendingEvents.Clear();
-                await dispatcher.DispatchAsync(events, cancellationToken);
-            }
-
-            return result;
-        }
-        catch
-        {
-            return false;
-        }
     }
 }
