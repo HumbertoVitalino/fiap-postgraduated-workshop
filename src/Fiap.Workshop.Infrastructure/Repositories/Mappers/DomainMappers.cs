@@ -1,3 +1,4 @@
+using Fiap.Workshop.Domain;
 using Fiap.Workshop.Domain.Users;
 using Fiap.Workshop.Infrastructure.Repositories.Models;
 

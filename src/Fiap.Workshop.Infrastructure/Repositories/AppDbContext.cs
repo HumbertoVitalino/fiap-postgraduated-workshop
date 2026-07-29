@@ -1,7 +1,7 @@
 using Fiap.Workshop.Application.Interfaces;
 using Fiap.Workshop.Application.Interfaces.Services;
+using Fiap.Workshop.Domain;
 using Fiap.Workshop.Domain.Abstractions;
-using Fiap.Workshop.Domain.Users;
 using Fiap.Workshop.Infrastructure.Repositories.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

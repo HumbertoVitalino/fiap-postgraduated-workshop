@@ -1,4 +1,4 @@
-using Fiap.Workshop.Domain.Users;
+using Fiap.Workshop.Domain;
 using Fiap.Workshop.Infrastructure.Repositories.Models;
 
 namespace Fiap.Workshop.Infrastructure.Repositories.Mappers;

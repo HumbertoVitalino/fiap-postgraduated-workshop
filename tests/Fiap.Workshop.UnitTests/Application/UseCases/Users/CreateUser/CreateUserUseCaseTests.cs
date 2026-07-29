@@ -4,6 +4,7 @@ using Fiap.Workshop.Application.Interfaces;
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.UseCases.Users.CreateUser;
 using Fiap.Workshop.Application.UseCases.Users.CreateUser.Boundaries;
+using Fiap.Workshop.Domain;
 using Fiap.Workshop.Domain.Users;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;

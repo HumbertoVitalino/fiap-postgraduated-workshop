@@ -2,6 +2,7 @@ using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.UseCases.Users.GetUserById;
 using Fiap.Workshop.Application.UseCases.Users.GetUserById.Boundaries;
+using Fiap.Workshop.Domain;
 using Fiap.Workshop.Domain.Users;
 using Fiap.Workshop.UnitTests.Domain.Users;
 using FluentAssertions;

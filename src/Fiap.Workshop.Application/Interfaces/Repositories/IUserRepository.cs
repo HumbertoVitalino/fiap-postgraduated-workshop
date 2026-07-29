@@ -1,10 +1,10 @@
 using Fiap.Workshop.Application.Abstractions;
-using Fiap.Workshop.Domain.Users;
+using Fiap.Workshop.Domain;
 
 namespace Fiap.Workshop.Application.Interfaces.Repositories;
 
-public interface IUserRepository : IRepository<User, Guid>
+public interface IUserRepository : IRepository<User>
 {
-    Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
-    Task<bool> ExistsWithEmailAsync(string email, CancellationToken cancellationToken = default);
+    Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken);
+    Task<bool> ExistsWithEmailAsync(string email, CancellationToken cancellationToken);
 }

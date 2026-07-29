@@ -1,5 +1,6 @@
 using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.UseCases.Users.CreateUser.Boundaries;
+using Fiap.Workshop.Domain;
 using Fiap.Workshop.Domain.Users;
 
 namespace Fiap.Workshop.Application.UseCases.Users.CreateUser.Mapper;

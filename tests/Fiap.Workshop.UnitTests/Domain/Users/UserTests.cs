@@ -1,3 +1,4 @@
+using Fiap.Workshop.Domain;
 using Fiap.Workshop.Domain.Abstractions;
 using Fiap.Workshop.Domain.Users;
 using Fiap.Workshop.Domain.Users.Events;
@@ -171,7 +172,7 @@ public sealed class UserTests
 
         // Assert
         user.CreatedAt.Should().BeOnOrAfter(before).And.BeOnOrBefore(DateTime.UtcNow);
-        user.UpdatedAt.Should().BeNull();
+        user.UpdatedAt.Should().Be(before);
     }
 
     [Fact(DisplayName = "UpdateEmail >> Should Set UpdatedAt >> When Called")]
@@ -185,8 +186,8 @@ public sealed class UserTests
         user.UpdateEmail("new@example.com");
 
         // Assert
-        user.UpdatedAt.Should().NotBeNull();
-        user.UpdatedAt!.Value.Should().BeOnOrBefore(DateTime.UtcNow);
+        user.UpdatedAt.Should().NotBe(null);
+        user.UpdatedAt!.Should().BeOnOrBefore(DateTime.UtcNow);
     }
 
     [Fact(DisplayName = "UpdateEmail >> Should Not Touch UpdatedAt >> When New Email Is The Same As Current")]

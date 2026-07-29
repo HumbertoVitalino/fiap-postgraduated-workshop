@@ -23,7 +23,7 @@ public sealed class HashedPassword : ValueObject
     public static HashedPassword FromHash(string hash)
     {
         if (string.IsNullOrWhiteSpace(hash))
-            throw new DomainException(UserErrors.PasswordHashEmpty);
+            throw new Exception(UserErrors.PasswordHashEmpty);
 
         return new HashedPassword(hash);
     }
@@ -34,19 +34,19 @@ public sealed class HashedPassword : ValueObject
     private static void EnsureStrengthPolicy(string rawPassword)
     {
         if (string.IsNullOrWhiteSpace(rawPassword))
-            throw new DomainException(UserErrors.PasswordEmpty);
+            throw new Exception(UserErrors.PasswordEmpty);
 
         if (rawPassword.Length < MinLength)
-            throw new DomainException(UserErrors.PasswordTooShort);
+            throw new Exception(UserErrors.PasswordTooShort);
 
         if (!rawPassword.Any(char.IsUpper))
-            throw new DomainException(UserErrors.PasswordMissingUppercase);
+            throw new Exception(UserErrors.PasswordMissingUppercase);
 
         if (!rawPassword.Any(char.IsLower))
-            throw new DomainException(UserErrors.PasswordMissingLowercase);
+            throw new Exception(UserErrors.PasswordMissingLowercase);
 
         if (!rawPassword.Any(char.IsDigit))
-            throw new DomainException(UserErrors.PasswordMissingDigit);
+            throw new Exception(UserErrors.PasswordMissingDigit);
     }
 
     protected override IEnumerable<object> GetEqualityComponents()

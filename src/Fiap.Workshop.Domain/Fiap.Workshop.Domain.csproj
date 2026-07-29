@@ -4,4 +4,8 @@
     <RootNamespace>Fiap.Workshop.Domain</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Folder Include="Customer\" />
+  </ItemGroup>
+
 </Project>

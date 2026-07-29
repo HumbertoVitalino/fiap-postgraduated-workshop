@@ -1,5 +1,5 @@
 using Fiap.Workshop.Api.Requests.Users;
-using Fiap.Workshop.Domain.Users;
+using Fiap.Workshop.Domain;
 using FluentValidation;
 
 namespace Fiap.Workshop.Api.Validators.Users;

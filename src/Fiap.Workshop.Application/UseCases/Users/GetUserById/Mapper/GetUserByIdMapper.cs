@@ -1,5 +1,5 @@
 using Fiap.Workshop.Application.DTOs.Users;
-using Fiap.Workshop.Domain.Users;
+using Fiap.Workshop.Domain;
 
 namespace Fiap.Workshop.Application.UseCases.Users.GetUserById.Mapper;
 

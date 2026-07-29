@@ -1,9 +1,10 @@
 using Fiap.Workshop.Domain.Abstractions;
+using Fiap.Workshop.Domain.Users;
 using Fiap.Workshop.Domain.Users.Events;
 
-namespace Fiap.Workshop.Domain.Users;
+namespace Fiap.Workshop.Domain;
 
-public sealed class User : AggregateRoot<Guid>
+public sealed class User : AggregateRoot
 {
     public const int EmailMaxLength = 256;
 
@@ -23,7 +24,7 @@ public sealed class User : AggregateRoot<Guid>
         HashedPassword password,
         UserRole role,
         DateTime createdAt,
-        DateTime? updatedAt
+        DateTime updatedAt
     ) : base(id, createdAt, updatedAt)
     {
         Email = email;
@@ -40,9 +41,18 @@ public sealed class User : AggregateRoot<Guid>
     )
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new DomainException(UserErrors.NameEmpty);
+            throw new Exception(UserErrors.NameEmpty);
 
-        var user = new User(Guid.NewGuid(), email, name, password, role, DateTime.UtcNow, null);
+        var user = new User(
+            Guid.NewGuid(),
+            email,
+            name,
+            password,
+            role,
+            DateTime.Now,
+            DateTime.Now
+        );
+
         user.RaiseDomainEvent(new UserCreatedEvent(user.Id));
 
         return user;
@@ -55,7 +65,7 @@ public sealed class User : AggregateRoot<Guid>
         string passwordHash,
         UserRole role,
         DateTime createdAt,
-        DateTime? updatedAt
+        DateTime updatedAt
     )
     {
         return new(
