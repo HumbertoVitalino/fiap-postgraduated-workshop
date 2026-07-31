@@ -201,6 +201,6 @@ public sealed class UserTests
         user.UpdateEmail("  John@Example.COM  ");
 
         // Assert
-        user.UpdatedAt.Should().BeNull();
+        user.UpdatedAt.Should().Be();
     }
 }
