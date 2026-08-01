@@ -1,5 +1,5 @@
 using Fiap.Workshop.Application.Abstractions;
-using Fiap.Workshop.Domain;
+using Fiap.Workshop.Domain.Entities;
 
 namespace Fiap.Workshop.Application.Interfaces.Repositories;
 

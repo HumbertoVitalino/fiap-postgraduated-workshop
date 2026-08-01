@@ -1,4 +1,4 @@
-using Fiap.Workshop.Domain;
+using Fiap.Workshop.Domain.Entities;
 
 namespace Fiap.Workshop.Application.DTOs.Users;
 
