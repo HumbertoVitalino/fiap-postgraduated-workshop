@@ -1,6 +1,5 @@
-using Fiap.Workshop.Application.Interfaces;
 using Fiap.Workshop.Application.Interfaces.Repositories;
-using Fiap.Workshop.Domain.Users;
+using Fiap.Workshop.Domain.Entities;
 using Fiap.Workshop.Infrastructure.Repositories.Mappers;
 using Fiap.Workshop.Infrastructure.Repositories.Models;
 using Microsoft.EntityFrameworkCore;

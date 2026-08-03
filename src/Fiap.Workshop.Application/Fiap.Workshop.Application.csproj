@@ -13,4 +13,9 @@
     <ProjectReference Include="..\Fiap.Workshop.Domain\Fiap.Workshop.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Interfaces\UseCases\" />
+    <Folder Include="UseCases\" />
+  </ItemGroup>
+
 </Project>

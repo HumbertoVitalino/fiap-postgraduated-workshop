@@ -1,14 +1,14 @@
 using Fiap.Workshop.Domain.Abstractions;
-using Fiap.Workshop.Application.Interfaces;
+using Fiap.Workshop.Application.Interfaces.Repositories;
 
 namespace Fiap.Workshop.Application.Abstractions;
 
-public interface IRepository<T, TId> where T : AggregateRoot<TId>
+public interface IRepository<T> where T : AggregateRoot
 {
     IUnitOfWork UnitOfWork { get; }
 
-    Task<T?> GetByIdAsync(TId id, CancellationToken cancellationToken = default);
-    Task AddAsync(T entity, CancellationToken cancellationToken = default);
+    Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+    Task AddAsync(T entity, CancellationToken cancellationToken);
     void Update(T entity);
     void Remove(T entity);
 }

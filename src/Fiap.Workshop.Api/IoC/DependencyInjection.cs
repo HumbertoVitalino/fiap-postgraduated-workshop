@@ -1,7 +1,5 @@
 using System.Text;
 using Asp.Versioning;
-using Fiap.Workshop.Api.Validators.Auth;
-using Fiap.Workshop.Api.Validators.Users;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -48,10 +46,6 @@ public static class DependencyInjection
             .AddPolicy("UserOnly", policy => policy.RequireRole("User", "Admin"));
 
         services.AddProblemDetails();
-
-        services.AddScoped<CreateUserRequestValidator>();
-        services.AddScoped<LoginRequestValidator>();
-        services.AddScoped<UpdateEmailRequestValidator>();
 
         services.AddOpenApi(options =>
         {
