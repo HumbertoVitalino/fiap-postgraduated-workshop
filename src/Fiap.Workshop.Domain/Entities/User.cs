@@ -1,6 +1,5 @@
 using Fiap.Workshop.Domain.Abstractions;
 using Fiap.Workshop.Domain.Enums;
-using Fiap.Workshop.Domain.Errors;
 using Fiap.Workshop.Domain.Events;
 
 namespace Fiap.Workshop.Domain.Entities;
