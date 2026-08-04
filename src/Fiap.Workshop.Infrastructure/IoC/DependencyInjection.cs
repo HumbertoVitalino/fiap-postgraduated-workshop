@@ -5,9 +5,11 @@ using Fiap.Workshop.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Fiap.Workshop.Infrastructure.IoC;
 
+[ExcludeFromCodeCoverage]
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
@@ -16,7 +18,6 @@ public static class DependencyInjection
         services.AddServices();
 
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
-
         services.AddHttpContextAccessor();
 
         return services;
@@ -31,6 +32,11 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<IVehicleRepository, VehicleRepository>();
+        services.AddScoped<IInventoryItemRepository, InventoryItemRepository>();
+        services.AddScoped<IServiceRepository, ServiceRepository>();
+        services.AddScoped<IServiceOrderRepository, ServiceOrderRepository>();
 
         return services;
     }

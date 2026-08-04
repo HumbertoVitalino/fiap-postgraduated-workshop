@@ -13,8 +13,8 @@ services:
       Jwt__Audience: ${Jwt__Audience}
       Jwt__ExpirationInMinutes: ${Jwt__ExpirationInMinutes:-60}
     depends_on:
-      sqlserver:
-        condition: service_healthy
+      sqlserver-init:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   sqlserver:
@@ -33,6 +33,31 @@ services:
       start_period: 30s
       timeout: 5s
     restart: unless-stopped
+
+  # Cria o schema (tabelas, índices, FKs) a partir de db/init.sql antes da api subir.
+  # Substitui o antigo dbContext.Database.MigrateAsync() no Program.cs: o banco já
+  # nasce pronto, sem depender de EF Migrations em tempo de execução.
+  sqlserver-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    volumes:
+      - ./db/init.sql:/init.sql:ro
+    entrypoint:
+      - /opt/mssql-tools18/bin/sqlcmd
+      - -S
+      - sqlserver
+      - -U
+      - sa
+      - -P
+      - ${SA_PASSWORD}
+      - -C
+      - -v
+      - DatabaseName=Fiap_Workshop
+      - -i
+      - /init.sql
+    restart: "no"
 
 volumes:
   sqlserver-data:

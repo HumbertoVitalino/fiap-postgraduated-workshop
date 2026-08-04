@@ -50,10 +50,13 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     public Task DisposeAsync() => Task.CompletedTask;
 
+    private const string TestDatabaseName = "IntegrationTestsDb";
+
     private static async Task ExecuteInitScriptAsync(string connectionString)
     {
         var sqlPath = Path.Combine(AppContext.BaseDirectory, "sql", "init.sql");
         var sql = await File.ReadAllTextAsync(sqlPath);
+        sql = sql.Replace("$(DatabaseName)", TestDatabaseName);
         var batches = Regex.Split(sql, @"^\s*GO\s*$", RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
         await using var connection = new SqlConnection(connectionString);

@@ -1,18 +1,15 @@
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Domain.Entities;
 using Fiap.Workshop.Infrastructure.Repositories.Mappers;
-using Fiap.Workshop.Infrastructure.Repositories.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Fiap.Workshop.Infrastructure.Repositories;
 
-internal sealed class UserRepository(AppDbContext context) : IUserRepository
+internal sealed class UserRepository(AppDbContext context) : Repository<User>(context), IUserRepository
 {
-    public IUnitOfWork UnitOfWork => context;
-
-    public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+    public override async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        var model = await context.Users
+        var model = await _context.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 
@@ -21,7 +18,7 @@ internal sealed class UserRepository(AppDbContext context) : IUserRepository
 
     public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken)
     {
-        var model = await context.Users
+        var model = await _context.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
@@ -29,38 +26,20 @@ internal sealed class UserRepository(AppDbContext context) : IUserRepository
     }
 
     public async Task<bool> ExistsWithEmailAsync(string email, CancellationToken cancellationToken) =>
-        await context.Users.AnyAsync(u => u.Email == email, cancellationToken);
+        await _context.Users.AnyAsync(u => u.Email == email, cancellationToken);
 
-    public async Task AddAsync(User entity, CancellationToken cancellationToken)
+    public override async Task AddAsync(User entity, CancellationToken cancellationToken)
     {
-        context.EnqueueDomainEvents(entity.GetDomainEvents());
-        entity.ClearDomainEvents();
-        await context.Users.AddAsync(entity.MapToModel(), cancellationToken);
+        EnqueueEvents(entity);
+        await _context.Users.AddAsync(entity.MapToModel(), cancellationToken);
     }
 
-    public void Update(User entity)
+    public override void Update(User entity)
     {
-        context.EnqueueDomainEvents(entity.GetDomainEvents());
-        entity.ClearDomainEvents();
-
-        var model = entity.MapToModel();
-        var tracked = context.ChangeTracker.Entries<UserModel>()
-            .FirstOrDefault(e => e.Entity.Id == entity.Id);
-
-        if (tracked is not null)
-            tracked.CurrentValues.SetValues(model);
-        else
-            context.Users.Update(model);
+        EnqueueEvents(entity);
+        Upsert(_context.Users, entity.MapToModel(), entity.Id);
     }
 
-    public void Remove(User entity)
-    {
-        var tracked = context.ChangeTracker.Entries<UserModel>()
-            .FirstOrDefault(e => e.Entity.Id == entity.Id);
-
-        if (tracked is not null)
-            tracked.State = EntityState.Deleted;
-        else
-            context.Users.Remove(entity.MapToModel());
-    }
+    public override void Remove(User entity) =>
+        Delete(_context.Users, entity.MapToModel(), entity.Id);
 }
