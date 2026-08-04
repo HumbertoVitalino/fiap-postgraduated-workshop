@@ -23,4 +23,8 @@
     <ProjectReference Include="..\Fiap.Workshop.Infrastructure\Fiap.Workshop.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Mappers\" />
+  </ItemGroup>
+
 </Project>

@@ -1,7 +1,6 @@
-using Fiap.Workshop.Application.Interfaces;
+using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.Interfaces.Services;
 using Fiap.Workshop.Domain.Abstractions;
-using Fiap.Workshop.Domain.Users;
 using Fiap.Workshop.Infrastructure.Repositories.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -62,7 +61,7 @@ public sealed class AppDbContext(
             entity.HasKey(u => u.Id);
 
             entity.Property(u => u.Email)
-                .HasMaxLength(User.EmailMaxLength)
+                .HasMaxLength(256)
                 .IsRequired();
 
             entity.HasIndex(u => u.Email)

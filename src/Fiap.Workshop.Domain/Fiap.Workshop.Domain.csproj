@@ -1,7 +1,12 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <RootNamespace>Fiap.Workshop.Domain</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Users\" />
+    <Folder Include="ValueObjects\" />
+  </ItemGroup>
 
 </Project>

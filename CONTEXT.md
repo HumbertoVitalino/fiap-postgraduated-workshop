@@ -1,6 +1,6 @@
 # Fiap.Workshop — Contexto do Projeto
 
-> Documento vivo de contexto técnico. Atualize sempre que a arquitetura, os use cases ou as decisões de design mudarem. Última atualização: 2026-07-13.
+> Documento vivo de contexto técnico. Atualize sempre que a arquitetura, os use cases ou as decisões de design mudarem. Última atualização: 2026-07-27.
 
 ## 1. Visão geral
 
@@ -171,8 +171,21 @@ Pipeline: `AddControllers` (não usado, pois tudo é Minimal API — resquício 
 
 - `ci-feature.yml` — dispara em push para `feature/**`: build → unit tests → integration tests (sobe `docker-compose.tests.yml`) → functional tests (projeto sem testes reais ainda, portanto sempre "passa" vazio).
 - `ci-develop.yml` — mesmo pipeline de `ci-feature.yml` + job final `open-release-pr` que abre PR automático `develop → release` se a branch `release` existir.
+- `ci-release.yml` — dispara em push para `release`: build → job `sonarqube-cloud` (ver abaixo).
 - `codeql.yml` — análise de segurança estática (não inspecionado em detalhe).
-- Não há workflow para `main` nem para `release` ainda.
+- Não há workflow para `main` ainda.
+
+### SonarQube Cloud (job `sonarqube-cloud`, em `ci-release.yml`) — adicionado em 2026-07-27, movido de `develop` para `release` no mesmo dia
+
+Decisão: SonarQube Cloud (ex-SonarCloud — Sonar renomeou o produto em 2024, mesmo serviço, mesmo domínio `sonarcloud.io`), plano gratuito de repositório público, em vez de SonarQube Server self-hosted (exigiria manter um container/servidor rodando).
+
+- **Por que só em `release` e não em `develop`/`feature/**`**: o **Free plan** do SonarQube Cloud só analisa a *main branch* configurada no projeto (que aqui é `release`, a branch principal do repo no GitHub) — tentar rodar em `develop` deu o erro "Organization is not allowed to access data from non main branches". Existe um **Free plan OSS** com branch analysis ilimitado pra organizações open source (repo é público, se qualificaria via `Administration → Billing` no SonarQube Cloud), mas decidiu-se não perseguir isso agora e só rodar a análise quando o código chega em `release`.
+- **Escopo da análise**: restrito a `src/Fiap.Workshop.Domain/**` e `src/Fiap.Workshop.Application/**` via `/d:sonar.inclusions=...` no `dotnet sonarscanner begin` — Infrastructure/Api/tests ficam fora de propósito, já que o objetivo é vigiar a qualidade das camadas de regra de negócio (alinhado ao requisito de SAST/cobertura do Tech Challenge, ver §9 item 7).
+- **Cobertura**: gerada com `coverlet.console` (global tool) envolvendo `dotnet test` do projeto `Fiap.Workshop.UnitTests` (é o projeto que cobre Domain e Application isoladamente, ver §1), formato OpenCover, reportado via `/d:sonar.cs.opencover.reportsPaths="coverage.xml"`. Integration/Functional tests não entram na cobertura reportada ao Sonar.
+- **Projeto no SonarQube Cloud**: criado com "Use existing CI configuration" (não "Automatic Analysis") — necessário pra manter o `sonar.inclusions` funcionando; análise automática do Sonar ignora esse tipo de configuração custom.
+- **Project key** (`/k:`): `HumbertoVitalino_fiap-postgraduated-workshop`; **organization** (`/o:`): `humbertovitalino` — hardcoded no step `Begin analysis`, não são secrets (só o token é sensível).
+- **Secret necessário**: `SONAR_TOKEN` (GitHub → Settings → Secrets and variables → Actions), gerado em SonarQube Cloud (`My Account → Security`). Sem esse secret o job falha no `begin`/`end`.
+- Requer `actions/setup-java` (JDK 17, Temurin) além do `.NET 10.x` já usado no resto da pipeline, porque o `dotnet-sonarscanner` roda sobre JVM.
 
 ## 9. Pendências conhecidas
 

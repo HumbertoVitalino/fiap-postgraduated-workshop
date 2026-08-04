@@ -1,4 +1,4 @@
-using Fiap.Workshop.Domain.Users;
+using Fiap.Workshop.Domain.Enums;
 
 namespace Fiap.Workshop.Api.Requests.Users;
 

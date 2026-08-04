@@ -23,4 +23,8 @@
     <ProjectReference Include="..\..\src\Fiap.Workshop.Application\Fiap.Workshop.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Application\" />
+  </ItemGroup>
+
 </Project>
