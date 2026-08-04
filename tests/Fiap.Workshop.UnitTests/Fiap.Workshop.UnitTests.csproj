@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Fiap.Workshop.Domain\Fiap.Workshop.Domain.csproj" />
     <ProjectReference Include="..\..\src\Fiap.Workshop.Application\Fiap.Workshop.Application.csproj" />
+    <ProjectReference Include="..\..\src\Fiap.Workshop.Infrastructure\Fiap.Workshop.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -2,14 +2,11 @@ using Fiap.Workshop.Api.Endpoints;
 using Fiap.Workshop.Api.IoC;
 using Fiap.Workshop.Application.IoC;
 using Fiap.Workshop.Infrastructure.IoC;
-using Fiap.Workshop.Infrastructure.Repositories;
-using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateBootstrapLogger();
-
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,12 +23,6 @@ builder.Services
     .AddApi(builder.Configuration);
 
 var app = builder.Build();
-
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await dbContext.Database.MigrateAsync();
-}
 
 app.MapOpenApi();
 app.UseSwaggerUI(options =>

@@ -51,7 +51,7 @@ Regra de dependência: `Domain` não referencia nada; `Application` referencia `
 - Login (`POST /api/v1/auth/login`) com emissão de JWT.
 - Consulta de usuário por id (`GET /api/v1/users/{id}`), autenticada.
 - Autorização baseada em roles (`User`, `Admin`).
-- Migrations de banco (EF Core) aplicadas automaticamente no startup da API.
+- Schema de banco (`db/init.sql`) aplicado por um serviço de init do `docker-compose` antes da API subir — sem migration em runtime.
 - Testes unitários cobrindo Domain e Application; projeto de testes de integração com SQL Server real via `docker-compose.tests.yml`.
 
 ## Roadmap / pendências do desafio
@@ -84,7 +84,7 @@ Pré-requisitos: [Docker](https://www.docker.com/) e Docker Compose.
    docker compose up -d --build
    ```
 
-3. A API estará disponível em `http://localhost:8080` (porta configurável via `API_PORT` no `.env`). As migrations do EF Core rodam automaticamente no startup.
+3. A API estará disponível em `http://localhost:8080` (porta configurável via `API_PORT` no `.env`). O schema do banco é criado por um serviço de init (`sqlserver-init`) rodando `db/init.sql` antes da API subir.
 
 4. Para derrubar o ambiente:
 

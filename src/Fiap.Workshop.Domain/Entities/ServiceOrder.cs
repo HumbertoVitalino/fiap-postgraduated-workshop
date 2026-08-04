@@ -45,4 +45,10 @@ public class ServiceOrder(
 
     private readonly List<ServiceOrderStatusHistory> _statusHistory = [];
     public IReadOnlyCollection<ServiceOrderStatusHistory> StatusHistory => _statusHistory.AsReadOnly();
+
+    public void AddParts(IEnumerable<ServiceOrderPart> parts) => _parts.AddRange(parts);
+
+    public void AddServices(IEnumerable<ServiceOrderService> services) => _services.AddRange(services);
+
+    public void AddStatusHistory(IEnumerable<ServiceOrderStatusHistory> statusHistory) => _statusHistory.AddRange(statusHistory);
 }
