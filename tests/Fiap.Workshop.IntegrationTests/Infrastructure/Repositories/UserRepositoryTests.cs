@@ -14,7 +14,7 @@ public sealed class UserRepositoryTests(DatabaseFixture fixture)
         id ?? Guid.NewGuid(),
         TestData.Email(),
         "Integration User",
-        TestData.RandomBytes(32),
+        TestData.ShortString(32),
         UserRole.User,
         DateTime.UtcNow,
         DateTime.UtcNow
