@@ -1,15 +1,18 @@
 using Asp.Versioning;
+using Fiap.Workshop.Api.Endpoints.Users;
 
 namespace Fiap.Workshop.Api.Endpoints;
 
 public static class EndpointsExtensions
 {
-    public static WebApplication MapEndpoints(this WebApplication app)
+    public static IEndpointRouteBuilder MapMinimalApisV1(this IEndpointRouteBuilder app)
     {
-        var versionSet = app.NewApiVersionSet()
+        var apiVersion = app.NewApiVersionSet()
             .HasApiVersion(new ApiVersion(1))
             .ReportApiVersions()
             .Build();
+
+        app.MapUsersEndpoints(apiVersion);
 
         return app;
     }
