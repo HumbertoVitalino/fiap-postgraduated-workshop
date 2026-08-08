@@ -1,4 +1,5 @@
 ﻿using Asp.Versioning.Builder;
+using Fiap.Workshop.Api.Filters;
 using Fiap.Workshop.Api.Mappers;
 using Fiap.Workshop.Api.Requests.Users;
 using Fiap.Workshop.Application.Interfaces.UseCases;
@@ -24,10 +25,12 @@ public static class UsersEndpoints
             {
                 var result = await useCase.Handle(request.MapToInput(), cancellationToken);
                 if (!result.IsValid)
-                    return Results.BadRequest();
+                    return Results.BadRequest(result);
 
                 return Results.Created();
             }
-        ).RequireAuthorization();
+        )
+        .RequireAuthorization("AdminOnly")
+        .WithValidation<CreateUserRequest>();
     }
 }
