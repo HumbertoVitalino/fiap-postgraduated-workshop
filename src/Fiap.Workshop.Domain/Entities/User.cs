@@ -7,7 +7,7 @@ namespace Fiap.Workshop.Domain.Entities;
 public sealed class User : AggregateRoot
 {
     public string Name { get; private set; }
-    public byte[] Password { get; private set; }
+    public string Password { get; private set; }
     public UserRole Role { get; private set; }
     public string Email { get; private set; }
 
@@ -15,7 +15,7 @@ public sealed class User : AggregateRoot
         Guid id,
         string email,
         string name,
-        byte[] password,
+        string password,
         UserRole role,
         DateTime createdAt,
         DateTime updatedAt

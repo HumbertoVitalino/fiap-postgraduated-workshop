@@ -6,7 +6,7 @@ public sealed class UserModel : Model
 {
     public string Email { get; private set; } = default!;
     public string Name { get; private set; } = default!;
-    public byte[] Password { get; private set; } = default!;
+    public string Password { get; private set; } = default!;
     public UserRole Role { get; private set; } = default!;
 
     private UserModel() { }
@@ -15,7 +15,7 @@ public sealed class UserModel : Model
         Guid id,
         string email,
         string name,
-        byte[] password,
+        string password,
         UserRole role,
         DateTime createdAt,
         DateTime updatedAt

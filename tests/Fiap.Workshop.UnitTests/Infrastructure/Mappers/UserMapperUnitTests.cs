@@ -19,7 +19,7 @@ public class UserMapperUnitTests
             Guid.NewGuid(),
             _fixture.Create<string>(),
             _fixture.Create<string>(),
-            _fixture.CreateMany<byte>(16).ToArray(),
+            _fixture.Create<string>(),
             UserRole.Admin,
             DateTime.UtcNow,
             DateTime.UtcNow
@@ -46,7 +46,7 @@ public class UserMapperUnitTests
             Guid.NewGuid(),
             _fixture.Create<string>(),
             _fixture.Create<string>(),
-            _fixture.CreateMany<byte>(16).ToArray(),
+            _fixture.Create<string>(),
             UserRole.User,
             DateTime.UtcNow,
             DateTime.UtcNow

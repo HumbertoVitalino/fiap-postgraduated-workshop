@@ -1,5 +1,8 @@
 using System.Text;
 using Asp.Versioning;
+using Fiap.Workshop.Api.Requests.Users;
+using Fiap.Workshop.Api.Validators.Users;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -44,6 +47,8 @@ public static class DependencyInjection
         services.AddAuthorizationBuilder()
             .AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"))
             .AddPolicy("UserOnly", policy => policy.RequireRole("User", "Admin"));
+
+        services.AddScoped<IValidator<CreateUserRequest>, CreateUserRequestValidator>();
 
         services.AddProblemDetails();
 

@@ -17,7 +17,7 @@ public class UserUnitTests
         var id = Guid.NewGuid();
         var email = _fixture.Create<string>();
         var name = _fixture.Create<string>();
-        var password = _fixture.Create<byte[]>();
+        var password = _fixture.Create<string>();
         var role = UserRole.Admin;
         var createdAt = DateTime.Now;
         var updatedAt = DateTime.Now;
@@ -54,7 +54,7 @@ public class UserUnitTests
             id,
             _fixture.Create<string>(),
             _fixture.Create<string>(),
-            _fixture.Create<byte[]>(),
+            _fixture.Create<string>(),
             UserRole.User,
             DateTime.Now,
             DateTime.Now
