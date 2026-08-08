@@ -1,5 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Fiap.Workshop.Application.Commons;
 
+[ExcludeFromCodeCoverage]
 public class Output
 {
     private readonly List<string> _messages = [];
