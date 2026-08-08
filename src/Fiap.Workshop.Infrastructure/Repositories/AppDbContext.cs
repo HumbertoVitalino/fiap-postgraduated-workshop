@@ -79,6 +79,7 @@ public sealed class AppDbContext(
                 .IsRequired();
 
             entity.Property(u => u.Password)
+                .HasMaxLength(60)
                 .IsRequired();
 
             entity.Property(u => u.Role)

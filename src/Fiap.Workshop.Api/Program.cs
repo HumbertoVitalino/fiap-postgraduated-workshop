@@ -35,6 +35,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseSerilogRequestLogging();
 
-app.MapEndpoints();
+app.MapMinimalApisV1();
 
 app.Run();

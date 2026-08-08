@@ -1,11 +1,20 @@
 # Fiap.Workshop — Sistema Integrado de Atendimento e Execução de Serviços
 
-API back-end para o **Tech Challenge — Fase 1** da pós-graduação FIAP em Arquitetura de Software (SOAT). O desafio proposto é o MVP de um sistema para uma oficina mecânica de médio porte, cobrindo gestão de ordens de serviço (OS), clientes, veículos, serviços e peças, aplicando **Domain-Driven Design** e boas práticas de qualidade e segurança.
+Projeto do **Tech Challenge — Fase 1** da pós-graduação FIAP em Arquitetura de Software (SOAT).
 
-> ⚠️ **Estado atual do projeto**: apenas o módulo de **autenticação e cadastro de usuários** (login JWT, roles `Admin`/`User`) está implementado. Os domínios de negócio da oficina (Ordem de Serviço, Cliente, Veículo, Serviço, Peça/Estoque) ainda **não existem no código** — ver [Roadmap / pendências do desafio](#roadmap--pendências-do-desafio) abaixo. Detalhes técnicos completos e o histórico de decisões de design ficam em [`CONTEXT.md`](CONTEXT.md).
+## O desafio
+
+Uma oficina mecânica de médio porte, especializada em manutenção de veículos, enfrenta dificuldades para crescer com qualidade e eficiência. Hoje o atendimento, o diagnóstico, a execução dos serviços e a entrega dos veículos são controlados de forma manual (anotações e planilhas), o que gera erros de priorização no atendimento, falhas no controle de peças e insumos, dificuldade em acompanhar o status dos serviços, perda de histórico de clientes/veículos e um fluxo de orçamento e aprovação ineficiente.
+
+Este repositório é a primeira versão (MVP) do **back-end** de um Sistema Integrado de Atendimento e Execução de Serviços para essa oficina: o objetivo final é permitir que o cliente acompanhe em tempo real o andamento do serviço e autorize reparos adicionais, enquanto a equipe da oficina ganha uma gestão interna — de ordens de serviço, clientes, veículos e peças — eficiente e segura.
+
+O desenvolvimento segue **Domain-Driven Design (DDD)**, com atenção a boas práticas de qualidade de software e segurança: arquitetura em camadas, testes automatizados, autenticação JWT e validação de dados sensíveis (CPF/CNPJ, placa de veículo).
+
+> ⚠️ **Estado atual do projeto**: só o fluxo de **criação de usuário** (`POST /api/v1/users`) está com a pilha completa (Domain → Application → Infrastructure → Api). Os agregados de negócio da oficina (`Cliente`, `Veículo`, `Serviço`, `Peça/Insumo`, `Ordem de Serviço`) já têm Domain e Infrastructure prontos (entidades, persistência, repositórios), mas ainda sem use cases nem endpoints por cima. Login e os demais fluxos de usuário existem só como rascunho. Ver [Roadmap / pendências do desafio](#roadmap--pendências-do-desafio) abaixo e [`CONTEXT.md`](CONTEXT.md) para o detalhamento técnico completo.
 
 ## Sumário
 
+- [O desafio](#o-desafio)
 - [Arquitetura](#arquitetura)
 - [Stack técnica](#stack-técnica)
 - [O que já está implementado](#o-que-já-está-implementado)
@@ -47,17 +56,18 @@ Regra de dependência: `Domain` não referencia nada; `Application` referencia `
 
 ## O que já está implementado
 
-- Cadastro de usuário (`POST /api/v1/users`), com validação de força de senha (mínimo 10 caracteres, maiúscula, minúscula e dígito) e e-mail único.
-- Login (`POST /api/v1/auth/login`) com emissão de JWT.
-- Consulta de usuário por id (`GET /api/v1/users/{id}`), autenticada.
-- Autorização baseada em roles (`User`, `Admin`).
+- Cadastro de usuário (`POST /api/v1/users`), com validação de e-mail único e senha (mínimo 8 caracteres). Endpoint exige um token JWT com role `Admin` — ainda não há um jeito de emitir esse token (ver observação abaixo), então na prática o endpoint só é exercitável em testes.
+- Entidades, persistência (EF Core) e repositórios para todos os agregados de negócio da oficina (`Cliente`, `Veículo`, `Serviço`, `Peça/Insumo`, `Ordem de Serviço`) — só falta a camada de use cases/endpoints por cima.
 - Schema de banco (`db/init.sql`) aplicado por um serviço de init do `docker-compose` antes da API subir — sem migration em runtime.
 - Testes unitários cobrindo Domain e Application; projeto de testes de integração com SQL Server real via `docker-compose.tests.yml`.
+
+> Login (`POST /api/v1/auth/login`) e consulta de usuário por id ainda **não existem** — por isso hoje não há um caminho pela API para obter um token JWT e efetivamente chamar `POST /api/v1/users`. É a próxima pendência a resolver (ver roadmap).
 
 ## Roadmap / pendências do desafio
 
 Funcionalidades obrigatórias do Tech Challenge que **ainda não foram implementadas**:
 
+- **Login e bootstrap de usuário Admin**: hoje não existe endpoint de login nem seed de usuário administrador — sem isso, não há como obter um token pra chamar `POST /api/v1/users`. Bloqueia o uso ponta a ponta da API.
 - **Criação de OS**: identificação do cliente por CPF/CNPJ, cadastro de veículo (placa/marca/modelo/ano), inclusão de serviços e peças, orçamento automático, envio para aprovação do cliente.
 - **Acompanhamento de OS**: máquina de status (`Recebida` → `Em diagnóstico` → `Aguardando aprovação` → `Em execução` → `Finalizada` → `Entregue`), com consulta via API pelo cliente.
 - **Gestão administrativa**: CRUD de clientes, veículos, serviços, peças/insumos (com controle de estoque), listagem/detalhamento de OS, monitoramento do tempo médio de execução.
@@ -130,11 +140,9 @@ O documento OpenAPI puro fica em `/openapi/v1.json`.
 
 ## Autenticação
 
-1. Crie um usuário: `POST /api/v1/users` (endpoint público).
-2. Faça login: `POST /api/v1/auth/login`, com `email`/`password` — retorna um token JWT.
-3. Use o token no header `Authorization: Bearer {token}` para chamar endpoints protegidos (ex.: `GET /api/v1/users/{id}`).
+`POST /api/v1/users` exige um token JWT com role `Admin` (policy `AdminOnly`). Não existe hoje endpoint de login nem qualquer outro jeito de emitir esse token — é uma pendência conhecida (ver roadmap e `CONTEXT.md`).
 
-Endpoints protegidos exigem também o header `x-correlation-id` (obrigatório em `POST /users`, opcional nos demais — inconsistência conhecida, ver `CONTEXT.md`).
+O `CorrelationId` esperado pelo cadastro de usuário vai no corpo da requisição (campo `correlationId`), não em um header.
 
 ## Estrutura do repositório
 

@@ -17,7 +17,7 @@ BEGIN
         Id          UNIQUEIDENTIFIER NOT NULL,
         Email       NVARCHAR(256)    NOT NULL,
         Name        NVARCHAR(100)    NOT NULL,
-        Password    VARBINARY(MAX)   NOT NULL,
+        Password    NVARCHAR(60)     NOT NULL,
         Role        NVARCHAR(20)     NOT NULL,
         CreatedAt   DATETIME2        NOT NULL,
         UpdatedAt   DATETIME2        NOT NULL,
