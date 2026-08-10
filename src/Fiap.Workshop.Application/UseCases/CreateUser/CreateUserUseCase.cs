@@ -55,7 +55,7 @@ public sealed class CreateUserUseCase(
             return output;
         }
 
-        output.AddResult(user);
+        output.AddResult(user.MapToDto());
         return output;
     }
 }

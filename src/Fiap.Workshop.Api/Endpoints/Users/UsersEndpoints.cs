@@ -11,7 +11,7 @@ public static class UsersEndpoints
 {
     public static void MapUsersEndpoints(this IEndpointRouteBuilder app, ApiVersionSet apiVersion)
     {
-        var group = app.MapGroup("/users")
+        var group = app.MapGroup("api/v1/users")
             .WithApiVersionSet(apiVersion)
             .WithName("Users")
             .WithTags("Users");
