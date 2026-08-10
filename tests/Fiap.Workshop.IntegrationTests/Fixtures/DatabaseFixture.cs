@@ -11,10 +11,10 @@ namespace Fiap.Workshop.IntegrationTests.Fixtures;
 public sealed class DatabaseFixture : IAsyncLifetime
 {
     private const string DefaultMasterConnectionString =
-        "Server=localhost,1433;User Id=sa;Password=Integration@Test123;TrustServerCertificate=True;";
+        "Server=localhost,14330;User Id=sa;Password=Integration@Test123;TrustServerCertificate=True;";
 
     private const string DefaultTestConnectionString =
-        "Server=localhost,1433;Database=IntegrationTestsDb;User Id=sa;Password=Integration@Test123;TrustServerCertificate=True;";
+        "Server=localhost,14330;Database=IntegrationTestsDb;User Id=sa;Password=Integration@Test123;TrustServerCertificate=True;";
 
     public IServiceProvider Services { get; private set; } = null!;
 
