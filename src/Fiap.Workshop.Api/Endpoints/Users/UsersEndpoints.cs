@@ -27,7 +27,7 @@ public static class UsersEndpoints
                 if (!result.IsValid)
                     return Results.BadRequest(result);
 
-                return Results.Created();
+                return Results.Created($"/api/v1/users/{result.GetResult<Guid>()}", result);
             }
         )
         .RequireAuthorization("AdminOnly")
