@@ -1,6 +1,8 @@
+using Fiap.Workshop.Domain.Entities;
+
 namespace Fiap.Workshop.Application.Interfaces.Services;
 
 public interface IJwtService
 {
-    string GenerateToken(string userId, string email, string role);
+    string GenerateToken(User user);
 }
