@@ -1,6 +1,8 @@
 using System.Text;
 using Asp.Versioning;
+using Fiap.Workshop.Api.Requests.Auth;
 using Fiap.Workshop.Api.Requests.Users;
+using Fiap.Workshop.Api.Validators.Auth;
 using Fiap.Workshop.Api.Validators.Users;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -49,6 +51,7 @@ public static class DependencyInjection
             .AddPolicy("UserOnly", policy => policy.RequireRole("User", "Admin"));
 
         services.AddScoped<IValidator<CreateUserRequest>, CreateUserRequestValidator>();
+        services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
 
         services.AddProblemDetails();
 
