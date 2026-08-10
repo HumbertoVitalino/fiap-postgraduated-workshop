@@ -2,10 +2,17 @@
 
 namespace Fiap.Workshop.Application.UseCases.CreateUser.Boundaries;
 
-public sealed record CreateUserInput(
-    Guid CorrelationId,
-    string Name,
-    string Email,
-    string Password,
-    UserRole Role
-);
+public sealed class CreateUserInput(
+    Guid correlationId,
+    string name,
+    string email,
+    string password,
+    UserRole role
+)
+{
+    public Guid CorrelationId { get; init; } = correlationId;
+    public string Name { get; init; } = name;
+    public string Email { get; init; } = email.ToLowerInvariant();
+    public string Password { get; init; } = password;
+    public UserRole Role { get; init; } = role;
+}

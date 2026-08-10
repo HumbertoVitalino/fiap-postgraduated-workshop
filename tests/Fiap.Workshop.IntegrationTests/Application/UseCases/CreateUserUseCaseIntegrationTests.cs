@@ -1,4 +1,5 @@
 using Fiap.Workshop.Application.Commons;
+using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.CreateUser.Boundaries;
@@ -40,9 +41,8 @@ public sealed class CreateUserUseCaseIntegrationTests(DatabaseFixture fixture)
 
         // Assert
         result.ErrorMessages.Should().BeEmpty();
-        var created = result.Result.Should().BeOfType<User>().Subject;
+        var created = result.Result.Should().BeOfType<UserResponse>().Subject;
         created.Email.Should().Be(input.Email);
-        created.Password.Should().NotBe(input.Password);
 
         using var scope = fixture.Services.CreateScope();
         var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();

@@ -1,3 +1,5 @@
+name: fiap-workshop-tests
+
 services:
   sql-test:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -6,7 +8,7 @@ services:
       SA_PASSWORD: "Integration@Test123"
       ACCEPT_EULA: "Y"
     ports:
-      - "1433:1433"
+      - "14330:1433"
     healthcheck:
       test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Integration@Test123' -Q 'SELECT 1' -b -C || exit 1"]
       interval: 10s

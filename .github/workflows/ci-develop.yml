@@ -94,8 +94,8 @@ jobs:
           --configuration Release
           --logger "trx;LogFileName=integration-results.trx"
         env:
-          ConnectionStrings__MasterConnection: "Server=localhost,1433;User Id=sa;Password=Integration@Test123;TrustServerCertificate=True;"
-          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=IntegrationTestsDb;User Id=sa;Password=Integration@Test123;TrustServerCertificate=True;"
+          ConnectionStrings__MasterConnection: "Server=localhost,14330;User Id=sa;Password=Integration@Test123;TrustServerCertificate=True;"
+          ConnectionStrings__DefaultConnection: "Server=localhost,14330;Database=IntegrationTestsDb;User Id=sa;Password=Integration@Test123;TrustServerCertificate=True;"
 
       - name: Stop SQL Server
         if: always()
