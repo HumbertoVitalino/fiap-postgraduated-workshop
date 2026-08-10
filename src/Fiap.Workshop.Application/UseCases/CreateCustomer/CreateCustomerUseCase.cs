@@ -19,6 +19,18 @@ public sealed class CreateCustomerUseCase(
     {
         Output output = new();
 
+        var isAnyCustomer = await _customerRepository.AnyAsync(input.Document, cancellationToken);
+        if (isAnyCustomer)
+        {
+            _logger.LogWarning(
+                "[{CorrelationId}] | Customer with this document already exists.",
+                input.CorrelationId
+            );
+
+            output.AddErrorMessage("Customer with the provided document already exists.");
+            return output;
+        }
+
         var customer = input.MapToDomain();
 
         await _customerRepository.AddAsync(customer, cancellationToken);
@@ -37,7 +49,6 @@ public sealed class CreateCustomerUseCase(
         }
 
         output.AddResult(customer.MapToDto());
-
         return output;
     }
 }
