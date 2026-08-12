@@ -98,6 +98,12 @@ public static class DependencyInjection
                     }
                 };
 
+                document.Security ??= [];
+                document.Security.Add(new OpenApiSecurityRequirement
+                {
+                    [new OpenApiSecuritySchemeReference("Bearer", document, null)] = []
+                });
+
                 return Task.CompletedTask;
             });
         });
