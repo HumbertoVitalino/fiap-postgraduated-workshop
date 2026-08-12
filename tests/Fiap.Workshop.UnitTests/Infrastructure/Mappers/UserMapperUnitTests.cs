@@ -47,7 +47,7 @@ public class UserMapperUnitTests
             _fixture.Create<string>(),
             _fixture.Create<string>(),
             _fixture.Create<string>(),
-            UserRole.User,
+            UserRole.Admin,
             DateTime.UtcNow,
             DateTime.UtcNow
         );

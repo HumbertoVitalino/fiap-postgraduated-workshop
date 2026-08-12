@@ -1,4 +1,5 @@
 using Fiap.Workshop.Application.Interfaces.UseCases;
+using Fiap.Workshop.Application.UseCases.CreateCustomer;
 using Fiap.Workshop.Application.UseCases.CreateUser;
 using Fiap.Workshop.Application.UseCases.LoginUser;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +14,7 @@ public static class DependencyInjection
     {
         services.AddScoped<ICreateUserUseCase, CreateUserUseCase>();
         services.AddScoped<ILoginUserUseCase, LoginUserUseCase>();
+        services.AddScoped<ICreateCustomerUseCase, CreateCustomerUseCase>();
 
         return services;
     }

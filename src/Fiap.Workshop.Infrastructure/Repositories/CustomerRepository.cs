@@ -30,4 +30,11 @@ internal sealed class CustomerRepository(AppDbContext context) : Repository<Cust
 
     public override void Remove(Customer entity) =>
         Delete(_context.Customers, entity.MapToModel(), entity.Id);
+
+    public async Task<bool> AnyAsync(string document, CancellationToken cancellationToken)
+    {
+        return await _context.Customers
+            .AsNoTracking()
+            .AnyAsync(x => x.Document == document, cancellationToken);
+    }
 }
