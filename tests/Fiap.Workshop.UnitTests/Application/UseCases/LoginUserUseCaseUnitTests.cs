@@ -36,7 +36,7 @@ public class LoginUserUseCaseUnitTests : LoggerTestBase<LoginUserUseCase>
         email,
         "Test User",
         password,
-        UserRole.User,
+        UserRole.Admin,
         DateTime.UtcNow,
         DateTime.UtcNow
     );

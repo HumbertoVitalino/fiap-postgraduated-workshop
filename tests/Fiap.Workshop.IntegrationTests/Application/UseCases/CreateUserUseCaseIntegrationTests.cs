@@ -20,7 +20,7 @@ public sealed class CreateUserUseCaseIntegrationTests(DatabaseFixture fixture)
         "Integration User",
         email ?? TestData.Email(),
         TestData.ShortString(16),
-        UserRole.User
+        UserRole.Admin
     );
 
     private async Task<Output> HandleAsync(CreateUserInput input)

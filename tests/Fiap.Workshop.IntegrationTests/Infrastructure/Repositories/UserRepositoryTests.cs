@@ -15,7 +15,7 @@ public sealed class UserRepositoryTests(DatabaseFixture fixture)
         TestData.Email(),
         "Integration User",
         TestData.ShortString(32),
-        UserRole.User,
+        UserRole.Admin,
         DateTime.UtcNow,
         DateTime.UtcNow
     );
