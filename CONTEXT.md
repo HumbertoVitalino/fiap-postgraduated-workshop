@@ -1,6 +1,6 @@
 # Fiap.Workshop — Contexto do Projeto
 
-> Documento vivo de contexto técnico. Atualize sempre que a arquitetura, os use cases ou as decisões de design mudarem. Última atualização: 2026-08-08.
+> Documento vivo de contexto técnico. Atualize sempre que a arquitetura, os use cases ou as decisões de design mudarem. Última atualização: 2026-08-11 (branch `feature/5-create-customer-uc`).
 
 ## 1. Visão geral
 
@@ -28,8 +28,9 @@ Regra de dependência: `Domain` não referencia nada; `Application` referencia `
 - **API**: Minimal APIs, `Asp.Versioning.Http` + `Asp.Versioning.Mvc.ApiExplorer` (versionamento via segmento de URL `/api/v{version}/...`; o `ApiExplorer` com `SubstituteApiVersionInUrl = true` é o que faz `{version}` virar `1` de verdade na doc gerada — sem ele, Swagger/OpenAPI mandavam o template cru e todo request pelo Swagger UI dava 404 de roteamento, corrigido em 2026-07-12), `Microsoft.AspNetCore.OpenApi` (gera o documento OpenAPI em `/openapi/v1.json`), `Swashbuckle.AspNetCore.SwaggerUI` (só a UI, em `/swagger` — trocado do Scalar em 2026-07-11, mantendo a geração do doc como estava)
 - **Logging**: `Serilog.AspNetCore` (instalado em 2026-07-11) — substitui o provider padrão do `Microsoft.Extensions.Logging` via `builder.Host.UseSerilog(...)` no `Program.cs`; usa bootstrap logger + `try/catch/finally` em volta do host pra capturar falhas de startup (ex.: banco indisponível na migration automática) antes mesmo do DI terminar de montar; sink Console configurado via `appsettings.json` (`Serilog` section, `ReadFrom.Configuration`); `app.UseSerilogRequestLogging()` loga cada requisição HTTP. Todo `ILogger<T>` já injetado nos use cases continua funcionando sem mudança nenhuma — a troca foi só na composição, não no código de Application/Domain.
 - **Validação**: FluentValidation (validators na camada Api, um por Request)
-- **Auth**: JWT Bearer (`Microsoft.AspNetCore.Authentication.JwtBearer`), policies `AdminOnly` e `UserOnly`
+- **Auth**: JWT Bearer (`Microsoft.AspNetCore.Authentication.JwtBearer`), policies `AdminOnly`, `AttendantOnly` (roles `Attendant`/`Admin`) e `MechanicOnly` (roles `Mechanic`/`Admin`) — substituíram as antigas `AdminOnly`/`UserOnly` em algum ponto entre 2026-08-08 e 2026-08-11, junto com a mudança de `UserRole` (ver §3): não existe mais um role genérico `User`, só os três papéis de negócio da oficina.
 - **Hashing de senha**: `BCrypt.Net-Next` (work factor 12), via `IPasswordService` (`Application.Interfaces.Services`) / `PasswordService` (Infrastructure) — ver §10 para a diferença em relação a uma iteração anterior do projeto que tinha isso como Domain Service
+- **Validação de CPF/CNPJ**: pacote `Cpf.Cnpj` (namespace `CpfCnpjLibrary`), usado via `StringExtensions.StandardizeDocument`/`IsValidDocument` (`Application/Commons/StringExtensions.cs`) — ver §4 e §6
 - **Persistência**: EF Core 10 + SQL Server (`Microsoft.EntityFrameworkCore.SqlServer`)
 - **Testes**: xUnit, FluentAssertions, Moq, NSubstitute (ambos presentes — inconsistência a resolver, ver §9), AutoFixture
 - **Erros HTTP**: `AddProblemDetails()` + `UseExceptionHandler()`
@@ -49,7 +50,8 @@ Propriedades: `Name`, `Password`, `Role` (`UserRole`), `Email` — todas `string
 
 Um único construtor **público**, posicional: `User(Guid id, string email, string name, string password, UserRole role, DateTime createdAt, DateTime updatedAt)`. Não existem `Create`/`Rehydrate`/fábricas nomeadas, e não há validação de invariante nenhuma no construtor (nome vazio, formato de e-mail, força de senha — tudo isso, se acontece, acontece na Api, ver §6). O construtor **sempre** dispara `RaiseDomainEvent(new UserCreatedEvent(id))`, inclusive quando `DomainMappers.MapToDomain` (Infrastructure) chama `new User(...)` para reidratar um usuário lido do banco — na prática é inofensivo hoje porque só `UserRepository.AddAsync`/`Update` enfileiram os eventos pendentes no `AppDbContext` (`EnqueueEvents`); leituras (`GetByIdAsync`/`GetByEmailAsync`) descartam o evento junto com o objeto. É um ponto frágil a observar se um dia uma leitura passar a enfileirar eventos — todo `SELECT` de usuário reemitiria "usuário criado".
 
-### `UserRole` (enum): `User = 0`, `Admin = 1`
+### `UserRole` (enum, **mudou entre 2026-08-08 e 2026-08-11**): `Admin = 0`, `Attendant = 1`, `Mechanic = 2`
+Substituiu o desenho anterior (`User = 0`, `Admin = 1`) — não existe mais um role genérico `User`; os três valores mapeiam papéis reais da oficina (recepção/atendimento, mecânico, administrador). Todos os testes que fixavam `UserRole.User` foram migrados para `UserRole.Admin` (commit `14b2aac`, "test(refactor): fixing the enum"). Ver policies novas em §2/§6.
 
 ### `UserErrors` (constantes de mensagem, hoje **não usadas por nenhum use case** — sobras de uma iteração anterior)
 `NameEmpty`, `NotFound`, `EmailAlreadyInUse`, `PasswordEmpty`, `PasswordTooShort`, `PasswordMissingUppercase`, `PasswordMissingLowercase`, `PasswordMissingDigit`, `PasswordHashEmpty`, `InvalidCredentials`.
@@ -57,50 +59,86 @@ Um único construtor **público**, posicional: `User(Guid id, string email, stri
 ### Eventos (`Events/`)
 - `UserCreatedEvent(Guid UserId)` — disparado (sempre) no construtor de `User`, ver acima. Só carrega o `UserId` ("evento magro"). Ver §11 para a mecânica completa de domain events.
 
+### Agregado `Customer` (`Entities/Customer.cs`) — primeiro agregado de negócio com pilha completa (2026-08-11)
+Propriedades: `Name`, `Document`, `Email`, `Phone` — todas `string` simples, setter `private`. **Sem Value Objects, sem validação de invariante no construtor** (nem formato de CPF/CNPJ, nem unicidade) — consistente com a decisão de validação incremental (ver §9/§10): a checagem de formato/dígito verificador de CPF/CNPJ mora na Api (`CreateCustomerRequestValidator`, via `IsValidDocument()`), não no Domain. Construtor único, posicional: `Customer(Guid id, string name, string document, string email, string phone, DateTime createdAt, DateTime updatedAt)`. **Não dispara nenhum domain event** — diferente de `User` (ver §11), `Customer` não tem um `CustomerCreatedEvent` equivalente hoje.
+
 ### Outros agregados (existem, ainda não documentados em detalhe aqui)
-`Customer`, `Vehicle`, `Service`, `InventoryItem`, `ServiceOrder` (+ `ServiceOrderPart`/`ServiceOrderService`/`ServiceOrderStatusHistory` como filhos do mesmo agregado), com seus próprios `Errors/ServiceOrderErrors.cs` e enums (`UnitOfMeasure`, `ServiceOrderStatus`). Já têm `Model`/`Repository`/mapeamentos completos em Infrastructure (ver §5), mas ainda não são expostos via Application/Api — desatualiza o item 7 de §9, que precisa de uma revisão futura.
+`Vehicle`, `Service`, `InventoryItem`, `ServiceOrder` (+ `ServiceOrderPart`/`ServiceOrderService`/`ServiceOrderStatusHistory` como filhos do mesmo agregado), com seus próprios `Errors/ServiceOrderErrors.cs` e enums (`UnitOfMeasure`, `ServiceOrderStatus`). Já têm `Model`/`Repository`/mapeamentos completos em Infrastructure (ver §5), mas ainda não são expostos via Application/Api — desatualiza o item 7 de §9, que precisa de uma revisão futura.
 
 ## 4. Camada de Aplicação (`Fiap.Workshop.Application`)
 
-> ⚠️ Reescrita em 2026-08-08 junto com §3 — reflete só o que existe hoje. `GetUserByIdUseCase`/`LoginUseCase`/`UpdateEmailUseCase` descritos numa versão anterior deste documento **não existem no código** (só sobraram `Requests` HTTP scaffoldadas na Api sem use case/endpoint por trás, ver abaixo).
+> ⚠️ Reescrita em 2026-08-08 (junto com §3) e atualizada em 2026-08-11 com a chegada de `LoginUser` e `CreateCustomer`. `GetUserByIdUseCase`/`UpdateEmailUseCase` continuam sem existir no código (só sobrou `UpdateEmailRequest` HTTP scaffoldado na Api sem use case/endpoint por trás) — mas `LoginUseCase` (`LoginUserUseCase`) **já existe**, ver abaixo.
 
 Padrão de use case: **Input (record) → UseCase (classe) → Output (classe genérica com Result/Errors)**, sem MediatR — injeção direta de interfaces de use case.
 
 ### `Commons/Output.cs`
 Classe de retorno padrão de todos os use cases: `IsValid`, `Messages`, `ErrorMessages`, `Result` (object, lido via `GetResult<T>()`), métodos `AddResult`, `AddMessage`, `AddErrorMessage(s)`.
 
-### Use case existente (`UseCases/CreateUser/`)
+### Use cases existentes (três hoje: `CreateUser`, `LoginUser`, `CreateCustomer`)
+
+Cada use case tem uma pasta `Boundaries/` (Input) e `Mapper/` (mapeamento entre camadas).
+
+#### `UseCases/CreateUser/`
 
 `CreateUserUseCase` (interface `ICreateUserUseCase`), input `CreateUserInput(CorrelationId, Name, Email, Password, Role)`:
 1. Checa e-mail único via `IUserRepository.ExistsWithEmailAsync` — se já existe, loga `LogWarning` e retorna `Output` com erro (`"User with email {Email} already exists."`), sem tocar no repositório.
 2. Hasheia a senha via `IPasswordService.Hash(input.Password)`.
-3. Monta o `User` via `input.MapToDomain(passwordHash)` e persiste (`AddAsync` + `UnitOfWork.CommitAsync`).
+3. Monta o `User` via `input.MapToDomain(passwordHash)` (usando `input.Role` direto, sem lógica extra) e persiste (`AddAsync` + `UnitOfWork.CommitAsync`).
 4. Se o commit falhar (`CommitAsync` retorna `false`), loga `LogError` e retorna erro (`"Error saving user with email {Email}."`).
-5. Em sucesso, `output.AddResult(user)` — **retorna a entidade `User` crua**, não um DTO (`UserResponse` existe mas não é usado aqui, ver DTOs abaixo).
+5. Em sucesso, `output.AddResult(user.MapToDto())` — **mudou em relação à versão anterior deste documento**: hoje devolve `UserResponse` (DTO), não a entidade `User` crua.
 
-Recebe `ILogger<CreateUserUseCase>` no construtor. Cobertura de teste (adicionada em 2026-08-08): 3 cenários unitários (sucesso, e-mail duplicado, falha ao salvar) em `CreateUserUseCaseUnitTests`, usando o helper `LoggerTestBase<TCategory>` (`tests/Fiap.Workshop.UnitTests/Common/`) para verificar `ILogger.Log(...)` sem tropeçar no fato de `LogWarning`/`LogError` serem extension methods (Moq não consegue mockar/verificar extension methods diretamente — é preciso verificar o `ILogger.Log<TState>` real por trás). Mais 2 cenários de integração (sucesso, e-mail duplicado) em `CreateUserUseCaseIntegrationTests`, batendo no SQL Server real via `DatabaseFixture`.
+Recebe `ILogger<CreateUserUseCase>` no construtor. Cobertura de teste: 3 cenários unitários (sucesso, e-mail duplicado, falha ao salvar) em `CreateUserUseCaseUnitTests`, usando o helper `LoggerTestBase<TCategory>` (`tests/Fiap.Workshop.UnitTests/Common/`) para verificar `ILogger.Log(...)` sem tropeçar no fato de `LogWarning`/`LogError` serem extension methods (Moq não consegue mockar/verificar extension methods diretamente — é preciso verificar o `ILogger.Log<TState>` real por trás). Mais cenários de integração (sucesso, e-mail duplicado) em `CreateUserUseCaseIntegrationTests`, batendo no SQL Server real via `DatabaseFixture`.
 
-Cada use case tem uma pasta `Boundaries/` (Input) e `Mapper/` (mapeamento entre camadas).
+**Mapper (`UseCases/CreateUser/Mapper/CreateUserMapper.cs`)**
+- `MapToDomain(this CreateUserInput input, string passwordHash)`: `new User(input.CorrelationId, input.Email, input.Name, passwordHash, input.Role, DateTime.Now, DateTime.Now)`. Usa **`input.CorrelationId` como `Id` do usuário** (não gera um novo `Guid`) — isso não mudou. O bug de ordem `Name`/`Email` trocada (registrado numa versão anterior deste documento) já estava corrigido.
+- `MapToDto(this User user)`: `new UserResponse(user.Id, user.Name, user.Email, user.Role.ToString())` — hoje é usado por `CreateUserUseCase` (ver acima).
 
-### Mapper de criação (`UseCases/CreateUser/Mapper/CreateUserMapper.cs`)
-- `MapToDomain(this CreateUserInput input, string passwordHash)`: `new User(input.CorrelationId, input.Email, input.Name, passwordHash, input.Role, DateTime.Now, DateTime.Now)`. Usa **`input.CorrelationId` como `Id` do usuário** (não gera um novo `Guid`). **Bug corrigido em 2026-08-08**: a chamada passava `input.Name`/`input.Email` na ordem trocada em relação ao construtor de `User` (que espera `email` antes de `name`) — todo usuário criado ficava com `Email`/`Name` invertidos. Só foi pego pelo teste de integração contra o SQL Server real (violação do índice único em `Email`); os testes unitários não afirmavam sobre os valores dos campos, então não detectaram.
+#### `UseCases/LoginUser/` (novo desde a última reescrita deste documento)
+
+`LoginUserUseCase` (interface `ILoginUserUseCase`), input `LoginUserInput(CorrelationId, Email, Password)`:
+1. Busca o usuário por e-mail (`IUserRepository.GetByEmailAsync`) — se não existir, loga `LogWarning` e retorna erro `"User not found."`.
+2. Verifica a senha via `IPasswordService.Verify(input.Password, user.Password)` — se inválida, loga `LogWarning` e retorna erro `"Invalid password."`.
+3. Gera o token via `IJwtService.GenerateToken(user)` (assinatura mudou, ver Interfaces abaixo) e devolve o token cru (`string`) via `output.AddResult(token)` — não há um `LoginResponse`/DTO envolvido aqui, apesar de `LoginResponse` existir em `DTOs/Users/`.
+
+Sem mapper próprio na Application (o `LoginUserInput` é montado direto pelo `LoginUserMapper` da Api, ver §6). Cobertura: unitários (`LoginUserUseCaseUnitTests`) e de integração (`LoginUserUseCaseIntegrationTests`, seedando um usuário via `ICreateUserUseCase` de verdade antes de logar).
+
+#### `UseCases/CreateCustomer/` (novo, branch atual `feature/5-create-customer-uc`)
+
+`CreateCustomerUseCase` (interface `ICreateCustomerUseCase`), input `CreateCustomerInput(CorrelationId, Name, Document, Email, Phone)` — o próprio `init` de `Document` já normaliza o valor via `StringExtensions.StandardizeDocument()` (remove pontuação, formata conforme CPF/11 dígitos ou CNPJ/14 dígitos; lança `ArgumentException` para outro tamanho):
+1. Checa documento único via `ICustomerRepository.AnyAsync(input.Document, ...)` — se já existe, loga `LogWarning` e retorna erro `"Customer with the provided document already exists."`, sem tocar no repositório.
+2. Monta o `Customer` via `input.MapToDomain()` (gera um novo `Guid` para o `Id` — diferente do `CreateUser`, que reusa `CorrelationId`) e persiste (`AddAsync` + `UnitOfWork.CommitAsync`).
+3. Se o commit falhar, loga `LogWarning` e retorna erro `"Failed to save customer to the database."`.
+4. Em sucesso, `output.AddResult(customer.MapToDto())` — devolve `CustomerResponse(Id, Name, Phone)` (**não inclui `Document`/`Email`** no DTO de resposta).
+
+Validação de **formato/dígito verificador de CPF/CNPJ não acontece aqui** — só a normalização de pontuação. A validação de fato (`IsValidDocument()`) mora em `CreateCustomerRequestValidator` na Api (ver §6); o use case em si aceita qualquer string cujo tamanho normalizado seja 11 ou 14 caracteres. Cobertura: unitários (`CreateCustomerUseCaseUnitTests` — sucesso, documento duplicado, falha ao salvar) e de integração (`CreateCustomerUseCaseIntegrationTests`, adicionada em 2026-08-11 — sucesso persistindo e lendo de volta via `ICustomerRepository.GetByIdAsync`, e falha por documento duplicado; usa um gerador de CPF com dígito verificador válido em `TestData.Document()` para não depender de string fixa).
+
+**Mapper (`UseCases/CreateCustomer/Mapper/CreateCustomerMapper.cs`)**
+- `MapToDomain(this CreateCustomerInput input)`: `new Customer(Guid.NewGuid(), input.Name, input.Document, input.Email, input.Phone, DateTime.Now, DateTime.Now)`.
+- `MapToDto(this Customer customer)`: `new CustomerResponse(customer.Id, customer.Name, customer.Phone)`.
 
 ### Interfaces / portas (`Interfaces/`)
 - `Repositories/IUnitOfWork.CommitAsync()`
 - `Repositories/IUserRepository : IRepository<User>` — `GetByEmailAsync(string email, ...)`, `ExistsWithEmailAsync(string email, ...)`
-- `Abstractions/IRepository<T> where T : AggregateRoot` — **sem segundo parâmetro `TId`** (assume `Guid` implicitamente): `UnitOfWork`, `GetByIdAsync`, `AddAsync`, `Update`, `Remove`. Outras portas de repositório já existem seguindo o mesmo molde: `ICustomerRepository`, `IVehicleRepository`, `IInventoryItemRepository`, `IServiceRepository`, `IServiceOrderRepository` (implementações em Infrastructure, ver §5, mas sem use case/endpoint consumindo ainda).
+- `Repositories/ICustomerRepository : IRepository<Customer>` — `AnyAsync(string document, ...)` (adicionado com o `CreateCustomer` use case; antes a interface era vazia, seguindo a política incremental de repositório — ver §9)
+- `Abstractions/IRepository<T> where T : AggregateRoot` — **sem segundo parâmetro `TId`** (assume `Guid` implicitamente): `UnitOfWork`, `GetByIdAsync`, `AddAsync`, `Update`, `Remove`. Outras portas de repositório já existem seguindo o mesmo molde, ainda vazias (sem método extra): `IVehicleRepository`, `IInventoryItemRepository`, `IServiceRepository`, `IServiceOrderRepository` (implementações em Infrastructure, ver §5, mas sem use case/endpoint consumindo ainda).
 - `Services/ICurrentUserService` — `UserId` (`Guid`), `Email` (`string`), `Role` (`string`), `IsAuthenticated` (lido do `ClaimsPrincipal`)
 - `Services/IDomainEventDispatcher.DispatchAsync(events, cancellationToken)`
-- `Services/IJwtService.GenerateToken(string userId, string email, string role)` — parâmetros `string`, não fortemente tipados
+- `Services/IJwtService.GenerateToken(User user)` — **mudou desde a última reescrita**: antes recebia três `string` soltos (`userId`, `email`, `role`); hoje recebe a entidade `User` inteira e extrai os claims internamente (ver implementação em §5).
 - `Services/IPasswordService` — `Hash(string rawPassword)`, `Verify(string rawPassword, string hash)`. Mora em `Application.Interfaces.Services` (não em Domain) — ver nota em §10 sobre essa diferença em relação a uma iteração anterior do projeto.
 - `Abstractions/IDomainEventHandler<TEvent>` — infraestrutura de handlers de evento de domínio (nenhum handler concreto implementado ainda — ver §11)
+- `UseCases/ICreateUserUseCase`, `ILoginUserUseCase`, `ICreateCustomerUseCase` — um por use case, todos só com `Handle(TInput, CancellationToken) : Task<Output>`.
 
-### DTOs (`DTOs/Users/`)
-- `UserResponse(Id, Name, Email, Role)` com `FromUser(User)` estático — **existe mas não é usado** por `CreateUserUseCase` hoje (que devolve o `User` cru, ver acima).
-- `LoginResponse(Token)` — existe sem nenhum `LoginUseCase` correspondente (só o `LoginRequest` foi scaffoldado na Api, ver §6).
+### Commons (`Commons/`)
+- `Output.cs` — ver acima.
+- `StringExtensions.cs` (novo): `StandardizeDocument(this string document)` (formata CPF/CNPJ sem pontuação via `CpfCnpjLibrary`, baseado no tamanho — 11 = CPF, 14 = CNPJ, outro tamanho lança `ArgumentException`) e `IsValidDocument(this string document)` (valida dígito verificador; tamanho fora de 11/14 retorna `false` em vez de lançar). Usado por `CreateCustomerInput` (normalização) e por `CreateCustomerRequestValidator` na Api (validação de fato, ver §6).
+
+### DTOs
+- `DTOs/Users/UserResponse(Id, Name, Email, Role)` — **hoje é usado** por `CreateUserUseCase.MapToDto` (mudou desde a última reescrita, ver acima); `Role` é `string` (`user.Role.ToString()`).
+- `DTOs/Users/LoginResponse(Token)` — segue existindo como DTO, mas `LoginUserUseCase` devolve o token como `string` cru (`output.AddResult(token)`), não empacotado num `LoginResponse` — parece scaffold ainda não conectado.
+- `DTOs/Customer/CustomerResponse(Id, Name, Phone)` (novo) — usado por `CreateCustomerUseCase.MapToDto`. Note que **não inclui `Document` nem `Email`** na resposta.
 
 ### Composição (`IoC/DependencyInjection.cs`)
-`AddApplication()` registra só `ICreateUserUseCase` como `Scoped`.
+`AddApplication()` registra `ICreateUserUseCase`, `ILoginUserUseCase` e `ICreateCustomerUseCase`, todos como `Scoped`.
 
 ## 5. Camada de Infraestrutura (`Fiap.Workshop.Infrastructure`)
 
@@ -111,14 +149,15 @@ Cada use case tem uma pasta `Boundaries/` (Input) e `Mapper/` (mapeamento entre 
 - `UserModel` (`Repositories/Models/`): `Id`, `Email`, `Name`, `Password` (**`string`**, não `varbinary`/`byte[]` — refatorado em 2026-08-07), `Role`, `CreatedAt` (`DateTime`, não nulo), `UpdatedAt` (`DateTime?`). Vêm do domínio via `MapToModel`/`MapToDomain` — sem default de banco (`GETUTCDATE()`); o `User` é a fonte de verdade para essas datas.
 - Mapeamento tabela `Users`: `Email` único (`HasIndex().IsUnique()`), `MaxLength(256)`; `Name` `MaxLength(100)`; `Password` `MaxLength(60)` (tamanho fixo de um hash BCrypt); `Role` `HasConversion<string>().HasMaxLength(20)`.
 - `UserRepository : IUserRepository` — usa `AsNoTracking()` para leituras; mapeia Model↔Domain via `DomainMappers.MapToDomain`/`ModelMappers.MapToModel`, que chamam `new User(...)`/`new UserModel(...)` diretamente (**não existe `User.Rehydrate`**, ver §3 sobre o efeito colateral disso no `UserCreatedEvent`); enfileira eventos de domínio no `AppDbContext` (`EnqueueEvents`) só em `AddAsync`/`Update`, nunca em leituras.
-- **Todos os demais agregados já têm repositório completo implementado**, seguindo o mesmo molde de `UserRepository` (`GetByIdAsync`/`AddAsync`/`Update`/`Remove`, herdando de `Repository<T>`): `CustomerRepository`, `VehicleRepository`, `InventoryItemRepository`, `ServiceRepository`, `ServiceOrderRepository` — todos registrados no DI (ver Composição abaixo). O que falta pra esses agregados é a camada de Application/Api por cima (use cases, endpoints), não a Infrastructure.
+- `CustomerRepository : ICustomerRepository` — mesmo molde de `UserRepository` (`AsNoTracking()` em leituras), mais `AnyAsync(string document, ...)` (`_context.Customers.AsNoTracking().AnyAsync(x => x.Document == document, ...)`), adicionado junto com o `CreateCustomer` use case (2026-08-11) — **primeiro repositório de negócio (fora `User`) a ganhar um método além do `IRepository<T>` base**, confirmando a política incremental (ver §9).
+- **Os demais agregados já têm repositório completo implementado**, seguindo o mesmo molde de `UserRepository` (`GetByIdAsync`/`AddAsync`/`Update`/`Remove`, herdando de `Repository<T>`), mas ainda sem método extra: `VehicleRepository`, `InventoryItemRepository`, `ServiceRepository`, `ServiceOrderRepository` — todos registrados no DI (ver Composição abaixo). O que falta pra esses agregados é a camada de Application/Api por cima (use cases, endpoints), não a Infrastructure.
 - **(2026-08-04)** Migrations antigas (`InitialCreate`, `AddRoleToUsers`, `AddPasswordToUsers`, `AddUpdatedAtToUsers`) apagadas; schema passou a nascer via `db/init.sql` (script SQL idempotente), executado pelo serviço `sqlserver-init` no `docker-compose.yml` **antes** da `api` subir (`depends_on: condition: service_completed_successfully`). `Program.cs` **não chama mais** `dbContext.Database.MigrateAsync()`. O mesmo `db/init.sql` é reaproveitado pelos testes de integração (`DatabaseFixture`, via `Link` no `.csproj`) — variável `$(DatabaseName)` (sintaxe `sqlcmd`) é substituída por `Fiap_Workshop` no compose e por `IntegrationTestsDb` via `string.Replace` no `DatabaseFixture`.
 - **(2026-08-04)** Modelos de infra criados para todos os agregados do domínio (`CustomerModel`, `VehicleModel`, `InventoryItemModel`, `ServiceModel`, `ServiceOrderModel` + `ServiceOrderPartModel`/`ServiceOrderServiceModel`/`ServiceOrderStatusHistoryModel` como filhos, com `HasMany().WithOne().OnDelete(Cascade)`), com `ModelMappers`/`DomainMappers` e configuração completa em `AppDbContext.OnModelCreating` (índices únicos em `Document/Email/Phone` do Customer, `LicensePlate`, `Code`, `Number`; FKs explícitas entre agregados sem navegação — ex. `Vehicle.CustomerId → Customers` — via `HasOne<T>().WithMany().HasForeignKey().OnDelete(Restrict)`).
 - **(2026-08-07)** Migration baseline **regenerada do zero** (`20260807031339_InitialCreate`, via `dotnet ef migrations add --project src/Fiap.Workshop.Infrastructure --startup-project src/Fiap.Workshop.Api`) cobrindo todos os agregados de uma vez — a pasta `Migrations/` existe só como apoio de ferramenta (gera SQL a partir do modelo real, útil pra conferir/gerar o `db/init.sql`), não é a fonte de verdade em runtime.
 - `Fiap.Workshop.Api.csproj` também referencia `Microsoft.EntityFrameworkCore.Design` (necessário porque a Api é o startup project usado pela ferramenta `dotnet ef`).
 
 ### Serviços
-- `JwtService : IJwtService` — gera token HS256 com claims `NameIdentifier`, `Email`, `Role`; lê `Jwt:SecretKey/Issuer/Audience/ExpirationInMinutes` da configuração.
+- `JwtService : IJwtService` — assinatura mudou para `GenerateToken(User user)` (antes recebia `string userId, email, role` soltos, ver §4); gera token HS256 com claims `ClaimTypes.NameIdentifier` (`user.Id`), `ClaimTypes.Email`, `ClaimTypes.Role` (`user.Role.ToString()`); lê `Jwt:SecretKey/Issuer/Audience/ExpirationInMinutes` da configuração (expiração com fallback de 60 min se a config não for um `int` válido).
 - `CurrentUserService : ICurrentUserService` — lê claims do `IHttpContextAccessor`.
 - `PasswordService : IPasswordService` — `BCrypt.Net.BCrypt.HashPassword`/`Verify`, work factor 12. Registrado como `Singleton` (stateless). Ver §10 — não é um Domain Service aqui, é um serviço técnico de Application/Infrastructure.
 - `DomainEventDispatcher : IDomainEventDispatcher` — resolve `IDomainEventHandler<TEvent>` via reflection (`serviceProvider.GetServices` + `MakeGenericType`) e invoca `HandleAsync` em cada handler registrado. **Nenhum handler concreto existe ainda no DI** — hoje o dispatch é um no-op. Ver §11.
@@ -131,26 +170,33 @@ Cada use case tem uma pasta `Boundaries/` (Input) e `Mapper/` (mapeamento entre 
 
 ## 6. Camada de API (`Fiap.Workshop.Api`)
 
-> ⚠️ Reescrita em 2026-08-08 — só existe hoje o endpoint de criação de usuário. `GetUserById`/`UpdateEmail`/`Login` descritos numa versão anterior deste documento não têm endpoint, mapper, validator nem use case implementados; só sobraram os records `LoginRequest`/`UpdateEmailRequest` órfãos.
+> ⚠️ Reescrita em 2026-08-11 — desde a última passada (2026-08-08) ganhou o endpoint de login (`Auth`) e o primeiro endpoint de um agregado de negócio (`Customers`, criação). `GetUserById`/`UpdateEmail` continuam só como scaffold (sem endpoint/mapper/validator/use case).
 
 Minimal APIs organizadas por feature em `Endpoints/{Feature}/*Endpoints.cs`, registradas em `Endpoints/EndpointsExtensions.cs` → `app.MapMinimalApisV1()`.
 
-### Endpoint existente
+### Endpoints existentes
 
 **Users** (`/api/v{version}/users`)
-- `POST /` — `CreateUser`. Tem `.RequireAuthorization("AdminOnly")` — **exige um token JWT válido com role `Admin`**. Não há `.AllowAnonymous()` em lugar nenhum (diferente do que uma versão anterior deste documento descrevia como "cadastro público" com policy de grupo sobrescrita — hoje não existe grupo com policy própria, a checagem é só no endpoint mesmo). Na prática isso é um problema de bootstrap real: sem nenhum Admin pré-existente (não há seed no `db/init.sql`) e sem endpoint de login implementado, **não há caminho pela API pra criar o primeiro usuário** — ver §9. Valida com `CreateUserRequestValidator` via `.WithValidation<CreateUserRequest>()`, chama `ICreateUserUseCase`. Retorna `201 Created` (sem corpo) ou `400 BadRequest` com o `Output` (lista de erros).
+- `POST /` — `CreateUser`. Tem `.RequireAuthorization("AdminOnly")` — **exige um token JWT válido com role `Admin`**. Não há `.AllowAnonymous()`. Na prática isso continua sendo um problema de bootstrap real: sem nenhum Admin pré-existente (não há seed no `db/init.sql`) e sem `AllowAnonymous` em `CreateUser`, **não há caminho pela API pra criar o primeiro usuário** — o endpoint de login (abaixo) resolve "logar depois de ter um usuário", não "criar o primeiro usuário". Ver §9. Valida com `CreateUserRequestValidator` via `.WithValidation<CreateUserRequest>()`, chama `ICreateUserUseCase`. Retorna `201 Created` com o `Output` (contendo o `UserResponse` em `Result`) ou `400 BadRequest` com o `Output` (lista de erros).
 
-Não existe grupo `Auth` nem qualquer outro endpoint — `LoginRequest` (`Requests/Auth/`) e `UpdateEmailRequest` (`Requests/Users/`) são records sem mapper, validator, use case ou rota.
+**Auth** (`/api/v{version}/auth`) — novo desde a última reescrita
+- `POST /login` — `LoginUser`. Tem `.AllowAnonymous()` — não exige autenticação (faz sentido, é o próprio ponto de entrada). Valida com `LoginRequestValidator` via `.WithValidation<LoginRequest>()`, chama `ILoginUserUseCase`. Retorna `200 OK` com o `Output` (token cru em `Result`) se válido, ou `401 Unauthorized` **sem corpo** se inválido (diferente do padrão `400 BadRequest` + `Output` usado nos outros endpoints — aqui o `Output`/lista de erros do use case é descartado).
 
-`CorrelationId` (`Guid`, `NotEmpty`) é um **campo do corpo** de `CreateUserRequest`, não um header — não existe leitura de `x-correlation-id` em lugar nenhum do código atual.
+**Customers** (`/api/v{version}/customers`) — novo, branch atual `feature/5-create-customer-uc`
+- `POST /` — `CreateCustomer`. Tem `.RequireAuthorization("AttendantOnly")` (roles `Attendant`/`Admin`) — **primeiro endpoint a usar uma policy diferente de `AdminOnly`**. Valida com `CreateCustomerRequestValidator` via `.WithValidation<CreateCustomerRequest>()`, chama `ICreateCustomerUseCase`. Retorna `201 Created` (`Location: /api/v1/customers/{id}`, lendo o `Id` via `result.GetResult<Guid>()` — **atenção**: `Result` na verdade guarda um `CustomerResponse`, não um `Guid` cru; `GetResult<Guid>()` faz um cast direto que vai falhar em runtime se algum dia for exercitado — não coberto pelos testes de integração atuais, que chamam o use case direto, não o endpoint) ou `400 BadRequest` com o `Output`.
+
+`CorrelationId` (`Guid`, `NotEmpty`) é um **campo do corpo** em todos os três requests (`CreateUserRequest`, `LoginRequest`, `CreateCustomerRequest`), não um header — não existe leitura de `x-correlation-id` em lugar nenhum do código atual. A inconsistência descrita em versões anteriores deste documento não existe mais: os três requests seguem o mesmo padrão.
+
+Não existe grupo próprio nem rota para `UpdateEmailRequest` (`Requests/Users/`) — segue como record órfão, sem mapper, validator, use case ou rota.
 
 ### Requests / Validators / Mappers
-- `CreateUserRequest(CorrelationId, Name, Email, Password, PasswordConfirmation, Role)` — validado por `CreateUserRequestValidator`: `CorrelationId` obrigatório; `Name` obrigatório (≤200); `Email` obrigatório + `.EmailAddress()` (sem limite de tamanho explícito no validator); `Password` obrigatório, mínimo 8 caracteres (**sem** checar maiúscula/minúscula/dígito); `PasswordConfirmation` igual a `Password`; `Role` dentro do enum. Não há nenhuma validação equivalente no Domain (ver §10) — hoje é só a API que garante isso, sem "defesa em profundidade".
-- `CreateUserMapper.MapToInput(this CreateUserRequest request)` (`Api/Mappers/`) — `CreateUserRequest → CreateUserInput`.
+- `CreateUserRequest(CorrelationId, Name, Email, Password, PasswordConfirmation, Role)` — validado por `CreateUserRequestValidator`: `CorrelationId` obrigatório; `Name` obrigatório (≤200); `Email` obrigatório + `.EmailAddress()` (sem limite de tamanho explícito no validator); `Password` obrigatório, mínimo 8 caracteres (**sem** checar maiúscula/minúscula/dígito); `PasswordConfirmation` igual a `Password`; `Role` dentro do enum (`Admin`/`Attendant`/`Mechanic`, ver §3). Não há nenhuma validação equivalente no Domain (ver §10) — hoje é só a API que garante isso, sem "defesa em profundidade". Mapper: `CreateUserMapper.MapToInput` (`Api/Mappers/`).
+- `LoginRequest(CorrelationId, Email, Password)` — validado por `LoginRequestValidator`: `CorrelationId` obrigatório; `Email` obrigatório + `.EmailAddress()`; `Password` obrigatório, mínimo 8 caracteres. Mapper: `LoginUserMapper.MapToInput` (`Api/Mappers/`).
+- `CreateCustomerRequest(CorrelationId, Name, Document, Email, Phone)` — validado por `CreateCustomerRequestValidator`: `CorrelationId` obrigatório; `Name` obrigatório (≤200); `Document` obrigatório, `Cascade(CascadeMode.Stop)` + tamanho 11 ou 14 + `IsValidDocument()` (dígito verificador real de CPF/CNPJ, via `CpfCnpjLibrary` — ver §2/§4); `Email` obrigatório + `.EmailAddress()`. **`Phone` não tem nenhuma regra de validação** (nem `NotEmpty`) — só existe validação de CPF/CNPJ, não de telefone, hoje. Mapper: `CreateCustomerMapper.MapToInput` (`Api/Mappers/`).
 - `ValidationFilter<TRequest>` (`Filters/`) — `IEndpointFilter` genérico: resolve `IValidator<TRequest>` do DI, roda `ValidateAsync`, e se inválido retorna `400 BadRequest` com um `Output` (`Application.Commons`) preenchido via `AddErrorMessages`. Aplicado via `.WithValidation<TRequest>()` (`EndpointFilterExtensions`).
 
 ### Composição (`IoC/DependencyInjection.cs`)
-`AddApi()`: JWT Bearer (lendo `Jwt:Issuer/Audience/SecretKey`), `AddApiVersioning` (URL segment reader, versão default 1) + `AddApiExplorer` (`SubstituteApiVersionInUrl = true`), `AddAuthorizationBuilder` com policies `AdminOnly` (role `Admin`) e `UserOnly` (roles `User`/`Admin`) — **nenhuma das duas é de fato exercitada por um fluxo completo hoje**, já que o único endpoint (`CreateUser`) exige `AdminOnly` mas não há como conseguir um token de Admin (ver observação de bootstrap acima), `AddProblemDetails`, registra só `IValidator<CreateUserRequest>` como `Scoped` (não "os `*RequestValidator`" — só existe esse um), configura OpenAPI com security scheme Bearer.
+`AddApi()`: `AddValidators` (registra `IValidator<CreateUserRequest>`, `IValidator<LoginRequest>`, `IValidator<CreateCustomerRequest>`, todos `Scoped`), `AddRoles` (`AddAuthorizationBuilder` com as três policies `AdminOnly`/`AttendantOnly`/`MechanicOnly`, ver §2 — hoje só `AdminOnly` (`CreateUser`) e `AttendantOnly` (`CreateCustomer`) são de fato exercitadas por um endpoint; `MechanicOnly` ainda não tem consumidor), `AddJwtConfig` (JWT Bearer lendo `Jwt:Issuer/Audience/SecretKey`, `AddApiVersioning` com URL segment reader e versão default 1 + `AddApiExplorer` com `SubstituteApiVersionInUrl = true`, `AddProblemDetails`, OpenAPI com security scheme Bearer). **Fix aplicado em 2026-08-11** (commit `fe845b2`, "fix(ioc): dependency injection bearer fix"): o documento OpenAPI declarava o `SecurityScheme` "Bearer" nos `Components`, mas não adicionava o `document.Security` global exigindo esse scheme — o botão "Authorize" do Swagger UI aparecia, mas o token informado não era de fato anexado às requisições de teste feitas pela UI. Corrigido adicionando `document.Security.Add(new OpenApiSecurityRequirement { [Bearer] = [] })` no mesmo `AddDocumentTransformer`.
 
 ### `Program.cs`
 Pipeline: `AddControllers` (não usado, pois tudo é Minimal API — resquício de template), `AddEndpointsApiExplorer`, `AddApplication → AddInfrastructure → AddApi`, `MapOpenApi + UseSwaggerUI` (docs em `/swagger`, aponta pro JSON em `/openapi/v1.json`), `UseExceptionHandler`, `UseHttpsRedirection`, `UseAuthentication`, `UseAuthorization`, `UseSerilogRequestLogging`, `MapMinimalApisV1()`.
@@ -186,15 +232,19 @@ Decisão: SonarQube Cloud (ex-SonarCloud — Sonar renomeou o produto em 2024, m
 
 ## 9. Pendências conhecidas
 
-> ⚠️ Lista revisada em 2026-08-08 contra o código real — vários itens abaixo tinham premissas desatualizadas (endpoints que não existem, bug já corrigido, testes já rodados).
+> ⚠️ Lista revisada em 2026-08-11 contra o código real (branch `feature/5-create-customer-uc`) — login já existe, `Customer` já tem use case/endpoint, mas o problema de bootstrap de Admin continua sem solução.
 
-1. **Bootstrap de Admin (novo, 2026-08-08)**: `POST /users` exige `RequireAuthorization("AdminOnly")`, sem `AllowAnonymous`, e não há seed de usuário Admin em `db/init.sql` nem endpoint de login implementado — hoje **não existe nenhum caminho pela API para criar o primeiro usuário**. Precisa de uma decisão: seed de Admin no `init.sql`, endpoint de bootstrap protegido por secret, ou tornar `CreateUser` público e restringir `Role: Admin` na validação/regra de negócio.
-2. **Correlation-id**: hoje só existe em `CreateUserRequest`, como campo do corpo (`Guid CorrelationId`, `NotEmpty`) — não é header. A inconsistência descrita numa versão anterior deste documento (header obrigatório vs. opcional entre `CreateUser`/`GetUserById`/`Login`) não se aplica mais porque esses outros dois endpoints não existem; vale decidir o padrão (header vs. corpo) quando eles forem implementados.
+1. **Bootstrap de Admin (ainda sem solução)**: `POST /users` exige `RequireAuthorization("AdminOnly")`, sem `AllowAnonymous`, e não há seed de usuário Admin em `db/init.sql`. O endpoint de login (`POST /api/v1/auth/login`) já existe (desde a última reescrita) e funciona para autenticar um usuário **que já existe**, mas não resolve o problema original: **ainda não há nenhum caminho pela API para criar o primeiro usuário** (login pressupõe um usuário previamente criado por outro meio — direto no banco, hoje). Precisa de uma decisão: seed de Admin no `init.sql`, endpoint de bootstrap protegido por secret, ou tornar `CreateUser` público e restringir `Role: Admin` na validação/regra de negócio.
+2. **`GetResult<Guid>()` no endpoint `CreateCustomer` provavelmente quebra em runtime** (novo, 2026-08-11): `CustomersEndpoints.MapPost` monta o `Location` do `201 Created` com `result.GetResult<Guid>()`, mas `Output.Result` guarda um `CustomerResponse` (não um `Guid` cru) — `GetResult<T>()` faz um cast direto (`(T?)Result`), que deveria lançar `InvalidCastException` nesse caminho. Não foi pego porque não há teste de integração/funcional batendo no endpoint HTTP (só no use case direto, ver `CreateCustomerUseCaseIntegrationTests`) — `Fiap.Workshop.FunctionalTests` continua vazio (ver item 5). Vale conferir se `CreateUser`/`Auth` têm o mesmo problema antes de assumir que é só do `Customer` (`UsersEndpoints` também usa `GetResult<Guid>()` do mesmo jeito).
 3. **`.env` versionado no git** com segredos de exemplo (SA_PASSWORD, Jwt SecretKey) — confirmar se é intencional para o workshop ou se deveria ir para `.gitignore`.
-4. **Mocking duplicado nos testes**: `Fiap.Workshop.UnitTests.csproj` referencia tanto `Moq` quanto `NSubstitute`; os testes atuais (incluindo `CreateUserUseCaseUnitTests`, `LoggerTestBase<TCategory>`) usam apenas `Moq`. Vale decidir um padrão único.
-5. **`Fiap.Workshop.FunctionalTests`** existe como projeto mas não tem nenhum arquivo de teste ainda — scaffold vazio.
-6. **Domain events sem consumidor**: mecânica pronta e correta (ver §11 — o bug de dispatch que existia numa versão anterior já foi corrigido), mas nenhum `IDomainEventHandler` está registrado no DI — o dispatch acontece e não aciona nada. E-mail de boas-vindas planejado como primeiro handler, ver roadmap em §11.
-7. **Escopo do Tech Challenge (Fase 1) parcialmente implementado**: o enunciado (`15SOAT - Fase 1 - Tech Challenge (1).pdf`, na raiz) pede um sistema de oficina mecânica — CRUD de clientes/veículos/serviços/peças (com controle de estoque), Ordem de Serviço com máquina de estados, orçamento automático, validação de CPF/CNPJ e placa, cobertura de teste mínima de 80% nos domínios críticos, relatório de vulnerabilidades (SAST) e documentação DDD. **Domain e Infrastructure já existem para todos os agregados de negócio** (`Customer`, `Vehicle`, `Service`, `InventoryItem`, `ServiceOrder` — entidades, models, repositórios, mapeamentos, migration; ver §3 e §5) — falta a camada de Application (use cases) e Api (endpoints) por cima deles, além da máquina de estados de OS, orçamento automático, validações de CPF/CNPJ/placa, cobertura de 80% e documentação DDD. O único módulo com a pilha completa (Domain→Application→Infrastructure→Api) é `User`, e mesmo esse só tem o fluxo de criação — login e atualização de e-mail ficaram só como scaffold (ver §4/§6). Ver seção "Roadmap / pendências do desafio" do `README.md` para a lista cobrada pelo enunciado (também desatualizada nesse ponto — vale revisar numa próxima passada).
+4. **Mocking duplicado nos testes**: `Fiap.Workshop.UnitTests.csproj` referencia tanto `Moq` quanto `NSubstitute`; os testes atuais usam apenas `Moq`. Vale decidir um padrão único.
+5. **`Fiap.Workshop.FunctionalTests`** existe como projeto mas não tem nenhum arquivo de teste ainda — scaffold vazio. Sem ele, bugs de composição HTTP (ver item 2) não são pegos por nenhuma camada de teste.
+6. **Domain events sem consumidor**: mecânica pronta e correta (ver §11), mas nenhum `IDomainEventHandler` está registrado no DI — o dispatch acontece e não aciona nada. E-mail de boas-vindas planejado como primeiro handler, ver roadmap em §11. `Customer` nem dispara evento próprio ainda (ver §3).
+7. **Escopo do Tech Challenge (Fase 1) — progresso desde a última passada**: o enunciado (`15SOAT - Fase 1 - Tech Challenge (1).pdf`, na raiz) pede um sistema de oficina mecânica — CRUD de clientes/veículos/serviços/peças (com controle de estoque), Ordem de Serviço com máquina de estados, orçamento automático, validação de CPF/CNPJ e placa, cobertura de teste mínima de 80% nos domínios críticos, relatório de vulnerabilidades (SAST) e documentação DDD.
+   - **Cliente**: agora tem pilha completa até a criação (`CreateCustomer` — Domain→Application→Infrastructure→Api, ver §3/§4/§6), incluindo validação de CPF/CNPJ (dígito verificador via `CpfCnpjLibrary`, ver §2/§6). Ainda falta consulta/atualização/remoção de cliente.
+   - **Veículo, Serviço, Peça/Insumo, Ordem de Serviço**: continuam só com Domain e Infrastructure prontos (entidades, models, repositórios, mapeamentos, migration) — falta a camada de Application (use cases) e Api (endpoints) por cima deles.
+   - **Ainda faltando por completo**: validação de placa, máquina de estados de OS, orçamento automático, controle de estoque, cobertura de 80%, relatório de vulnerabilidades (SAST), documentação DDD.
+   - Ver seção "Roadmap / pendências do desafio" do `README.md` para a lista cobrada pelo enunciado — **está desatualizada** (ainda diz que login e `Customer` não existem); vale revisar numa próxima passada.
 
 ## 10. Senha em `User` — desenho atual (reescrito em 2026-08-08)
 
@@ -204,8 +254,8 @@ Decisão: SonarQube Cloud (ex-SonarCloud — Sonar renomeou o produto em 2024, m
 - `IPasswordService` (não `IPasswordHasher`) mora em `Application.Interfaces.Services` — hashear senha é tratado como serviço técnico, não como invariante do agregado `User`. Implementação: `PasswordService` (Infrastructure), `BCrypt.Net-Next`, work factor 12, registrada como `Singleton`.
 - `User` não hasheia nem valida a própria senha. Quem orquestra é `CreateUserMapper.MapToDomain` (Application): recebe o hash já pronto (`IPasswordService.Hash(input.Password)` calculado no use case) e só então constrói o `User`.
 - Não existem `Create`/`Rehydrate`: o único construtor de `User` serve tanto para criar quanto para reidratar do banco, e sempre dispara `UserCreatedEvent` (ver §3).
-- Validação de senha hoje só existe na Api (`CreateUserRequestValidator`: `NotEmpty().MinimumLength(8)`, sem checar maiúscula/minúscula/dígito) — não há "defesa em profundidade" replicada no Domain como a antiga versão deste documento descrevia.
-- Não há `LoginUseCase` implementado — `LoginRequest`/`LoginResponse` existem como scaffold na Api/Application, mas sem use case, endpoint ou verificação de senha por trás ainda.
+- Validação de senha hoje só existe na Api (`CreateUserRequestValidator`/`LoginRequestValidator`: `NotEmpty().MinimumLength(8)`, sem checar maiúscula/minúscula/dígito) — não há "defesa em profundidade" replicada no Domain como a antiga versão deste documento descrevia.
+- **`LoginUserUseCase` já existe** (desde a última reescrita deste documento, ver §4/§6) e usa `IPasswordService.Verify` para checar a senha contra o hash guardado — `LoginResponse` (DTO) segue existindo mas não é usado; o use case devolve o token JWT como `string` cru.
 
 Se o time decidir reintroduzir Value Objects/fábricas nomeadas para `User`, é um redesenho consciente a ser feito — não é o estado atual.
 

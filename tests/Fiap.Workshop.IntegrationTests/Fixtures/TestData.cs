@@ -8,4 +8,27 @@ internal static class TestData
     public static string Email() => $"{Guid.NewGuid():N}@test.com";
 
     public static int UniqueNumber() => Random.Shared.Next(1, int.MaxValue);
+
+    public static string Document()
+    {
+        var digits = new int[9];
+        for (var i = 0; i < digits.Length; i++)
+            digits[i] = Random.Shared.Next(0, 9);
+
+        var withFirstCheck = digits.Append(CalculateCheckDigit(digits)).ToArray();
+        var withSecondCheck = withFirstCheck.Append(CalculateCheckDigit(withFirstCheck)).ToArray();
+
+        return string.Concat(withSecondCheck);
+    }
+
+    private static int CalculateCheckDigit(int[] digits)
+    {
+        var length = digits.Length;
+        var sum = 0;
+        for (var i = 0; i < length; i++)
+            sum += digits[i] * (length + 1 - i);
+
+        var remainder = sum % 11;
+        return remainder < 2 ? 0 : 11 - remainder;
+    }
 }

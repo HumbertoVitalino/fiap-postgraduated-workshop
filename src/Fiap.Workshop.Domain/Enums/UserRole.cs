@@ -2,6 +2,7 @@ namespace Fiap.Workshop.Domain.Enums;
 
 public enum UserRole
 {
-    User = 0,
-    Admin = 1
+    Admin,
+    Attendant,
+    Mechanic
 }

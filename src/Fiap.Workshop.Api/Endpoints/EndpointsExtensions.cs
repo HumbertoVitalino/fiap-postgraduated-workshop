@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using Fiap.Workshop.Api.Endpoints.Auth;
+using Fiap.Workshop.Api.Endpoints.Customers;
 using Fiap.Workshop.Api.Endpoints.Users;
 
 namespace Fiap.Workshop.Api.Endpoints;
@@ -15,6 +16,7 @@ public static class EndpointsExtensions
 
         app.MapUsersEndpoints(apiVersion);
         app.MapAuthEndpoints(apiVersion);
+        app.MapCustomersEndpoints(apiVersion);
 
         return app;
     }

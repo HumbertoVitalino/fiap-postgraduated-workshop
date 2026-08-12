@@ -2,6 +2,7 @@
 using Fiap.Workshop.Api.Filters;
 using Fiap.Workshop.Api.Mappers;
 using Fiap.Workshop.Api.Requests.Users;
+using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,7 +28,7 @@ public static class UsersEndpoints
                 if (!result.IsValid)
                     return Results.BadRequest(result);
 
-                return Results.Created();
+                return Results.Created($"/api/v1/users/{result.GetResult<UserResponse>()?.Id}", result);
             }
         )
         .RequireAuthorization("AdminOnly")

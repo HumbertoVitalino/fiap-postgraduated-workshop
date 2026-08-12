@@ -55,7 +55,7 @@ public class UserUnitTests
             _fixture.Create<string>(),
             _fixture.Create<string>(),
             _fixture.Create<string>(),
-            UserRole.User,
+            UserRole.Admin,
             DateTime.Now,
             DateTime.Now
         );

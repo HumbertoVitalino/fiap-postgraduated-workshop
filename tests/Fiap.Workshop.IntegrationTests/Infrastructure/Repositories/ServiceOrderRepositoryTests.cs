@@ -27,7 +27,7 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
             2021, 2021, "White", DateTime.UtcNow, DateTime.UtcNow);
 
         var user = new User(
-            Guid.NewGuid(), TestData.Email(), "SO User", TestData.ShortString(32), UserRole.User,
+            Guid.NewGuid(), TestData.Email(), "SO User", TestData.ShortString(32), UserRole.Admin,
             DateTime.UtcNow, DateTime.UtcNow);
 
         await WithScopeAsync<ICustomerRepository>(async repo =>
