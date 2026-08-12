@@ -2,6 +2,7 @@
 using Fiap.Workshop.Api.Filters;
 using Fiap.Workshop.Api.Mappers;
 using Fiap.Workshop.Api.Requests.Customers;
+using Fiap.Workshop.Application.DTOs.Customer;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,7 +28,7 @@ public static class CustomersEndpoints
                 if (!result.IsValid)
                     return Results.BadRequest(result);
 
-                return Results.Created($"/api/v1/customers/{result.GetResult<Guid>()}", result);
+                return Results.Created($"/api/v1/customers/{result.GetResult<CustomerResponse>()?.Id}", result);
             }
         )
         .RequireAuthorization("AttendantOnly")
