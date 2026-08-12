@@ -2,6 +2,7 @@
 using Fiap.Workshop.Api.Filters;
 using Fiap.Workshop.Api.Mappers;
 using Fiap.Workshop.Api.Requests.Auth;
+using Fiap.Workshop.Application.Commons;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Microsoft.AspNetCore.Mvc;
 
@@ -30,6 +31,10 @@ public static class AuthEndpoints
                 return Results.Ok(result);
             }
         )
+        .WithSummary("Authenticates a user.")
+        .WithDescription("Validates the given credentials and returns a JWT access token on success.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
         .AllowAnonymous()
         .WithValidation<LoginRequest>();
     }
