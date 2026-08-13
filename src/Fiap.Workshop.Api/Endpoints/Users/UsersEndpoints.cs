@@ -6,6 +6,7 @@ using Fiap.Workshop.Application.Commons;
 using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.Interfaces.Services;
 using Fiap.Workshop.Application.Interfaces.UseCases;
+using Fiap.Workshop.Application.UseCases.DeleteUser.Boundaries;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
@@ -105,5 +106,25 @@ public static class UsersEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .RequireAuthorization()
         .WithValidation<ChangePasswordRequest>();
+
+        group.MapDelete("{userId}",
+            async (
+                [Required][FromRoute] Guid userId,
+                [FromServices] IDeleteUserUseCase useCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(new DeleteUserInput(Guid.NewGuid(), userId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.NoContent();
+            }
+        )
+        .WithSummary("Deletes an existing user.")
+        .WithDescription("Deletes an existing user by id. Idempotent: returns No Content whether the user existed or not.")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AdminOnly");
     }
 }
