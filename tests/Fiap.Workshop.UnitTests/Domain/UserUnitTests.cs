@@ -65,4 +65,62 @@ public class UserUnitTests
         var userCreatedEvent = Assert.IsType<UserCreatedEvent>(domainEvent);
         Assert.Equal(id, userCreatedEvent.UserId);
     }
+
+    [Fact(DisplayName = "User >> Should update profile >> When UpdateProfile is called")]
+    public void User_ShouldUpdateProfile_WhenUpdateProfileIsCalled()
+    {
+        // Arrange
+        var user = new User(
+            Guid.NewGuid(),
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            UserRole.Admin,
+            DateTime.Now,
+            DateTime.Now
+        );
+        user.ClearDomainEvents();
+
+        var newName = _fixture.Create<string>();
+        var newEmail = _fixture.Create<string>();
+        var newRole = UserRole.Mechanic;
+        var before = DateTime.Now;
+
+        // Act
+        user.UpdateProfile(newName, newEmail, newRole);
+
+        // Assert
+        Assert.Equal(newName, user.Name);
+        Assert.Equal(newEmail, user.Email);
+        Assert.Equal(newRole, user.Role);
+        Assert.InRange(user.UpdatedAt, before, DateTime.Now);
+        Assert.Empty(user.GetDomainEvents());
+    }
+
+    [Fact(DisplayName = "User >> Should change password >> When ChangePassword is called")]
+    public void User_ShouldChangePassword_WhenChangePasswordIsCalled()
+    {
+        // Arrange
+        var user = new User(
+            Guid.NewGuid(),
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            UserRole.Admin,
+            DateTime.Now,
+            DateTime.Now
+        );
+        user.ClearDomainEvents();
+
+        var newPasswordHash = _fixture.Create<string>();
+        var before = DateTime.Now;
+
+        // Act
+        user.ChangePassword(newPasswordHash);
+
+        // Assert
+        Assert.Equal(newPasswordHash, user.Password);
+        Assert.InRange(user.UpdatedAt, before, DateTime.Now);
+        Assert.Empty(user.GetDomainEvents());
+    }
 }
