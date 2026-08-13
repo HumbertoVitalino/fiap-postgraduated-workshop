@@ -1,7 +1,9 @@
 ﻿using CpfCnpjLibrary;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Fiap.Workshop.Application.Commons;
 
+[ExcludeFromCodeCoverage]
 public static class StringExtensions
 {
     private const int CPF_SIZE = 11;
