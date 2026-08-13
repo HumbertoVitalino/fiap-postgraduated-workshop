@@ -28,4 +28,18 @@ public sealed class User : AggregateRoot
 
         RaiseDomainEvent(new UserCreatedEvent(id));
     }
+
+    public void UpdateProfile(string name, string email, UserRole role)
+    {
+        Name = name;
+        Email = email;
+        Role = role;
+        SetUpdatedAt();
+    }
+
+    public void ChangePassword(string newPasswordHash)
+    {
+        Password = newPasswordHash;
+        SetUpdatedAt();
+    }
 }

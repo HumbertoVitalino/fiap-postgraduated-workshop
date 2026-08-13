@@ -14,5 +14,5 @@ public abstract class AggregateRoot(
     public IReadOnlyList<IDomainEvent> GetDomainEvents() => _domainEvents.AsReadOnly();
     public void ClearDomainEvents() => _domainEvents.Clear();
     protected void RaiseDomainEvent(IDomainEvent domainEvent) => _domainEvents.Add(domainEvent);
-    protected void SetUpdatedAt() => UpdatedAt = DateTime.UtcNow;
+    protected void SetUpdatedAt() => UpdatedAt = DateTime.Now;
 }
