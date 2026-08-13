@@ -9,7 +9,7 @@ public static class CreateUserMapper
     public static User MapToDomain(this CreateUserInput input, string passwordHash)
     {
         return new(
-            input.CorrelationId,
+            Guid.NewGuid(),
             input.Email,
             input.Name,
             passwordHash,
