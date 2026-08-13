@@ -2,6 +2,7 @@ using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.CreateCustomer;
 using Fiap.Workshop.Application.UseCases.CreateUser;
 using Fiap.Workshop.Application.UseCases.GetCustomer;
+using Fiap.Workshop.Application.UseCases.GetUsers;
 using Fiap.Workshop.Application.UseCases.LoginUser;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
@@ -17,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<ILoginUserUseCase, LoginUserUseCase>();
         services.AddScoped<ICreateCustomerUseCase, CreateCustomerUseCase>();
         services.AddScoped<IGetCustomerUseCase, GetCustomerUseCase>();
+        services.AddScoped<IGetUsersUseCase, GetUsersUseCase>();
 
         return services;
     }
