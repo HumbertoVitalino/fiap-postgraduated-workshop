@@ -16,7 +16,7 @@ public class GetCustomerUseCaseUnitTests : LoggerTestBase<GetCustomerUseCase>
 {
     private readonly Mock<ICustomerRepository> _customerRepositoryMock = new();
     private readonly Fixture _fixture = new();
-    private GetCustomerUseCase _useCase;
+    private readonly GetCustomerUseCase _useCase;
 
     public GetCustomerUseCaseUnitTests()
     {
