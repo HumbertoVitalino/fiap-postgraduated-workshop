@@ -15,8 +15,24 @@ public static class UsersEndpoints
     {
         var group = app.MapGroup("api/v1/users")
             .WithApiVersionSet(apiVersion)
-            .WithName("Users")
             .WithTags("Users");
+
+        group.MapGet("",
+            async (
+                [FromServices] IGetUsersUseCase getAllUseCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await getAllUseCase.Handle(Guid.NewGuid(), cancellationToken);
+
+                return Results.Ok(result);
+            }
+
+        )
+        .WithSummary("Get all users.")
+        .WithDescription("Get all existing users, return OK array empty if dont exist any user")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .RequireAuthorization("AdminOnly");
 
         group.MapPost("",
             async (

@@ -30,8 +30,4 @@
     <ProjectReference Include="..\..\src\Fiap.Workshop.Infrastructure\Fiap.Workshop.Infrastructure.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Application\UseCases\" />
-  </ItemGroup>
-
 </Project>

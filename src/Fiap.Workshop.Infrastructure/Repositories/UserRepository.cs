@@ -42,4 +42,13 @@ internal sealed class UserRepository(AppDbContext context) : Repository<User>(co
 
     public override void Remove(User entity) =>
         Delete(_context.Users, entity.MapToModel(), entity.Id);
+
+    public async Task<IEnumerable<User>> GetAllAsync(CancellationToken cancellationToken)
+    {
+        var users = await _context.Users
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return users.MapToDomain();
+    }
 }
