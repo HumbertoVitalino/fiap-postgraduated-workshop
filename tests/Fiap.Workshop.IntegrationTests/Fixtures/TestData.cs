@@ -7,8 +7,6 @@ internal static class TestData
 
     public static string Email() => $"{Guid.NewGuid():N}@test.com";
 
-    public static int UniqueNumber() => Random.Shared.Next(1, int.MaxValue);
-
     public static string LicensePlate()
     {
         var letters = new string([.. Enumerable.Range(0, 3).Select(_ => (char)Random.Shared.Next('A', 'Z' + 1))]);

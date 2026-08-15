@@ -14,7 +14,6 @@ public class ServiceOrderUnitTests
     {
         // Arrange
         var id = Guid.NewGuid();
-        var number = _fixture.Create<int>();
         var customerId = Guid.NewGuid();
         var vehicleId = Guid.NewGuid();
         var createdBy = Guid.NewGuid();
@@ -33,7 +32,6 @@ public class ServiceOrderUnitTests
         // Act
         var serviceOrder = new ServiceOrder(
             id,
-            number,
             customerId,
             vehicleId,
             createdBy,
@@ -52,7 +50,6 @@ public class ServiceOrderUnitTests
 
         // Assert
         Assert.Equal(id, serviceOrder.Id);
-        Assert.Equal(number, serviceOrder.Number);
         Assert.Equal(customerId, serviceOrder.CustomerId);
         Assert.Equal(vehicleId, serviceOrder.VehicleId);
         Assert.Equal(createdBy, serviceOrder.CreatedBy);
@@ -74,7 +71,6 @@ public class ServiceOrderUnitTests
     {
         // Arrange
         var id = Guid.NewGuid();
-        var number = _fixture.Create<int>();
         var customerId = Guid.NewGuid();
         var vehicleId = Guid.NewGuid();
         var createdBy = Guid.NewGuid();
@@ -87,7 +83,6 @@ public class ServiceOrderUnitTests
         // Act
         var serviceOrder = new ServiceOrder(
             id,
-            number,
             customerId,
             vehicleId,
             createdBy,

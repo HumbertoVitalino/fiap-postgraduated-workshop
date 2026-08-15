@@ -13,7 +13,6 @@ public class ServiceOrderMapperUnitTests
 
     private ServiceOrder CreateServiceOrder() => new(
         Guid.NewGuid(),
-        _fixture.Create<int>(),
         Guid.NewGuid(),
         Guid.NewGuid(),
         Guid.NewGuid(),
@@ -41,7 +40,6 @@ public class ServiceOrderMapperUnitTests
 
         // Assert
         Assert.Equal(serviceOrder.Id, model.Id);
-        Assert.Equal(serviceOrder.Number, model.Number);
         Assert.Equal(serviceOrder.CustomerId, model.CustomerId);
         Assert.Equal(serviceOrder.VehicleId, model.VehicleId);
         Assert.Equal(serviceOrder.CreatedBy, model.CreatedBy);
@@ -107,7 +105,6 @@ public class ServiceOrderMapperUnitTests
 
     private static ServiceOrderModel CreateServiceOrderModel() => new(
         Guid.NewGuid(),
-        1,
         Guid.NewGuid(),
         Guid.NewGuid(),
         Guid.NewGuid(),
@@ -135,7 +132,6 @@ public class ServiceOrderMapperUnitTests
 
         // Assert
         Assert.Equal(model.Id, serviceOrder.Id);
-        Assert.Equal(model.Number, serviceOrder.Number);
         Assert.Equal(model.CustomerId, serviceOrder.CustomerId);
         Assert.Equal(model.VehicleId, serviceOrder.VehicleId);
         Assert.Equal(model.CreatedBy, serviceOrder.CreatedBy);

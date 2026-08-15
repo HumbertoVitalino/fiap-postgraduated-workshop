@@ -53,7 +53,6 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
 
     private static ServiceOrder CreateServiceOrder(Customer customer, Vehicle vehicle, User user, Guid? id = null) => new(
         id ?? Guid.NewGuid(),
-        TestData.UniqueNumber(),
         customer.Id,
         vehicle.Id,
         user.Id,
@@ -91,7 +90,6 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
 
         Assert.NotNull(found);
         Assert.Equal(serviceOrder.Id, found!.Id);
-        Assert.Equal(serviceOrder.Number, found.Number);
         Assert.Equal(serviceOrder.CustomerId, found.CustomerId);
         Assert.Equal(serviceOrder.VehicleId, found.VehicleId);
         Assert.Equal(serviceOrder.CreatedBy, found.CreatedBy);
@@ -196,7 +194,7 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
         await SeedServiceOrderAsync(serviceOrder);
 
         var updated = new ServiceOrder(
-            serviceOrder.Id, serviceOrder.Number, serviceOrder.CustomerId, serviceOrder.VehicleId,
+            serviceOrder.Id, serviceOrder.CustomerId, serviceOrder.VehicleId,
             serviceOrder.CreatedBy, serviceOrder.ProblemDescription, serviceOrder.OdometerReading,
             serviceOrder.CreatedAt, DateTime.UtcNow, serviceOrder.OpenedAt, ServiceOrderStatus.Diagnosing,
             "Worn brake pads");

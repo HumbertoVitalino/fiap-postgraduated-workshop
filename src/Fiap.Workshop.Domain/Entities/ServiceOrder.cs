@@ -5,7 +5,6 @@ namespace Fiap.Workshop.Domain.Entities;
 
 public class ServiceOrder(
     Guid id,
-    int number,
     Guid customerId,
     Guid vehicleId,
     Guid createdBy,
@@ -23,7 +22,6 @@ public class ServiceOrder(
 ) : AggregateRoot(id, createdAt, updatedAt)
 {
 
-    public int Number { get; private set; } = number;
     public Guid CustomerId { get; private set; } = customerId;
     public Guid VehicleId { get; private set; } = vehicleId;
     public Guid CreatedBy { get; private set; } = createdBy;

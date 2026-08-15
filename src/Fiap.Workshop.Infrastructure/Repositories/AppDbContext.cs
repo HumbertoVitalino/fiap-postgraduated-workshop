@@ -268,12 +268,6 @@ public sealed class AppDbContext(
 
             entity.HasKey(so => so.Id);
 
-            entity.Property(so => so.Number)
-                .IsRequired();
-
-            entity.HasIndex(so => so.Number)
-                .IsUnique();
-
             entity.Property(so => so.CustomerId)
                 .IsRequired();
 
