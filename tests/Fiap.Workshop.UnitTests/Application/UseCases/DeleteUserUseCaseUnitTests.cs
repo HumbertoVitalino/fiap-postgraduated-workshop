@@ -1,7 +1,7 @@
 using AutoFixture;
 using Fiap.Workshop.Application.Interfaces.Repositories;
-using Fiap.Workshop.Application.UseCases.DeleteUser;
-using Fiap.Workshop.Application.UseCases.DeleteUser.Boundaries;
+using Fiap.Workshop.Application.UseCases.Users.DeleteUser;
+using Fiap.Workshop.Application.UseCases.Users.DeleteUser.Boundaries;
 using Fiap.Workshop.Domain.Entities;
 using Fiap.Workshop.Domain.Enums;
 using Fiap.Workshop.UnitTests.Common;
