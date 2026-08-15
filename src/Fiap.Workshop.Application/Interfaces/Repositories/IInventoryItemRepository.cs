@@ -6,4 +6,5 @@ namespace Fiap.Workshop.Application.Interfaces.Repositories;
 public interface IInventoryItemRepository : IRepository<InventoryItem>
 {
     Task<bool> ExistsWithCodeAsync(string code, CancellationToken cancellationToken);
+    Task<IEnumerable<InventoryItem>> GetAllAsync(CancellationToken cancellationToken);
 }
