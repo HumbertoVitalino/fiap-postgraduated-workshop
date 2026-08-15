@@ -36,7 +36,46 @@ public static class CreateServiceOrderMapper
             serviceOrder.Subtotal,
             serviceOrder.Total,
             serviceOrder.OpenedAt,
-            serviceOrder.ClosedAt
+            serviceOrder.ClosedAt,
+            serviceOrder.Parts.Select(part => part.MapToDto()).ToList(),
+            serviceOrder.Services.Select(service => service.MapToDto()).ToList(),
+            serviceOrder.StatusHistory.Select(history => history.MapToDto()).ToList()
+        );
+    }
+
+    public static ServiceOrderPartResponse MapToDto(this ServiceOrderPart part)
+    {
+        return new(
+            part.Id,
+            part.InventoryItemId,
+            part.Name,
+            part.Description,
+            part.UnitPrice,
+            part.Quantity
+        );
+    }
+
+    public static ServiceOrderServiceResponse MapToDto(this ServiceOrderService service)
+    {
+        return new(
+            service.Id,
+            service.ServiceId,
+            service.Name,
+            service.Description,
+            service.UnitPrice,
+            service.Quantity,
+            service.EstimatedDuration
+        );
+    }
+
+    public static ServiceOrderStatusHistoryResponse MapToDto(this ServiceOrderStatusHistory statusHistory)
+    {
+        return new(
+            statusHistory.Id,
+            statusHistory.PreviousStatus.ToString(),
+            statusHistory.CurrentStatus.ToString(),
+            statusHistory.ChangedBy,
+            statusHistory.ChangedAt
         );
     }
 }
