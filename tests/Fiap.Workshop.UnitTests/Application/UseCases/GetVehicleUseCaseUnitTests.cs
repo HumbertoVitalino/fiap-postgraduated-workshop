@@ -67,7 +67,7 @@ public class GetVehicleUseCaseUnitTests : LoggerTestBase<GetVehicleUseCase>
         var input = new GetVehicleInput(_fixture.Create<Guid>(), _fixture.Create<Guid>());
 
         _vehicleRepositoryMock.Setup(x => x.GetByIdAsync(input.VehicleId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Vehicle?)null);
+            .ReturnsAsync(null);
 
         // Act
         var result = await _useCase.Handle(input, CancellationToken.None);
