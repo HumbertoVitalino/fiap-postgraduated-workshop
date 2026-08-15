@@ -1,8 +1,8 @@
 ﻿using Fiap.Workshop.Application.Commons;
+using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.Users.GetUsers.Mapper;
-using Fiap.Workshop.Domain.Entities;
 using Microsoft.Extensions.Logging;
 
 namespace Fiap.Workshop.Application.UseCases.Users.GetUsers;
@@ -24,7 +24,7 @@ public class GetUsersUseCase(
         {
             _logger.LogWarning("[{CorrelationId}] | Unable to find users", correlationId);
 
-            output.AddResult(Array.Empty<User>());
+            output.AddResult(Array.Empty<UserResponse>());
             return output;
         }
 

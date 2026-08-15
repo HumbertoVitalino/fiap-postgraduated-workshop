@@ -37,4 +37,13 @@ internal sealed class ServiceRepository(AppDbContext context) : Repository<Servi
             .AsNoTracking()
             .AnyAsync(x => x.Code == code, cancellationToken);
     }
+
+    public async Task<IEnumerable<Service>> GetAllAsync(CancellationToken cancellationToken)
+    {
+        var services = await _context.Services
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return services.MapToDomain();
+    }
 }

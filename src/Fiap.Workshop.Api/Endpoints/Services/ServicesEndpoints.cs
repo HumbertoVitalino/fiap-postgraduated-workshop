@@ -17,6 +17,22 @@ public static class ServicesEndpoints
             .WithApiVersionSet(apiVersion)
             .WithTags("Services");
 
+        group.MapGet("",
+            async (
+                [FromServices] IGetServicesUseCase getAllUseCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await getAllUseCase.Handle(Guid.NewGuid(), cancellationToken);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Gets all services.")
+        .WithDescription("Returns all services registered in the catalog. Returns an empty array if none exist.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .RequireAuthorization();
+
         group.MapPost("",
             async (
                 [FromBody] CreateServiceRequest request,

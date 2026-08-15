@@ -9,6 +9,7 @@ using Fiap.Workshop.Application.UseCases.Users.GetUsers;
 using Fiap.Workshop.Application.UseCases.Vehicles.GetVehicle;
 using Fiap.Workshop.Application.UseCases.Users.LoginUser;
 using Fiap.Workshop.Application.UseCases.Services.CreateService;
+using Fiap.Workshop.Application.UseCases.Services.GetServices;
 using Fiap.Workshop.Application.UseCases.Customers.UpdateCustomer;
 using Fiap.Workshop.Application.UseCases.Users.UpdateUser;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<ICreateVehicleUseCase, CreateVehicleUseCase>();
         services.AddScoped<IGetVehicleUseCase, GetVehicleUseCase>();
         services.AddScoped<ICreateServiceUseCase, CreateServiceUseCase>();
+        services.AddScoped<IGetServicesUseCase, GetServicesUseCase>();
 
         return services;
     }
