@@ -37,4 +37,13 @@ internal sealed class InventoryItemRepository(AppDbContext context) : Repository
             .AsNoTracking()
             .AnyAsync(x => x.Code == code, cancellationToken);
     }
+
+    public async Task<IEnumerable<InventoryItem>> GetAllAsync(CancellationToken cancellationToken)
+    {
+        var inventoryItems = await _context.InventoryItems
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return inventoryItems.MapToDomain();
+    }
 }

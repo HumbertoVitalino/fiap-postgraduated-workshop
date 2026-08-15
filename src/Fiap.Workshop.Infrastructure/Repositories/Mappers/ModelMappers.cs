@@ -84,7 +84,6 @@ internal static class ModelMappers
     {
         var model = new ServiceOrderModel(
             serviceOrder.Id,
-            serviceOrder.Number,
             serviceOrder.CustomerId,
             serviceOrder.VehicleId,
             serviceOrder.CreatedBy,

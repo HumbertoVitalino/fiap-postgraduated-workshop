@@ -1,0 +1,43 @@
+using Asp.Versioning.Builder;
+using Fiap.Workshop.Api.Filters;
+using Fiap.Workshop.Api.Mappers;
+using Fiap.Workshop.Api.Requests.ServiceOrders;
+using Fiap.Workshop.Application.Commons;
+using Fiap.Workshop.Application.DTOs.ServiceOrder;
+using Fiap.Workshop.Application.Interfaces.Services;
+using Fiap.Workshop.Application.Interfaces.UseCases;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Fiap.Workshop.Api.Endpoints.ServiceOrders;
+
+public static class ServiceOrdersEndpoints
+{
+    public static void MapServiceOrdersEndpoints(this IEndpointRouteBuilder app, ApiVersionSet apiVersion)
+    {
+        var group = app.MapGroup("api/v1/service-orders")
+            .WithApiVersionSet(apiVersion)
+            .WithTags("ServiceOrders");
+
+        group.MapPost("",
+            async (
+                [FromBody] CreateServiceOrderRequest request,
+                [FromServices] ICreateServiceOrderUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(currentUser.UserId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Created($"/api/v1/service-orders/{result.GetResult<ServiceOrderResponse>()?.Id}", result);
+            }
+        )
+        .WithSummary("Opens a new service order.")
+        .WithDescription("Opens a service order for an existing vehicle owned by an existing customer. The order starts in the Received status with no budget.")
+        .Produces<Output>(StatusCodes.Status201Created)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AttendantOnly")
+        .WithValidation<CreateServiceOrderRequest>();
+    }
+}

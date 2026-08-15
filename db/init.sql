@@ -115,7 +115,6 @@ IF NOT EXISTS (SELECT * FROM sysobjects WHERE name = 'ServiceOrders' AND xtype =
 BEGIN
     CREATE TABLE ServiceOrders (
         Id                  UNIQUEIDENTIFIER NOT NULL,
-        Number              INT              NOT NULL,
         CustomerId          UNIQUEIDENTIFIER NOT NULL,
         VehicleId           UNIQUEIDENTIFIER NOT NULL,
         CreatedBy           UNIQUEIDENTIFIER NOT NULL,
@@ -139,7 +138,6 @@ BEGIN
             REFERENCES Users (Id) ON DELETE NO ACTION
     );
 
-    CREATE UNIQUE INDEX IX_ServiceOrders_Number ON ServiceOrders (Number);
     CREATE INDEX IX_ServiceOrders_CustomerId ON ServiceOrders (CustomerId);
     CREATE INDEX IX_ServiceOrders_VehicleId ON ServiceOrders (VehicleId);
     CREATE INDEX IX_ServiceOrders_CreatedBy ON ServiceOrders (CreatedBy);

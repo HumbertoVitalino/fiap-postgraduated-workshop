@@ -67,6 +67,8 @@ internal static class DomainMappers
         );
     }
 
+    internal static IEnumerable<InventoryItem> MapToDomain(this IEnumerable<InventoryItemModel> model) => model.Select(MapToDomain);
+
     internal static Service MapToDomain(this ServiceModel model)
     {
         return new Service(
@@ -88,7 +90,6 @@ internal static class DomainMappers
     {
         var serviceOrder = new ServiceOrder(
             model.Id,
-            model.Number,
             model.CustomerId,
             model.VehicleId,
             model.CreatedBy,

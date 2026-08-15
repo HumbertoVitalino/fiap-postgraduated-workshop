@@ -4,7 +4,6 @@ namespace Fiap.Workshop.Infrastructure.Repositories.Models;
 
 public sealed class ServiceOrderModel : Model
 {
-    public int Number { get; private set; }
     public Guid CustomerId { get; private set; }
     public Guid VehicleId { get; private set; }
     public Guid CreatedBy { get; private set; }
@@ -26,7 +25,6 @@ public sealed class ServiceOrderModel : Model
 
     public ServiceOrderModel(
         Guid id,
-        int number,
         Guid customerId,
         Guid vehicleId,
         Guid createdBy,
@@ -43,7 +41,6 @@ public sealed class ServiceOrderModel : Model
         DateTime updatedAt
     ) : base(id, createdAt, updatedAt)
     {
-        Number = number;
         CustomerId = customerId;
         VehicleId = vehicleId;
         CreatedBy = createdBy;
