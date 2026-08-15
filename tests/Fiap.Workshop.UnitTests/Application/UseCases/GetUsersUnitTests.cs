@@ -1,7 +1,7 @@
 ﻿using AutoFixture;
 using Fiap.Workshop.Application.Interfaces.Repositories;
-using Fiap.Workshop.Application.UseCases.GetUsers;
-using Fiap.Workshop.Application.UseCases.GetUsers.Mapper;
+using Fiap.Workshop.Application.UseCases.Users.GetUsers;
+using Fiap.Workshop.Application.UseCases.Users.GetUsers.Mapper;
 using Fiap.Workshop.Domain.Entities;
 using Fiap.Workshop.UnitTests.Common;
 using FluentAssertions;
