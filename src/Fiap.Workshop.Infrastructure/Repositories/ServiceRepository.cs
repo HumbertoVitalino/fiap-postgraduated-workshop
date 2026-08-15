@@ -30,4 +30,11 @@ internal sealed class ServiceRepository(AppDbContext context) : Repository<Servi
 
     public override void Remove(Service entity) =>
         Delete(_context.Services, entity.MapToModel(), entity.Id);
+
+    public async Task<bool> ExistsWithCodeAsync(string code, CancellationToken cancellationToken)
+    {
+        return await _context.Services
+            .AsNoTracking()
+            .AnyAsync(x => x.Code == code, cancellationToken);
+    }
 }
