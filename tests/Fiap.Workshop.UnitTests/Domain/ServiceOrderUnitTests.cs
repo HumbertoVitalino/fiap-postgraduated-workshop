@@ -1,6 +1,8 @@
 using AutoFixture;
+using Fiap.Workshop.Domain.Abstractions;
 using Fiap.Workshop.Domain.Entities;
 using Fiap.Workshop.Domain.Enums;
+using Fiap.Workshop.Domain.Errors;
 using Xunit;
 
 namespace Fiap.Workshop.UnitTests.Domain;
@@ -103,5 +105,60 @@ public class ServiceOrderUnitTests
         Assert.Empty(serviceOrder.Parts);
         Assert.Empty(serviceOrder.Services);
         Assert.Empty(serviceOrder.StatusHistory);
+    }
+
+    private static ServiceOrder CreateReceivedServiceOrder() => new(
+        Guid.NewGuid(),
+        Guid.NewGuid(),
+        Guid.NewGuid(),
+        Guid.NewGuid(),
+        "Engine noise",
+        12000,
+        DateTime.Now,
+        DateTime.Now,
+        DateTime.Now
+    );
+
+    [Fact(DisplayName = "ServiceOrder >> Should start diagnosis >> When status is Received")]
+    public void ServiceOrder_ShouldStartDiagnosis_WhenStatusIsReceived()
+    {
+        // Arrange
+        var serviceOrder = CreateReceivedServiceOrder();
+        var diagnoseDescription = _fixture.Create<string>();
+        var changedBy = Guid.NewGuid();
+        var before = DateTime.Now;
+
+        // Act
+        serviceOrder.StartDiagnosis(diagnoseDescription, changedBy);
+
+        // Assert
+        Assert.Equal(ServiceOrderStatus.Diagnosing, serviceOrder.Status);
+        Assert.Equal(diagnoseDescription, serviceOrder.DiagnoseDescription);
+        Assert.InRange(serviceOrder.UpdatedAt, before, DateTime.Now);
+
+        var history = Assert.Single(serviceOrder.StatusHistory);
+        Assert.Equal(serviceOrder.Id, history.ServiceOrderId);
+        Assert.Equal(ServiceOrderStatus.Received, history.PreviousStatus);
+        Assert.Equal(ServiceOrderStatus.Diagnosing, history.CurrentStatus);
+        Assert.Equal(changedBy, history.ChangedBy);
+        Assert.InRange(history.ChangedAt, before, DateTime.Now);
+    }
+
+    [Fact(DisplayName = "ServiceOrder >> Should throw >> When StartDiagnosis is called and status is not Received")]
+    public void ServiceOrder_ShouldThrow_WhenStartDiagnosisIsCalledAndStatusIsNotReceived()
+    {
+        // Arrange
+        var serviceOrder = CreateReceivedServiceOrder();
+        serviceOrder.StartDiagnosis(_fixture.Create<string>(), Guid.NewGuid());
+
+        // Act
+        var act = () => serviceOrder.StartDiagnosis(_fixture.Create<string>(), Guid.NewGuid());
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(
+            string.Format(ServiceOrderErrors.InvalidStatusTransition, ServiceOrderStatus.Diagnosing, ServiceOrderStatus.Diagnosing),
+            exception.Message
+        );
     }
 }
