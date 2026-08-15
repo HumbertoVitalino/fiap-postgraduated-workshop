@@ -1,30 +1,59 @@
-﻿using Fiap.Workshop.Domain.Abstractions;
+using Fiap.Workshop.Domain.Abstractions;
 using Fiap.Workshop.Domain.Enums;
+using Fiap.Workshop.Domain.Errors;
 
 namespace Fiap.Workshop.Domain.Entities;
 
-public class InventoryItem(
-    Guid id,
-    string code,
-    string name,
-    string description,
-    int quantityOnHand,
-    int reservedQuantity,
-    int minimumStock,
-    decimal unitPrice,
-    UnitOfMeasure unitOfMeasure,
-    bool isActive,
-    DateTime createdAt,
-    DateTime updatedAt
-) : AggregateRoot(id, createdAt, updatedAt)
+public class InventoryItem : AggregateRoot
 {
-    public string Code { get; private set; } = code;
-    public string Name { get; private set; } = name;
-    public string Description { get; private set; } = description;
-    public int QuantityOnHand { get; private set; } = quantityOnHand;
-    public int ReservedQuantity { get; private set; } = reservedQuantity;
-    public int MinimumStock { get; private set; } = minimumStock;
-    public decimal UnitPrice { get; private set; } = unitPrice;
-    public UnitOfMeasure UnitOfMeasure { get; private set; } = unitOfMeasure;
-    public bool IsActive { get; private set; } = isActive;
+    public string Code { get; private set; }
+    public string Name { get; private set; }
+    public string Description { get; private set; }
+    public int QuantityOnHand { get; private set; }
+    public int ReservedQuantity { get; private set; }
+    public int MinimumStock { get; private set; }
+    public decimal UnitPrice { get; private set; }
+    public UnitOfMeasure UnitOfMeasure { get; private set; }
+    public bool IsActive { get; private set; }
+
+    public InventoryItem(
+        Guid id,
+        string code,
+        string name,
+        string description,
+        int quantityOnHand,
+        int reservedQuantity,
+        int minimumStock,
+        decimal unitPrice,
+        UnitOfMeasure unitOfMeasure,
+        bool isActive,
+        DateTime createdAt,
+        DateTime updatedAt
+    ) : base(id, createdAt, updatedAt)
+    {
+        if (quantityOnHand < 0)
+            throw new DomainException(InventoryItemErrors.InvalidQuantityOnHand);
+
+        if (reservedQuantity < 0)
+            throw new DomainException(InventoryItemErrors.InvalidReservedQuantity);
+
+        if (reservedQuantity > quantityOnHand)
+            throw new DomainException(InventoryItemErrors.ReservedQuantityExceedsQuantityOnHand);
+
+        if (minimumStock < 0)
+            throw new DomainException(InventoryItemErrors.InvalidMinimumStock);
+
+        if (unitPrice < 0)
+            throw new DomainException(InventoryItemErrors.InvalidUnitPrice);
+
+        Code = code;
+        Name = name;
+        Description = description;
+        QuantityOnHand = quantityOnHand;
+        ReservedQuantity = reservedQuantity;
+        MinimumStock = minimumStock;
+        UnitPrice = unitPrice;
+        UnitOfMeasure = unitOfMeasure;
+        IsActive = isActive;
+    }
 }
