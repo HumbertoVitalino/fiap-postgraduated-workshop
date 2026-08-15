@@ -1,5 +1,5 @@
 using Fiap.Workshop.Application.Commons;
-using Fiap.Workshop.Application.UseCases.Vehicles.CreateVehicle.Boundaries;
+using Fiap.Workshop.Application.UseCases.CreateVehicle.Boundaries;
 
 namespace Fiap.Workshop.Application.Interfaces.UseCases;
 

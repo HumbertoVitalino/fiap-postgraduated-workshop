@@ -6,7 +6,7 @@ using Fiap.Workshop.Application.Commons;
 using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.Interfaces.Services;
 using Fiap.Workshop.Application.Interfaces.UseCases;
-using Fiap.Workshop.Application.UseCases.Users.DeleteUser.Boundaries;
+using Fiap.Workshop.Application.UseCases.DeleteUser.Boundaries;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 

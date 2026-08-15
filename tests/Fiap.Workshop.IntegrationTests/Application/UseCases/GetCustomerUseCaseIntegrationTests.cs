@@ -1,8 +1,8 @@
 using Fiap.Workshop.Application.Commons;
 using Fiap.Workshop.Application.DTOs.Customer;
 using Fiap.Workshop.Application.Interfaces.UseCases;
-using Fiap.Workshop.Application.UseCases.Customers.CreateCustomer.Boundaries;
-using Fiap.Workshop.Application.UseCases.Customers.GetCustomer.Boundaries;
+using Fiap.Workshop.Application.UseCases.CreateCustomer.Boundaries;
+using Fiap.Workshop.Application.UseCases.GetCustomer.Boundaries;
 using Fiap.Workshop.IntegrationTests.Fixtures;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;

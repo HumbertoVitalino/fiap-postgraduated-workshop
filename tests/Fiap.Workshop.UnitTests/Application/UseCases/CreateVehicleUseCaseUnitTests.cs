@@ -1,7 +1,7 @@
 using AutoFixture;
 using Fiap.Workshop.Application.Interfaces.Repositories;
-using Fiap.Workshop.Application.UseCases.Vehicles.CreateVehicle;
-using Fiap.Workshop.Application.UseCases.Vehicles.CreateVehicle.Boundaries;
+using Fiap.Workshop.Application.UseCases.CreateVehicle;
+using Fiap.Workshop.Application.UseCases.CreateVehicle.Boundaries;
 using Fiap.Workshop.Domain.Entities;
 using Fiap.Workshop.UnitTests.Common;
 using FluentAssertions;

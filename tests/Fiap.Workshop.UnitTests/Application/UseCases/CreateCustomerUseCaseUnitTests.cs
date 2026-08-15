@@ -1,7 +1,7 @@
 using AutoFixture;
 using Fiap.Workshop.Application.Interfaces.Repositories;
-using Fiap.Workshop.Application.UseCases.Customers.CreateCustomer;
-using Fiap.Workshop.Application.UseCases.Customers.CreateCustomer.Boundaries;
+using Fiap.Workshop.Application.UseCases.CreateCustomer;
+using Fiap.Workshop.Application.UseCases.CreateCustomer.Boundaries;
 using Fiap.Workshop.UnitTests.Common;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;

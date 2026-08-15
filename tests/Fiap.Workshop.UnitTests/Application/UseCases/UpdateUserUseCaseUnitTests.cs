@@ -1,8 +1,8 @@
 using AutoFixture;
 using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.Interfaces.Repositories;
-using Fiap.Workshop.Application.UseCases.Users.UpdateUser;
-using Fiap.Workshop.Application.UseCases.Users.UpdateUser.Boundaries;
+using Fiap.Workshop.Application.UseCases.UpdateUser;
+using Fiap.Workshop.Application.UseCases.UpdateUser.Boundaries;
 using Fiap.Workshop.Domain.Entities;
 using Fiap.Workshop.Domain.Enums;
 using Fiap.Workshop.UnitTests.Common;

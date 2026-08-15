@@ -1,5 +1,5 @@
 ﻿using Fiap.Workshop.Api.Requests.Auth;
-using Fiap.Workshop.Application.UseCases.Users.LoginUser.Boundaries;
+using Fiap.Workshop.Application.UseCases.LoginUser.Boundaries;
 
 namespace Fiap.Workshop.Api.Mappers;
 

@@ -1,5 +1,5 @@
 using Fiap.Workshop.Api.Requests.Customers;
-using Fiap.Workshop.Application.UseCases.Customers.UpdateCustomer.Boundaries;
+using Fiap.Workshop.Application.UseCases.UpdateCustomer.Boundaries;
 
 namespace Fiap.Workshop.Api.Mappers;
 
