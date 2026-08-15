@@ -1,14 +1,15 @@
 using Fiap.Workshop.Application.Interfaces.UseCases;
-using Fiap.Workshop.Application.UseCases.ChangePassword;
-using Fiap.Workshop.Application.UseCases.CreateCustomer;
-using Fiap.Workshop.Application.UseCases.CreateUser;
-using Fiap.Workshop.Application.UseCases.CreateVehicle;
-using Fiap.Workshop.Application.UseCases.DeleteUser;
-using Fiap.Workshop.Application.UseCases.GetCustomer;
-using Fiap.Workshop.Application.UseCases.GetUsers;
-using Fiap.Workshop.Application.UseCases.LoginUser;
-using Fiap.Workshop.Application.UseCases.UpdateCustomer;
-using Fiap.Workshop.Application.UseCases.UpdateUser;
+using Fiap.Workshop.Application.UseCases.Users.ChangePassword;
+using Fiap.Workshop.Application.UseCases.Customers.CreateCustomer;
+using Fiap.Workshop.Application.UseCases.Users.CreateUser;
+using Fiap.Workshop.Application.UseCases.Vehicles.CreateVehicle;
+using Fiap.Workshop.Application.UseCases.Users.DeleteUser;
+using Fiap.Workshop.Application.UseCases.Customers.GetCustomer;
+using Fiap.Workshop.Application.UseCases.Users.GetUsers;
+using Fiap.Workshop.Application.UseCases.Vehicles.GetVehicle;
+using Fiap.Workshop.Application.UseCases.Users.LoginUser;
+using Fiap.Workshop.Application.UseCases.Customers.UpdateCustomer;
+using Fiap.Workshop.Application.UseCases.Users.UpdateUser;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
 
@@ -29,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<IDeleteUserUseCase, DeleteUserUseCase>();
         services.AddScoped<IUpdateCustomerUseCase, UpdateCustomerUseCase>();
         services.AddScoped<ICreateVehicleUseCase, CreateVehicleUseCase>();
+        services.AddScoped<IGetVehicleUseCase, GetVehicleUseCase>();
 
         return services;
     }

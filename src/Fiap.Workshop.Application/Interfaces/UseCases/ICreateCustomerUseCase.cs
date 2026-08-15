@@ -1,5 +1,5 @@
 ﻿using Fiap.Workshop.Application.Commons;
-using Fiap.Workshop.Application.UseCases.CreateCustomer.Boundaries;
+using Fiap.Workshop.Application.UseCases.Customers.CreateCustomer.Boundaries;
 
 namespace Fiap.Workshop.Application.Interfaces.UseCases;
 

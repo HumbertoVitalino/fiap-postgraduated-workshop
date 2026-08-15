@@ -1,6 +1,6 @@
 ﻿using AutoFixture;
-using Fiap.Workshop.Application.UseCases.CreateUser.Boundaries;
-using Fiap.Workshop.Application.UseCases.CreateUser.Mapper;
+using Fiap.Workshop.Application.UseCases.Users.CreateUser.Boundaries;
+using Fiap.Workshop.Application.UseCases.Users.CreateUser.Mapper;
 using Fiap.Workshop.Domain.Entities;
 using FluentAssertions;
 using Xunit;

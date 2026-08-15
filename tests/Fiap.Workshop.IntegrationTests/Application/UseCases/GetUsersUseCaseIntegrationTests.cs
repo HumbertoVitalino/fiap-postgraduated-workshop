@@ -1,7 +1,7 @@
 using Fiap.Workshop.Application.Commons;
 using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.Interfaces.UseCases;
-using Fiap.Workshop.Application.UseCases.CreateUser.Boundaries;
+using Fiap.Workshop.Application.UseCases.Users.CreateUser.Boundaries;
 using Fiap.Workshop.Domain.Enums;
 using Fiap.Workshop.IntegrationTests.Fixtures;
 using FluentAssertions;
