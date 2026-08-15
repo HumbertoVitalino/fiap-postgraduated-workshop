@@ -90,7 +90,6 @@ internal static class DomainMappers
     {
         var serviceOrder = new ServiceOrder(
             model.Id,
-            model.Number,
             model.CustomerId,
             model.VehicleId,
             model.CreatedBy,
