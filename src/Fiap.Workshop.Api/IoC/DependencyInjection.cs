@@ -1,11 +1,14 @@
 using System.Text;
 using Asp.Versioning;
+using Fiap.Workshop.Api.Handlers;
 using Fiap.Workshop.Api.Requests.Auth;
 using Fiap.Workshop.Api.Requests.Customers;
 using Fiap.Workshop.Api.Requests.Users;
+using Fiap.Workshop.Api.Requests.Vehicles;
 using Fiap.Workshop.Api.Validators.Auth;
 using Fiap.Workshop.Api.Validators.Customers;
 using Fiap.Workshop.Api.Validators.Users;
+using Fiap.Workshop.Api.Validators.Vehicles;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -32,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
         services.AddScoped<IValidator<CreateCustomerRequest>, CreateCustomerRequestValidator>();
         services.AddScoped<IValidator<UpdateCustomerRequest>, UpdateCustomerRequestValidator>();
+        services.AddScoped<IValidator<CreateVehicleRequest>, CreateVehicleRequestValidator>();
 
         return services;
     }
@@ -77,6 +81,7 @@ public static class DependencyInjection
             options.SubstituteApiVersionInUrl = true;
         });
 
+        services.AddExceptionHandler<DomainExceptionHandler>();
         services.AddProblemDetails();
 
         services.AddOpenApi(options =>
