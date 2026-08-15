@@ -1,5 +1,5 @@
 using Fiap.Workshop.Application.Commons;
-using Fiap.Workshop.Application.UseCases.Users.UpdateUser.Boundaries;
+using Fiap.Workshop.Application.UseCases.UpdateUser.Boundaries;
 
 namespace Fiap.Workshop.Application.Interfaces.UseCases;
 

@@ -5,9 +5,7 @@ using Fiap.Workshop.Api.Requests.Vehicles;
 using Fiap.Workshop.Application.Commons;
 using Fiap.Workshop.Application.DTOs.Vehicle;
 using Fiap.Workshop.Application.Interfaces.UseCases;
-using Fiap.Workshop.Application.UseCases.Vehicles.GetVehicle.Boundaries;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
 
 namespace Fiap.Workshop.Api.Endpoints.Vehicles;
 
@@ -18,26 +16,6 @@ public static class VehiclesEndpoints
         var group = app.MapGroup("api/v1/vehicles")
             .WithApiVersionSet(apiVersion)
             .WithTags("Vehicles");
-
-        group.MapGet("{vehicleId}",
-            async (
-                [Required][FromRoute] Guid vehicleId,
-                [FromServices] IGetVehicleUseCase getByIdUseCase,
-                CancellationToken cancellationToken
-            ) =>
-            {
-                var result = await getByIdUseCase.Handle(new GetVehicleInput(Guid.NewGuid(), vehicleId), cancellationToken);
-                if (!result.IsValid)
-                    return Results.NotFound(result);
-
-                return Results.Ok(result);
-            }
-        )
-        .WithSummary("Gets a vehicle by id.")
-        .WithDescription("Returns the vehicle that matches the given identifier.")
-        .Produces<Output>(StatusCodes.Status200OK)
-        .Produces<Output>(StatusCodes.Status404NotFound)
-        .RequireAuthorization("AttendantOnly");
 
         group.MapPost("",
             async (

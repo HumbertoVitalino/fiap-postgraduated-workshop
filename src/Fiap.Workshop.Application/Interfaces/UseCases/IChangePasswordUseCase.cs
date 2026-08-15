@@ -1,5 +1,5 @@
 using Fiap.Workshop.Application.Commons;
-using Fiap.Workshop.Application.UseCases.Users.ChangePassword.Boundaries;
+using Fiap.Workshop.Application.UseCases.ChangePassword.Boundaries;
 
 namespace Fiap.Workshop.Application.Interfaces.UseCases;
 

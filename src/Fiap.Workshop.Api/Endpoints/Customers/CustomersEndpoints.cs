@@ -5,7 +5,7 @@ using Fiap.Workshop.Api.Requests.Customers;
 using Fiap.Workshop.Application.Commons;
 using Fiap.Workshop.Application.DTOs.Customer;
 using Fiap.Workshop.Application.Interfaces.UseCases;
-using Fiap.Workshop.Application.UseCases.Customers.GetCustomer.Boundaries;
+using Fiap.Workshop.Application.UseCases.GetCustomer.Boundaries;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 

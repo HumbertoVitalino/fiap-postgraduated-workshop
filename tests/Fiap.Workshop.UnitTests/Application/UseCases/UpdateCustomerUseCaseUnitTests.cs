@@ -1,8 +1,8 @@
 using AutoFixture;
 using Fiap.Workshop.Application.DTOs.Customer;
 using Fiap.Workshop.Application.Interfaces.Repositories;
-using Fiap.Workshop.Application.UseCases.Customers.UpdateCustomer;
-using Fiap.Workshop.Application.UseCases.Customers.UpdateCustomer.Boundaries;
+using Fiap.Workshop.Application.UseCases.UpdateCustomer;
+using Fiap.Workshop.Application.UseCases.UpdateCustomer.Boundaries;
 using Fiap.Workshop.Domain.Entities;
 using Fiap.Workshop.UnitTests.Common;
 using FluentAssertions;
