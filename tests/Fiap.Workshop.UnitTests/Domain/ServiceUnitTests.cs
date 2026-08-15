@@ -1,5 +1,7 @@
 using AutoFixture;
+using Fiap.Workshop.Domain.Abstractions;
 using Fiap.Workshop.Domain.Entities;
+using Fiap.Workshop.Domain.Errors;
 using Xunit;
 
 namespace Fiap.Workshop.UnitTests.Domain;
@@ -7,6 +9,18 @@ namespace Fiap.Workshop.UnitTests.Domain;
 public class ServiceUnitTests
 {
     private readonly Fixture _fixture = new();
+
+    private Service CreateService(decimal basePrice, short estimatedDuration) => new(
+        Guid.NewGuid(),
+        _fixture.Create<string>(),
+        _fixture.Create<string>(),
+        _fixture.Create<string>(),
+        basePrice,
+        estimatedDuration,
+        true,
+        DateTime.Now,
+        DateTime.Now
+    );
 
     [Fact(DisplayName = "Service >> Should be created >> When all required properties are provided")]
     public void Service_ShouldBeCreated_WhenAllRequiredPropertiesAreProvided()
@@ -45,5 +59,27 @@ public class ServiceUnitTests
         Assert.Equal(isActive, service.IsActive);
         Assert.Equal(createdAt, service.CreatedAt);
         Assert.Equal(updatedAt, service.UpdatedAt);
+    }
+
+    [Fact(DisplayName = "Service >> Should throw DomainException >> When base price is negative")]
+    public void Service_ShouldThrowDomainException_WhenBasePriceIsNegative()
+    {
+        // Act
+        var act = () => CreateService(-0.01m, 60);
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(ServiceErrors.InvalidBasePrice, exception.Message);
+    }
+
+    [Fact(DisplayName = "Service >> Should throw DomainException >> When estimated duration is negative")]
+    public void Service_ShouldThrowDomainException_WhenEstimatedDurationIsNegative()
+    {
+        // Act
+        var act = () => CreateService(150.00m, -1);
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(ServiceErrors.InvalidEstimatedDuration, exception.Message);
     }
 }
