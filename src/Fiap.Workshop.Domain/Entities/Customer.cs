@@ -16,4 +16,12 @@ public class Customer(
     public string Document { get; private set; } = document;
     public string Email { get; private set; } = email;
     public string Phone { get; private set; } = phone;
+
+    public void UpdateProfile(string name, string email, string phone)
+    {
+        Name = name;
+        Email = email;
+        Phone = phone;
+        SetUpdatedAt();
+    }
 }

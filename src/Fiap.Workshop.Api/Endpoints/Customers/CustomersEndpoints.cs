@@ -59,5 +59,27 @@ public static class CustomersEndpoints
         .Produces<Output>(StatusCodes.Status400BadRequest)
         .RequireAuthorization("AttendantOnly")
         .WithValidation<CreateCustomerRequest>();
+
+        group.MapPut("{customerId}",
+            async (
+                [Required][FromRoute] Guid customerId,
+                [FromBody] UpdateCustomerRequest request,
+                [FromServices] IUpdateCustomerUseCase useCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(customerId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Updates an existing customer.")
+        .WithDescription("Updates name, email and phone of an existing customer. The document (CPF/CNPJ) cannot be changed. Fails if the customer does not exist or the new email/phone already belongs to another customer.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AttendantOnly")
+        .WithValidation<UpdateCustomerRequest>();
     }
 }

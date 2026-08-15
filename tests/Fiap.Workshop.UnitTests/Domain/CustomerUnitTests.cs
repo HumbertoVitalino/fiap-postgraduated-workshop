@@ -40,4 +40,35 @@ public class CustomerUnitTests
         Assert.Equal(createdAt, customer.CreatedAt);
         Assert.Equal(updatedAt, customer.UpdatedAt);
     }
+
+    [Fact(DisplayName = "Customer >> Should update profile >> When UpdateProfile is called")]
+    public void Customer_ShouldUpdateProfile_WhenUpdateProfileIsCalled()
+    {
+        // Arrange
+        var customer = new Customer(
+            Guid.NewGuid(),
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            DateTime.Now,
+            DateTime.Now
+        );
+
+        var document = customer.Document;
+        var newName = _fixture.Create<string>();
+        var newEmail = _fixture.Create<string>();
+        var newPhone = _fixture.Create<string>();
+        var before = DateTime.Now;
+
+        // Act
+        customer.UpdateProfile(newName, newEmail, newPhone);
+
+        // Assert
+        Assert.Equal(newName, customer.Name);
+        Assert.Equal(newEmail, customer.Email);
+        Assert.Equal(newPhone, customer.Phone);
+        Assert.Equal(document, customer.Document);
+        Assert.InRange(customer.UpdatedAt, before, DateTime.Now);
+    }
 }

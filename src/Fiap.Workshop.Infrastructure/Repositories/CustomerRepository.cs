@@ -37,4 +37,18 @@ internal sealed class CustomerRepository(AppDbContext context) : Repository<Cust
             .AsNoTracking()
             .AnyAsync(x => x.Document == document, cancellationToken);
     }
+
+    public async Task<bool> ExistsWithEmailAsync(string email, CancellationToken cancellationToken)
+    {
+        return await _context.Customers
+            .AsNoTracking()
+            .AnyAsync(x => x.Email == email, cancellationToken);
+    }
+
+    public async Task<bool> ExistsWithPhoneAsync(string phone, CancellationToken cancellationToken)
+    {
+        return await _context.Customers
+            .AsNoTracking()
+            .AnyAsync(x => x.Phone == phone, cancellationToken);
+    }
 }
