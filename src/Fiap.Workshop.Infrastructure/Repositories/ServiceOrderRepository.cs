@@ -1,6 +1,7 @@
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Domain.Entities;
 using Fiap.Workshop.Infrastructure.Repositories.Mappers;
+using Fiap.Workshop.Infrastructure.Repositories.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Fiap.Workshop.Infrastructure.Repositories;
@@ -29,6 +30,29 @@ internal sealed class ServiceOrderRepository(AppDbContext context) : Repository<
     {
         EnqueueEvents(entity);
         Upsert(_context.ServiceOrders, entity.MapToModel(), entity.Id);
+    }
+
+    public async Task UpdateAsync(ServiceOrder entity, CancellationToken cancellationToken)
+    {
+        EnqueueEvents(entity);
+
+        var model = entity.MapToModel();
+
+        var trackedRoot = _context.ChangeTracker.Entries<ServiceOrderModel>()
+            .FirstOrDefault(e => e.Entity.Id == entity.Id);
+
+        if (trackedRoot is not null)
+            trackedRoot.CurrentValues.SetValues(model);
+        else
+            _context.Entry(model).State = EntityState.Modified;
+
+        var existingHistoryIds = await _context.Set<ServiceOrderStatusHistoryModel>()
+            .Where(h => h.ServiceOrderId == entity.Id)
+            .Select(h => h.Id)
+            .ToListAsync(cancellationToken);
+
+        foreach (var history in model.StatusHistory)
+            _context.Entry(history).State = existingHistoryIds.Contains(history.Id) ? EntityState.Modified : EntityState.Added;
     }
 
     public override void Remove(ServiceOrder entity) =>
