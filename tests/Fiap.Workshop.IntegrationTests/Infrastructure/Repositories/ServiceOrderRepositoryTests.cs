@@ -216,6 +216,44 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
         Assert.Equal("Worn brake pads", found.DiagnoseDescription);
     }
 
+    [Fact(DisplayName = "ServiceOrderRepository >> Should persist new status history >> When updating an already-persisted service order via UpdateAsync")]
+    public async Task ServiceOrderRepository_ShouldPersistNewStatusHistory_WhenUpdatingAlreadyPersistedServiceOrderViaUpdateAsync()
+    {
+        // Arrange — reproduces the loaded-then-mutated-then-saved flow a use case follows
+        // (GetByIdAsync returns an AsNoTracking, disconnected aggregate; StartDiagnosis adds a new
+        // child to it in memory; UpdateAsync must reconcile that new child as Added, not Modified).
+        var (customer, vehicle, user) = await SeedServiceOrderDependenciesAsync();
+        var serviceOrder = CreateServiceOrder(customer, vehicle, user);
+        await SeedServiceOrderAsync(serviceOrder);
+
+        ServiceOrder? loaded = null;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            loaded = await repo.GetByIdAsync(serviceOrder.Id, CancellationToken.None));
+
+        loaded!.StartDiagnosis("Worn brake pads", user.Id);
+
+        // Act
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+        {
+            await repo.UpdateAsync(loaded, CancellationToken.None);
+            await repo.UnitOfWork.CommitAsync(CancellationToken.None);
+        });
+
+        // Assert
+        ServiceOrder? found = null;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            found = await repo.GetByIdAsync(serviceOrder.Id, CancellationToken.None));
+
+        Assert.NotNull(found);
+        Assert.Equal(ServiceOrderStatus.Diagnosing, found!.Status);
+        Assert.Equal("Worn brake pads", found.DiagnoseDescription);
+
+        var history = Assert.Single(found.StatusHistory);
+        Assert.Equal(ServiceOrderStatus.Received, history.PreviousStatus);
+        Assert.Equal(ServiceOrderStatus.Diagnosing, history.CurrentStatus);
+        Assert.Equal(user.Id, history.ChangedBy);
+    }
+
     [Fact(DisplayName = "ServiceOrderRepository >> Should remove entity >> When removing an existing service order")]
     public async Task ServiceOrderRepository_ShouldRemoveEntity_WhenRemovingExistingServiceOrder()
     {

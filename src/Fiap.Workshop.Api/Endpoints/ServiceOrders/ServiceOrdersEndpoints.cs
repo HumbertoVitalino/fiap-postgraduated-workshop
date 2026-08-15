@@ -61,5 +61,28 @@ public static class ServiceOrdersEndpoints
         .Produces<Output>(StatusCodes.Status400BadRequest)
         .RequireAuthorization("AttendantOnly")
         .WithValidation<CreateServiceOrderRequest>();
+
+        group.MapPatch("{serviceOrderId}/diagnosis",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromBody] StartDiagnosisRequest request,
+                [FromServices] IStartDiagnosisUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(serviceOrderId, currentUser.UserId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Starts the diagnosis of a service order.")
+        .WithDescription("Registers the diagnosis description and moves the service order from Received to Diagnosing.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("MechanicOnly")
+        .WithValidation<StartDiagnosisRequest>();
     }
 }
