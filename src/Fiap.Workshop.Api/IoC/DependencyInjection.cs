@@ -3,10 +3,12 @@ using Asp.Versioning;
 using Fiap.Workshop.Api.Handlers;
 using Fiap.Workshop.Api.Requests.Auth;
 using Fiap.Workshop.Api.Requests.Customers;
+using Fiap.Workshop.Api.Requests.Services;
 using Fiap.Workshop.Api.Requests.Users;
 using Fiap.Workshop.Api.Requests.Vehicles;
 using Fiap.Workshop.Api.Validators.Auth;
 using Fiap.Workshop.Api.Validators.Customers;
+using Fiap.Workshop.Api.Validators.Services;
 using Fiap.Workshop.Api.Validators.Users;
 using Fiap.Workshop.Api.Validators.Vehicles;
 using FluentValidation;
@@ -36,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<IValidator<CreateCustomerRequest>, CreateCustomerRequestValidator>();
         services.AddScoped<IValidator<UpdateCustomerRequest>, UpdateCustomerRequestValidator>();
         services.AddScoped<IValidator<CreateVehicleRequest>, CreateVehicleRequestValidator>();
+        services.AddScoped<IValidator<CreateServiceRequest>, CreateServiceRequestValidator>();
 
         return services;
     }
