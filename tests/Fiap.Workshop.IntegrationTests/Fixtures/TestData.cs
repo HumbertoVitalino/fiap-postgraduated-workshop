@@ -9,6 +9,13 @@ internal static class TestData
 
     public static int UniqueNumber() => Random.Shared.Next(1, int.MaxValue);
 
+    public static string LicensePlate()
+    {
+        var letters = new string([.. Enumerable.Range(0, 3).Select(_ => (char)Random.Shared.Next('A', 'Z' + 1))]);
+        var digits = Random.Shared.Next(0, 10000).ToString("D4");
+        return $"{letters}{digits}";
+    }
+
     public static string Document()
     {
         var digits = new int[9];
