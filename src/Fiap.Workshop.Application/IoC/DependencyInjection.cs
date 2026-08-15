@@ -5,6 +5,7 @@ using Fiap.Workshop.Application.UseCases.Users.CreateUser;
 using Fiap.Workshop.Application.UseCases.Vehicles.CreateVehicle;
 using Fiap.Workshop.Application.UseCases.Users.DeleteUser;
 using Fiap.Workshop.Application.UseCases.InventoryItems.CreateInventoryItem;
+using Fiap.Workshop.Application.UseCases.InventoryItems.GetInventoryItems;
 using Fiap.Workshop.Application.UseCases.Customers.GetCustomer;
 using Fiap.Workshop.Application.UseCases.Users.GetUsers;
 using Fiap.Workshop.Application.UseCases.Vehicles.GetVehicle;
@@ -37,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<ICreateServiceUseCase, CreateServiceUseCase>();
         services.AddScoped<IGetServicesUseCase, GetServicesUseCase>();
         services.AddScoped<ICreateInventoryItemUseCase, CreateInventoryItemUseCase>();
+        services.AddScoped<IGetInventoryItemsUseCase, GetInventoryItemsUseCase>();
 
         return services;
     }
