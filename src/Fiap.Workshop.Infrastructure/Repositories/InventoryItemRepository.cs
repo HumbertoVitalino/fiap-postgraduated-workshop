@@ -30,4 +30,11 @@ internal sealed class InventoryItemRepository(AppDbContext context) : Repository
 
     public override void Remove(InventoryItem entity) =>
         Delete(_context.InventoryItems, entity.MapToModel(), entity.Id);
+
+    public async Task<bool> ExistsWithCodeAsync(string code, CancellationToken cancellationToken)
+    {
+        return await _context.InventoryItems
+            .AsNoTracking()
+            .AnyAsync(x => x.Code == code, cancellationToken);
+    }
 }
