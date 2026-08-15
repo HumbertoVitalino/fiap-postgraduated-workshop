@@ -30,4 +30,11 @@ internal sealed class VehicleRepository(AppDbContext context) : Repository<Vehic
 
     public override void Remove(Vehicle entity) =>
         Delete(_context.Vehicles, entity.MapToModel(), entity.Id);
+
+    public async Task<bool> ExistsWithLicensePlateAsync(string licensePlate, CancellationToken cancellationToken)
+    {
+        return await _context.Vehicles
+            .AsNoTracking()
+            .AnyAsync(x => x.LicensePlate == licensePlate, cancellationToken);
+    }
 }

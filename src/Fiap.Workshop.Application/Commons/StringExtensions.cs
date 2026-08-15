@@ -1,13 +1,23 @@
 ﻿using CpfCnpjLibrary;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.RegularExpressions;
 
 namespace Fiap.Workshop.Application.Commons;
 
 [ExcludeFromCodeCoverage]
-public static class StringExtensions
+public static partial class StringExtensions
 {
     private const int CPF_SIZE = 11;
     private const int CNPJ_SIZE = 14;
+
+    [GeneratedRegex("^[A-Z]{3}[0-9]([A-Z][0-9]{2}|[0-9]{3})$")]
+    private static partial Regex LicensePlatePattern();
+
+    public static string NormalizeLicensePlate(this string licensePlate) =>
+        licensePlate.Trim().ToUpperInvariant().Replace("-", "");
+
+    public static bool IsValidLicensePlate(this string licensePlate) =>
+        LicensePlatePattern().IsMatch(licensePlate);
 
     public static string StandardizeDocument(this string document)
     {

@@ -1,5 +1,7 @@
 ﻿using AutoFixture;
+using Fiap.Workshop.Domain.Abstractions;
 using Fiap.Workshop.Domain.Entities;
+using Fiap.Workshop.Domain.Errors;
 using Xunit;
 
 namespace Fiap.Workshop.UnitTests.Domain;
@@ -18,7 +20,7 @@ public class VehicleUnitTests
         var brand = _fixture.Create<string>();
         var model = _fixture.Create<string>();
         var manufactureYear = _fixture.Create<int>();
-        var modelYear = _fixture.Create<int>();
+        var modelYear = manufactureYear + 1;
         var color = _fixture.Create<string>();
         var createdAt = DateTime.Now;
         var updatedAt = DateTime.Now;
@@ -48,5 +50,31 @@ public class VehicleUnitTests
         Assert.Equal(color, vehicle.Color);
         Assert.Equal(createdAt, vehicle.CreatedAt);
         Assert.Equal(updatedAt, vehicle.UpdatedAt);
+    }
+
+    [Fact(DisplayName = "Vehicle >> Should throw >> When ModelYear is earlier than ManufactureYear")]
+    public void Vehicle_ShouldThrow_WhenModelYearIsEarlierThanManufactureYear()
+    {
+        // Arrange
+        var manufactureYear = _fixture.Create<int>();
+        var modelYear = manufactureYear - 1;
+
+        // Act
+        var act = () => new Vehicle(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            manufactureYear,
+            modelYear,
+            _fixture.Create<string>(),
+            DateTime.Now,
+            DateTime.Now
+        );
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(VehicleErrors.InvalidModelYear, exception.Message);
     }
 }

@@ -14,14 +14,15 @@ public class VehicleMapperUnitTests
     public void Vehicle_ShouldMapToModel_WhenMappingFromDomain()
     {
         // Arrange
+        var manufactureYear = _fixture.Create<int>();
         var vehicle = new Vehicle(
             Guid.NewGuid(),
             Guid.NewGuid(),
             _fixture.Create<string>(),
             _fixture.Create<string>(),
             _fixture.Create<string>(),
-            _fixture.Create<int>(),
-            _fixture.Create<int>(),
+            manufactureYear,
+            manufactureYear + 1,
             _fixture.Create<string>(),
             DateTime.UtcNow,
             DateTime.UtcNow
@@ -47,14 +48,15 @@ public class VehicleMapperUnitTests
     public void VehicleModel_ShouldMapToDomain_WhenMappingFromModel()
     {
         // Arrange
+        var manufactureYear = _fixture.Create<int>();
         var model = new VehicleModel(
             Guid.NewGuid(),
             Guid.NewGuid(),
             _fixture.Create<string>(),
             _fixture.Create<string>(),
             _fixture.Create<string>(),
-            _fixture.Create<int>(),
-            _fixture.Create<int>(),
+            manufactureYear,
+            manufactureYear + 1,
             _fixture.Create<string>(),
             DateTime.UtcNow,
             DateTime.UtcNow
