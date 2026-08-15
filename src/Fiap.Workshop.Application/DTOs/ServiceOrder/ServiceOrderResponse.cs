@@ -13,5 +13,8 @@ public sealed record ServiceOrderResponse(
     decimal Subtotal,
     decimal Total,
     DateTime OpenedAt,
-    DateTime? ClosedAt
+    DateTime? ClosedAt,
+    IReadOnlyCollection<ServiceOrderPartResponse> Parts,
+    IReadOnlyCollection<ServiceOrderServiceResponse> Services,
+    IReadOnlyCollection<ServiceOrderStatusHistoryResponse> StatusHistory
 );

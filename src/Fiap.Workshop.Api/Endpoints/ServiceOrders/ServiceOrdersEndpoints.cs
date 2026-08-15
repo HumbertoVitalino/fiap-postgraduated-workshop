@@ -6,7 +6,9 @@ using Fiap.Workshop.Application.Commons;
 using Fiap.Workshop.Application.DTOs.ServiceOrder;
 using Fiap.Workshop.Application.Interfaces.Services;
 using Fiap.Workshop.Application.Interfaces.UseCases;
+using Fiap.Workshop.Application.UseCases.ServiceOrders.GetServiceOrder.Boundaries;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace Fiap.Workshop.Api.Endpoints.ServiceOrders;
 
@@ -17,6 +19,26 @@ public static class ServiceOrdersEndpoints
         var group = app.MapGroup("api/v1/service-orders")
             .WithApiVersionSet(apiVersion)
             .WithTags("ServiceOrders");
+
+        group.MapGet("{serviceOrderId}",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromServices] IGetServiceOrderUseCase getByIdUseCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await getByIdUseCase.Handle(new GetServiceOrderInput(Guid.NewGuid(), serviceOrderId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.NotFound(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Gets a service order by id.")
+        .WithDescription("Returns the service order that matches the given identifier, including its status, budget items and status history.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status404NotFound)
+        .RequireAuthorization();
 
         group.MapPost("",
             async (
