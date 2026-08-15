@@ -1,4 +1,5 @@
 ﻿using AutoFixture;
+using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.UseCases.Users.GetUsers;
 using Fiap.Workshop.Application.UseCases.Users.GetUsers.Mapper;
@@ -58,7 +59,7 @@ public class GetUsersUnitTests : LoggerTestBase<GetUsersUseCase>
 
         // Assert
         result.Should().NotBeNull();
-        result.Result.Should().Be(Array.Empty<User>());
+        result.Result.Should().Be(Array.Empty<UserResponse>());
         result.ErrorMessages.Should().BeEmpty();
         VerifyLog(
             LogLevel.Warning,
