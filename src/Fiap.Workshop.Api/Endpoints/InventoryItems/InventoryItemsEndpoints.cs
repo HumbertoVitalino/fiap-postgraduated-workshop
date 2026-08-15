@@ -17,6 +17,22 @@ public static class InventoryItemsEndpoints
             .WithApiVersionSet(apiVersion)
             .WithTags("InventoryItems");
 
+        group.MapGet("",
+            async (
+                [FromServices] IGetInventoryItemsUseCase getAllUseCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await getAllUseCase.Handle(Guid.NewGuid(), cancellationToken);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Gets all inventory items.")
+        .WithDescription("Returns all inventory items registered in stock. Returns an empty array if none exist.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .RequireAuthorization();
+
         group.MapPost("",
             async (
                 [FromBody] CreateInventoryItemRequest request,
