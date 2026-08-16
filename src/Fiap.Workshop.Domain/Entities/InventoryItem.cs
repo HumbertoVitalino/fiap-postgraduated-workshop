@@ -66,4 +66,15 @@ public class InventoryItem : AggregateRoot
 
         SetUpdatedAt();
     }
+
+    public void CommitReservation(int quantity)
+    {
+        if (quantity > ReservedQuantity)
+            throw new DomainException(InventoryItemErrors.CommitQuantityExceedsReservedQuantity);
+
+        QuantityOnHand -= quantity;
+        ReservedQuantity -= quantity;
+
+        SetUpdatedAt();
+    }
 }
