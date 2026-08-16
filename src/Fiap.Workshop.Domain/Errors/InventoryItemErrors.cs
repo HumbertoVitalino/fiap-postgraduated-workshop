@@ -7,4 +7,5 @@ public static class InventoryItemErrors
     public const string ReservedQuantityExceedsQuantityOnHand = "Reserved quantity cannot exceed quantity on hand.";
     public const string InvalidMinimumStock = "Minimum stock cannot be negative.";
     public const string InvalidUnitPrice = "Unit price cannot be negative.";
+    public const string InsufficientStock = "Insufficient stock available to reserve the requested quantity.";
 }

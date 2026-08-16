@@ -56,4 +56,14 @@ public class InventoryItem : AggregateRoot
         UnitOfMeasure = unitOfMeasure;
         IsActive = isActive;
     }
+
+    public void Reserve(int quantity)
+    {
+        if (quantity > QuantityOnHand - ReservedQuantity)
+            throw new DomainException(InventoryItemErrors.InsufficientStock);
+
+        ReservedQuantity += quantity;
+
+        SetUpdatedAt();
+    }
 }
