@@ -46,6 +46,22 @@ internal sealed class ServiceOrderRepository(AppDbContext context) : Repository<
         else
             _context.Entry(model).State = EntityState.Modified;
 
+        var existingPartIds = await _context.Set<ServiceOrderPartModel>()
+            .Where(p => p.ServiceOrderId == entity.Id)
+            .Select(p => p.Id)
+            .ToListAsync(cancellationToken);
+
+        foreach (var part in model.Parts)
+            _context.Entry(part).State = existingPartIds.Contains(part.Id) ? EntityState.Modified : EntityState.Added;
+
+        var existingServiceIds = await _context.Set<ServiceOrderServiceModel>()
+            .Where(s => s.ServiceOrderId == entity.Id)
+            .Select(s => s.Id)
+            .ToListAsync(cancellationToken);
+
+        foreach (var service in model.Services)
+            _context.Entry(service).State = existingServiceIds.Contains(service.Id) ? EntityState.Modified : EntityState.Added;
+
         var existingHistoryIds = await _context.Set<ServiceOrderStatusHistoryModel>()
             .Where(h => h.ServiceOrderId == entity.Id)
             .Select(h => h.Id)
