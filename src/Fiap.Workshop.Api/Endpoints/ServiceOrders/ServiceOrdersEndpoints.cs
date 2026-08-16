@@ -107,5 +107,27 @@ public static class ServiceOrdersEndpoints
         .Produces<Output>(StatusCodes.Status400BadRequest)
         .RequireAuthorization("MechanicOnly")
         .WithValidation<AddBudgetRequest>();
+
+        group.MapPatch("{serviceOrderId}/approve",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromBody] Guid request,
+                [FromServices] IApproveServiceOrderUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(serviceOrderId, currentUser.UserId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Approves the budget of a service order.")
+        .WithDescription("Registers the attendant's record of the customer's approval, commits the reserved inventory stock, and moves the service order from AwaitingApproval to InProgress.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AttendantOnly");
     }
 }
