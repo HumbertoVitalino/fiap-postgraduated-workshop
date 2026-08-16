@@ -153,4 +153,34 @@ public class ServiceOrder(
 
         SetUpdatedAt();
     }
+
+    public void Reject(Guid changedBy)
+    {
+        if (Status != ServiceOrderStatus.AwaitingApproval)
+        {
+            throw new DomainException(
+                string.Format(
+                    ServiceOrderErrors.InvalidStatusTransition,
+                    Status,
+                    ServiceOrderStatus.Cancelled
+                )
+            );
+        }
+
+        var previousStatus = Status;
+        Status = ServiceOrderStatus.Cancelled;
+
+        _statusHistory.Add(
+            new ServiceOrderStatusHistory(
+                Guid.NewGuid(),
+                Id,
+                previousStatus,
+                Status,
+                changedBy,
+                DateTime.Now
+            )
+        );
+
+        SetUpdatedAt();
+    }
 }

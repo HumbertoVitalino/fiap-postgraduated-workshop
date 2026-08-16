@@ -286,4 +286,43 @@ public class ServiceOrderUnitTests
             exception.Message
         );
     }
+
+    [Fact(DisplayName = "ServiceOrder >> Should reject >> When status is AwaitingApproval")]
+    public void ServiceOrder_ShouldReject_WhenStatusIsAwaitingApproval()
+    {
+        // Arrange
+        var serviceOrder = CreateAwaitingApprovalServiceOrder();
+        var changedBy = Guid.NewGuid();
+        var before = DateTime.Now;
+
+        // Act
+        serviceOrder.Reject(changedBy);
+
+        // Assert
+        Assert.Equal(ServiceOrderStatus.Cancelled, serviceOrder.Status);
+        Assert.InRange(serviceOrder.UpdatedAt, before, DateTime.Now);
+
+        Assert.Equal(3, serviceOrder.StatusHistory.Count);
+        var history = serviceOrder.StatusHistory.Last();
+        Assert.Equal(ServiceOrderStatus.AwaitingApproval, history.PreviousStatus);
+        Assert.Equal(ServiceOrderStatus.Cancelled, history.CurrentStatus);
+        Assert.Equal(changedBy, history.ChangedBy);
+    }
+
+    [Fact(DisplayName = "ServiceOrder >> Should throw >> When Reject is called and status is not AwaitingApproval")]
+    public void ServiceOrder_ShouldThrow_WhenRejectIsCalledAndStatusIsNotAwaitingApproval()
+    {
+        // Arrange
+        var serviceOrder = CreateDiagnosingServiceOrder();
+
+        // Act
+        var act = () => serviceOrder.Reject(Guid.NewGuid());
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(
+            string.Format(ServiceOrderErrors.InvalidStatusTransition, ServiceOrderStatus.Diagnosing, ServiceOrderStatus.Cancelled),
+            exception.Message
+        );
+    }
 }
