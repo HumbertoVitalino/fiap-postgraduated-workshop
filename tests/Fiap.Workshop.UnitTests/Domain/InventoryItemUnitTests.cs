@@ -159,4 +159,36 @@ public class InventoryItemUnitTests
         Assert.Equal(InventoryItemErrors.InsufficientStock, exception.Message);
         Assert.Equal(15, inventoryItem.ReservedQuantity);
     }
+
+    [Fact(DisplayName = "InventoryItem >> Should commit reservation >> When quantity does not exceed the reserved quantity")]
+    public void InventoryItem_ShouldCommitReservation_WhenQuantityDoesNotExceedTheReservedQuantity()
+    {
+        // Arrange
+        var inventoryItem = CreateInventoryItem(20, 8, 5, 49.90m);
+        var before = DateTime.Now;
+
+        // Act
+        inventoryItem.CommitReservation(5);
+
+        // Assert
+        Assert.Equal(15, inventoryItem.QuantityOnHand);
+        Assert.Equal(3, inventoryItem.ReservedQuantity);
+        Assert.InRange(inventoryItem.UpdatedAt, before, DateTime.Now);
+    }
+
+    [Fact(DisplayName = "InventoryItem >> Should throw DomainException >> When committing more than the reserved quantity")]
+    public void InventoryItem_ShouldThrowDomainException_WhenCommittingMoreThanTheReservedQuantity()
+    {
+        // Arrange
+        var inventoryItem = CreateInventoryItem(20, 8, 5, 49.90m);
+
+        // Act
+        var act = () => inventoryItem.CommitReservation(9);
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(InventoryItemErrors.CommitQuantityExceedsReservedQuantity, exception.Message);
+        Assert.Equal(20, inventoryItem.QuantityOnHand);
+        Assert.Equal(8, inventoryItem.ReservedQuantity);
+    }
 }

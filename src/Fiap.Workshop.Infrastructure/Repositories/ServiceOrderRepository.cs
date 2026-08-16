@@ -51,24 +51,36 @@ internal sealed class ServiceOrderRepository(AppDbContext context) : Repository<
             .Select(p => p.Id)
             .ToListAsync(cancellationToken);
 
-        foreach (var part in model.Parts)
-            _context.Entry(part).State = existingPartIds.Contains(part.Id) ? EntityState.Modified : EntityState.Added;
+        ReconcileChildren(model.Parts, p => p.Id, existingPartIds);
 
         var existingServiceIds = await _context.Set<ServiceOrderServiceModel>()
             .Where(s => s.ServiceOrderId == entity.Id)
             .Select(s => s.Id)
             .ToListAsync(cancellationToken);
 
-        foreach (var service in model.Services)
-            _context.Entry(service).State = existingServiceIds.Contains(service.Id) ? EntityState.Modified : EntityState.Added;
+        ReconcileChildren(model.Services, s => s.Id, existingServiceIds);
 
         var existingHistoryIds = await _context.Set<ServiceOrderStatusHistoryModel>()
             .Where(h => h.ServiceOrderId == entity.Id)
             .Select(h => h.Id)
             .ToListAsync(cancellationToken);
 
-        foreach (var history in model.StatusHistory)
-            _context.Entry(history).State = existingHistoryIds.Contains(history.Id) ? EntityState.Modified : EntityState.Added;
+        ReconcileChildren(model.StatusHistory, h => h.Id, existingHistoryIds);
+    }
+
+    private void ReconcileChildren<TModel>(List<TModel> incoming, Func<TModel, Guid> idSelector, IReadOnlyCollection<Guid> existingIds)
+        where TModel : class
+    {
+        foreach (var item in incoming)
+        {
+            var id = idSelector(item);
+            var trackedEntry = _context.ChangeTracker.Entries<TModel>().FirstOrDefault(e => idSelector(e.Entity) == id);
+
+            if (trackedEntry is not null)
+                trackedEntry.CurrentValues.SetValues(item);
+            else
+                _context.Entry(item).State = existingIds.Contains(id) ? EntityState.Modified : EntityState.Added;
+        }
     }
 
     public override void Remove(ServiceOrder entity) =>

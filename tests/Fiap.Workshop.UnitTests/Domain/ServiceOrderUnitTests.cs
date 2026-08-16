@@ -240,4 +240,50 @@ public class ServiceOrderUnitTests
             exception.Message
         );
     }
+
+    private static ServiceOrder CreateAwaitingApprovalServiceOrder()
+    {
+        var serviceOrder = CreateDiagnosingServiceOrder();
+        serviceOrder.AddBudget([], [], Guid.NewGuid());
+        return serviceOrder;
+    }
+
+    [Fact(DisplayName = "ServiceOrder >> Should approve >> When status is AwaitingApproval")]
+    public void ServiceOrder_ShouldApprove_WhenStatusIsAwaitingApproval()
+    {
+        // Arrange
+        var serviceOrder = CreateAwaitingApprovalServiceOrder();
+        var changedBy = Guid.NewGuid();
+        var before = DateTime.Now;
+
+        // Act
+        serviceOrder.Approve(changedBy);
+
+        // Assert
+        Assert.Equal(ServiceOrderStatus.InProgress, serviceOrder.Status);
+        Assert.InRange(serviceOrder.UpdatedAt, before, DateTime.Now);
+
+        Assert.Equal(3, serviceOrder.StatusHistory.Count);
+        var history = serviceOrder.StatusHistory.Last();
+        Assert.Equal(ServiceOrderStatus.AwaitingApproval, history.PreviousStatus);
+        Assert.Equal(ServiceOrderStatus.InProgress, history.CurrentStatus);
+        Assert.Equal(changedBy, history.ChangedBy);
+    }
+
+    [Fact(DisplayName = "ServiceOrder >> Should throw >> When Approve is called and status is not AwaitingApproval")]
+    public void ServiceOrder_ShouldThrow_WhenApproveIsCalledAndStatusIsNotAwaitingApproval()
+    {
+        // Arrange
+        var serviceOrder = CreateDiagnosingServiceOrder();
+
+        // Act
+        var act = () => serviceOrder.Approve(Guid.NewGuid());
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(
+            string.Format(ServiceOrderErrors.InvalidStatusTransition, ServiceOrderStatus.Diagnosing, ServiceOrderStatus.InProgress),
+            exception.Message
+        );
+    }
 }

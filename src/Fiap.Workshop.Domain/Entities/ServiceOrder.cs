@@ -53,14 +53,31 @@ public class ServiceOrder(
     public void StartDiagnosis(string diagnoseDescription, Guid changedBy)
     {
         if (Status != ServiceOrderStatus.Received)
-            throw new DomainException(string.Format(ServiceOrderErrors.InvalidStatusTransition, Status, ServiceOrderStatus.Diagnosing));
+        {
+            throw new DomainException(
+                string.Format(
+                    ServiceOrderErrors.InvalidStatusTransition,
+                    Status,
+                    ServiceOrderStatus.Diagnosing
+                )
+            );
+        }
 
         var previousStatus = Status;
 
         DiagnoseDescription = diagnoseDescription;
         Status = ServiceOrderStatus.Diagnosing;
 
-        _statusHistory.Add(new ServiceOrderStatusHistory(Guid.NewGuid(), Id, previousStatus, Status, changedBy, DateTime.Now));
+        _statusHistory.Add(
+            new ServiceOrderStatusHistory(
+                Guid.NewGuid(),
+                Id,
+                previousStatus,
+                Status,
+                changedBy,
+                DateTime.Now
+            )
+        );
 
         SetUpdatedAt();
     }
@@ -68,7 +85,15 @@ public class ServiceOrder(
     public void AddBudget(IEnumerable<ServiceOrderService> services, IEnumerable<ServiceOrderPart> parts, Guid changedBy)
     {
         if (Status != ServiceOrderStatus.Diagnosing)
-            throw new DomainException(string.Format(ServiceOrderErrors.InvalidStatusTransition, Status, ServiceOrderStatus.AwaitingApproval));
+        {
+            throw new DomainException(
+                string.Format(
+                    ServiceOrderErrors.InvalidStatusTransition,
+                    Status,
+                    ServiceOrderStatus.AwaitingApproval
+                )
+            );
+        }
 
         var servicesList = services.ToList();
         var partsList = parts.ToList();
@@ -85,7 +110,46 @@ public class ServiceOrder(
         Total = subtotal;
         Status = ServiceOrderStatus.AwaitingApproval;
 
-        _statusHistory.Add(new ServiceOrderStatusHistory(Guid.NewGuid(), Id, previousStatus, Status, changedBy, DateTime.Now));
+        _statusHistory.Add(
+            new ServiceOrderStatusHistory(
+                Guid.NewGuid(),
+                Id,
+                previousStatus,
+                Status,
+                changedBy,
+                DateTime.Now
+            )
+        );
+
+        SetUpdatedAt();
+    }
+
+    public void Approve(Guid changedBy)
+    {
+        if (Status != ServiceOrderStatus.AwaitingApproval)
+        {
+            throw new DomainException(
+                string.Format(
+                    ServiceOrderErrors.InvalidStatusTransition,
+                    Status,
+                    ServiceOrderStatus.InProgress
+                )
+            );
+        }
+
+        var previousStatus = Status;
+        Status = ServiceOrderStatus.InProgress;
+
+        _statusHistory.Add(
+            new ServiceOrderStatusHistory(
+                Guid.NewGuid(),
+                Id,
+                previousStatus,
+                Status,
+                changedBy,
+                DateTime.Now
+            )
+        );
 
         SetUpdatedAt();
     }
