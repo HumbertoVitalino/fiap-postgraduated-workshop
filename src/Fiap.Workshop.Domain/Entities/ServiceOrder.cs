@@ -1,5 +1,6 @@
 using Fiap.Workshop.Domain.Abstractions;
 using Fiap.Workshop.Domain.Enums;
+using Fiap.Workshop.Domain.Errors;
 
 namespace Fiap.Workshop.Domain.Entities;
 
@@ -21,7 +22,6 @@ public class ServiceOrder(
     DateTime? closedAt = null
 ) : AggregateRoot(id, createdAt, updatedAt)
 {
-
     public Guid CustomerId { get; private set; } = customerId;
     public Guid VehicleId { get; private set; } = vehicleId;
     public Guid CreatedBy { get; private set; } = createdBy;
@@ -49,4 +49,44 @@ public class ServiceOrder(
     public void AddServices(IEnumerable<ServiceOrderService> services) => _services.AddRange(services);
 
     public void AddStatusHistory(IEnumerable<ServiceOrderStatusHistory> statusHistory) => _statusHistory.AddRange(statusHistory);
+
+    public void StartDiagnosis(string diagnoseDescription, Guid changedBy)
+    {
+        if (Status != ServiceOrderStatus.Received)
+            throw new DomainException(string.Format(ServiceOrderErrors.InvalidStatusTransition, Status, ServiceOrderStatus.Diagnosing));
+
+        var previousStatus = Status;
+
+        DiagnoseDescription = diagnoseDescription;
+        Status = ServiceOrderStatus.Diagnosing;
+
+        _statusHistory.Add(new ServiceOrderStatusHistory(Guid.NewGuid(), Id, previousStatus, Status, changedBy, DateTime.Now));
+
+        SetUpdatedAt();
+    }
+
+    public void AddBudget(IEnumerable<ServiceOrderService> services, IEnumerable<ServiceOrderPart> parts, Guid changedBy)
+    {
+        if (Status != ServiceOrderStatus.Diagnosing)
+            throw new DomainException(string.Format(ServiceOrderErrors.InvalidStatusTransition, Status, ServiceOrderStatus.AwaitingApproval));
+
+        var servicesList = services.ToList();
+        var partsList = parts.ToList();
+
+        var subtotal = servicesList.Sum(service => service.UnitPrice * service.Quantity)
+            + partsList.Sum(part => part.UnitPrice * part.Quantity);
+
+        var previousStatus = Status;
+
+        AddServices(servicesList);
+        AddParts(partsList);
+
+        Subtotal = subtotal;
+        Total = subtotal;
+        Status = ServiceOrderStatus.AwaitingApproval;
+
+        _statusHistory.Add(new ServiceOrderStatusHistory(Guid.NewGuid(), Id, previousStatus, Status, changedBy, DateTime.Now));
+
+        SetUpdatedAt();
+    }
 }
