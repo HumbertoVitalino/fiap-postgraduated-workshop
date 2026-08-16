@@ -84,5 +84,28 @@ public static class ServiceOrdersEndpoints
         .Produces<Output>(StatusCodes.Status400BadRequest)
         .RequireAuthorization("MechanicOnly")
         .WithValidation<StartDiagnosisRequest>();
+
+        group.MapPatch("{serviceOrderId}/budget",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromBody] AddBudgetRequest request,
+                [FromServices] IAddBudgetUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(serviceOrderId, currentUser.UserId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Adds a budget to a service order.")
+        .WithDescription("Calculates the subtotal/total from the given services and parts, reserves the requested inventory stock, and moves the service order from Diagnosing to AwaitingApproval.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("MechanicOnly")
+        .WithValidation<AddBudgetRequest>();
     }
 }

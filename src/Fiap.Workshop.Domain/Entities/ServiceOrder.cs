@@ -64,4 +64,29 @@ public class ServiceOrder(
 
         SetUpdatedAt();
     }
+
+    public void AddBudget(IEnumerable<ServiceOrderService> services, IEnumerable<ServiceOrderPart> parts, Guid changedBy)
+    {
+        if (Status != ServiceOrderStatus.Diagnosing)
+            throw new DomainException(string.Format(ServiceOrderErrors.InvalidStatusTransition, Status, ServiceOrderStatus.AwaitingApproval));
+
+        var servicesList = services.ToList();
+        var partsList = parts.ToList();
+
+        var subtotal = servicesList.Sum(service => service.UnitPrice * service.Quantity)
+            + partsList.Sum(part => part.UnitPrice * part.Quantity);
+
+        var previousStatus = Status;
+
+        AddServices(servicesList);
+        AddParts(partsList);
+
+        Subtotal = subtotal;
+        Total = subtotal;
+        Status = ServiceOrderStatus.AwaitingApproval;
+
+        _statusHistory.Add(new ServiceOrderStatusHistory(Guid.NewGuid(), Id, previousStatus, Status, changedBy, DateTime.Now));
+
+        SetUpdatedAt();
+    }
 }

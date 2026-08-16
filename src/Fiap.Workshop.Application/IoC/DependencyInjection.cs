@@ -12,6 +12,7 @@ using Fiap.Workshop.Application.UseCases.Vehicles.GetVehicle;
 using Fiap.Workshop.Application.UseCases.Users.LoginUser;
 using Fiap.Workshop.Application.UseCases.Services.CreateService;
 using Fiap.Workshop.Application.UseCases.Services.GetServices;
+using Fiap.Workshop.Application.UseCases.ServiceOrders.AddBudget;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.CreateServiceOrder;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.GetServiceOrder;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.StartDiagnosis;
@@ -45,6 +46,7 @@ public static class DependencyInjection
         services.AddScoped<ICreateServiceOrderUseCase, CreateServiceOrderUseCase>();
         services.AddScoped<IGetServiceOrderUseCase, GetServiceOrderUseCase>();
         services.AddScoped<IStartDiagnosisUseCase, StartDiagnosisUseCase>();
+        services.AddScoped<IAddBudgetUseCase, AddBudgetUseCase>();
 
         return services;
     }

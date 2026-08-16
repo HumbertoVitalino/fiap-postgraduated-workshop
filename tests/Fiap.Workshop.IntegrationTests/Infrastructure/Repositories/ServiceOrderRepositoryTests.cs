@@ -254,6 +254,82 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
         Assert.Equal(user.Id, history.ChangedBy);
     }
 
+    [Fact(DisplayName = "ServiceOrderRepository >> Should persist new parts and services >> When updating an already-persisted service order via UpdateAsync")]
+    public async Task ServiceOrderRepository_ShouldPersistNewPartsAndServices_WhenUpdatingAlreadyPersistedServiceOrderViaUpdateAsync()
+    {
+        // Arrange — same reconciliation gap as the StatusHistory test above, now exercised for
+        // Parts/Services: this is exactly the flow AddBudgetUseCase needs (load OS in Diagnosing,
+        // add budget parts/services, persist).
+        var (customer, vehicle, user) = await SeedServiceOrderDependenciesAsync();
+
+        var inventoryItem = new InventoryItem(
+            Guid.NewGuid(), TestData.ShortString(20), "Brake Pad", "Brake pad set", 20, 0, 5,
+            89.90m, UnitOfMeasure.Piece, true, DateTime.UtcNow, DateTime.UtcNow);
+
+        var service = new Service(
+            Guid.NewGuid(), TestData.ShortString(20), "Oil Change", "Oil change service", 120.00m,
+            30, true, DateTime.UtcNow, DateTime.UtcNow);
+
+        await WithScopeAsync<IInventoryItemRepository>(async repo =>
+        {
+            await repo.AddAsync(inventoryItem, CancellationToken.None);
+            await repo.UnitOfWork.CommitAsync(CancellationToken.None);
+        });
+
+        await WithScopeAsync<IServiceRepository>(async repo =>
+        {
+            await repo.AddAsync(service, CancellationToken.None);
+            await repo.UnitOfWork.CommitAsync(CancellationToken.None);
+        });
+
+        var serviceOrder = CreateServiceOrder(customer, vehicle, user);
+        await SeedServiceOrderAsync(serviceOrder);
+
+        ServiceOrder? loaded = null;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            loaded = await repo.GetByIdAsync(serviceOrder.Id, CancellationToken.None));
+
+        loaded!.StartDiagnosis("Worn brake pads", user.Id);
+
+        var part = new ServiceOrderPart(
+            Guid.NewGuid(), loaded.Id, inventoryItem.Id, inventoryItem.Name, inventoryItem.Description,
+            inventoryItem.UnitPrice, 2, DateTime.UtcNow, DateTime.UtcNow);
+
+        var orderService = new ServiceOrderService(
+            Guid.NewGuid(), loaded.Id, service.Id, service.Name, service.Description,
+            service.BasePrice, service.EstimatedDuration, 1, DateTime.UtcNow, DateTime.UtcNow);
+
+        loaded.AddBudget([orderService], [part], user.Id);
+
+        // Act
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+        {
+            await repo.UpdateAsync(loaded, CancellationToken.None);
+            await repo.UnitOfWork.CommitAsync(CancellationToken.None);
+        });
+
+        // Assert
+        ServiceOrder? found = null;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            found = await repo.GetByIdAsync(serviceOrder.Id, CancellationToken.None));
+
+        Assert.NotNull(found);
+        Assert.Equal(ServiceOrderStatus.AwaitingApproval, found!.Status);
+        Assert.Equal(299.80m, found.Subtotal);
+        Assert.Equal(0m, found.Discount);
+        Assert.Equal(299.80m, found.Total);
+
+        var foundPart = Assert.Single(found.Parts);
+        Assert.Equal(part.Id, foundPart.Id);
+        Assert.Equal(part.InventoryItemId, foundPart.InventoryItemId);
+
+        var foundService = Assert.Single(found.Services);
+        Assert.Equal(orderService.Id, foundService.Id);
+        Assert.Equal(orderService.ServiceId, foundService.ServiceId);
+
+        Assert.Equal(2, found.StatusHistory.Count);
+    }
+
     [Fact(DisplayName = "ServiceOrderRepository >> Should remove entity >> When removing an existing service order")]
     public async Task ServiceOrderRepository_ShouldRemoveEntity_WhenRemovingExistingServiceOrder()
     {
