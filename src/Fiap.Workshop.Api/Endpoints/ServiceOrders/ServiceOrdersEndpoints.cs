@@ -117,7 +117,7 @@ public static class ServiceOrdersEndpoints
                 CancellationToken cancellationToken
             ) =>
             {
-                var result = await useCase.Handle(request.MapToInput(serviceOrderId, currentUser.UserId), cancellationToken);
+                var result = await useCase.Handle(ApproveServiceOrderMapper.MapToInput(request, serviceOrderId, currentUser.UserId), cancellationToken);
                 if (!result.IsValid)
                     return Results.BadRequest(result);
 
@@ -126,6 +126,28 @@ public static class ServiceOrdersEndpoints
         )
         .WithSummary("Approves the budget of a service order.")
         .WithDescription("Registers the attendant's record of the customer's approval, commits the reserved inventory stock, and moves the service order from AwaitingApproval to InProgress.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AttendantOnly");
+
+        group.MapPatch("{serviceOrderId}/reject",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromBody] Guid request,
+                [FromServices] IRejectServiceOrderUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(RejectServiceOrderMapper.MapToInput(request, serviceOrderId, currentUser.UserId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Rejects the budget of a service order.")
+        .WithDescription("Registers the attendant's record of the customer's rejection, releases the reserved inventory stock, and moves the service order from AwaitingApproval to Cancelled.")
         .Produces<Output>(StatusCodes.Status200OK)
         .Produces<Output>(StatusCodes.Status400BadRequest)
         .RequireAuthorization("AttendantOnly");
