@@ -330,6 +330,43 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
         Assert.Equal(2, found.StatusHistory.Count);
     }
 
+    [Fact(DisplayName = "ServiceOrderRepository >> Should persist consecutive updates >> When UpdateAsync is called twice in the same scope for the same service order")]
+    public async Task ServiceOrderRepository_ShouldPersistConsecutiveUpdates_WhenUpdateAsyncIsCalledTwiceInTheSameScopeForTheSameServiceOrder()
+    {
+        // Arrange — reproduces two transition use cases sharing one DbContext within the same
+        // request scope (e.g. StartDiagnosis followed by AddBudget): the second UpdateAsync call
+        // used to throw ("cannot be tracked because another instance with the same key value is
+        // already being tracked") because the StatusHistory row added by the first call stayed
+        // tracked in the ChangeTracker and the reconciliation didn't check for that before
+        // attaching a fresh disconnected instance with the same Id.
+        var (customer, vehicle, user) = await SeedServiceOrderDependenciesAsync();
+        var serviceOrder = CreateServiceOrder(customer, vehicle, user);
+        await SeedServiceOrderAsync(serviceOrder);
+
+        using var scope = fixture.Services.CreateScope();
+        var repo = scope.ServiceProvider.GetRequiredService<IServiceOrderRepository>();
+
+        var loaded = await repo.GetByIdAsync(serviceOrder.Id, CancellationToken.None);
+        loaded!.StartDiagnosis("Worn brake pads", user.Id);
+
+        // Act
+        await repo.UpdateAsync(loaded, CancellationToken.None);
+        await repo.UnitOfWork.CommitAsync(CancellationToken.None);
+
+        loaded.AddBudget([], [], user.Id);
+        await repo.UpdateAsync(loaded, CancellationToken.None);
+        await repo.UnitOfWork.CommitAsync(CancellationToken.None);
+
+        // Assert
+        ServiceOrder? found = null;
+        await WithScopeAsync<IServiceOrderRepository>(async r =>
+            found = await r.GetByIdAsync(serviceOrder.Id, CancellationToken.None));
+
+        Assert.NotNull(found);
+        Assert.Equal(ServiceOrderStatus.AwaitingApproval, found!.Status);
+        Assert.Equal(2, found.StatusHistory.Count);
+    }
+
     [Fact(DisplayName = "ServiceOrderRepository >> Should remove entity >> When removing an existing service order")]
     public async Task ServiceOrderRepository_ShouldRemoveEntity_WhenRemovingExistingServiceOrder()
     {
