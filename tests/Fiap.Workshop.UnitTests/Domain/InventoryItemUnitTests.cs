@@ -128,4 +128,35 @@ public class InventoryItemUnitTests
         var exception = Assert.Throws<DomainException>(act);
         Assert.Equal(InventoryItemErrors.InvalidUnitPrice, exception.Message);
     }
+
+    [Fact(DisplayName = "InventoryItem >> Should reserve quantity >> When enough stock is available")]
+    public void InventoryItem_ShouldReserveQuantity_WhenEnoughStockIsAvailable()
+    {
+        // Arrange
+        var inventoryItem = CreateInventoryItem(20, 5, 5, 49.90m);
+        var before = DateTime.Now;
+
+        // Act
+        inventoryItem.Reserve(10);
+
+        // Assert
+        Assert.Equal(15, inventoryItem.ReservedQuantity);
+        Assert.Equal(20, inventoryItem.QuantityOnHand);
+        Assert.InRange(inventoryItem.UpdatedAt, before, DateTime.Now);
+    }
+
+    [Fact(DisplayName = "InventoryItem >> Should throw DomainException >> When reserving more than the available stock")]
+    public void InventoryItem_ShouldThrowDomainException_WhenReservingMoreThanTheAvailableStock()
+    {
+        // Arrange
+        var inventoryItem = CreateInventoryItem(20, 15, 5, 49.90m);
+
+        // Act
+        var act = () => inventoryItem.Reserve(6);
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(InventoryItemErrors.InsufficientStock, exception.Message);
+        Assert.Equal(15, inventoryItem.ReservedQuantity);
+    }
 }

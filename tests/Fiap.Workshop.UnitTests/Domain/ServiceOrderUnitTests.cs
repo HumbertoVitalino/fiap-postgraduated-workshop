@@ -161,4 +161,83 @@ public class ServiceOrderUnitTests
             exception.Message
         );
     }
+
+    private static ServiceOrder CreateDiagnosingServiceOrder()
+    {
+        var serviceOrder = CreateReceivedServiceOrder();
+        serviceOrder.StartDiagnosis("Worn brake pads", Guid.NewGuid());
+        return serviceOrder;
+    }
+
+    private ServiceOrderPart CreatePart(Guid serviceOrderId, decimal unitPrice, int quantity) => new(
+        Guid.NewGuid(),
+        serviceOrderId,
+        Guid.NewGuid(),
+        _fixture.Create<string>(),
+        _fixture.Create<string>(),
+        unitPrice,
+        quantity,
+        DateTime.Now,
+        DateTime.Now
+    );
+
+    private ServiceOrderService CreateService(Guid serviceOrderId, decimal unitPrice, int quantity) => new(
+        Guid.NewGuid(),
+        serviceOrderId,
+        Guid.NewGuid(),
+        _fixture.Create<string>(),
+        _fixture.Create<string>(),
+        unitPrice,
+        30,
+        quantity,
+        DateTime.Now,
+        DateTime.Now
+    );
+
+    [Fact(DisplayName = "ServiceOrder >> Should add budget >> When status is Diagnosing")]
+    public void ServiceOrder_ShouldAddBudget_WhenStatusIsDiagnosing()
+    {
+        // Arrange
+        var serviceOrder = CreateDiagnosingServiceOrder();
+        var part = CreatePart(serviceOrder.Id, 50m, 2);
+        var service = CreateService(serviceOrder.Id, 120m, 1);
+        var changedBy = Guid.NewGuid();
+        var before = DateTime.Now;
+
+        // Act
+        serviceOrder.AddBudget([service], [part], changedBy);
+
+        // Assert
+        Assert.Equal(ServiceOrderStatus.AwaitingApproval, serviceOrder.Status);
+        Assert.Equal(220m, serviceOrder.Subtotal);
+        Assert.Equal(0m, serviceOrder.Discount);
+        Assert.Equal(220m, serviceOrder.Total);
+        Assert.InRange(serviceOrder.UpdatedAt, before, DateTime.Now);
+
+        Assert.Same(part, Assert.Single(serviceOrder.Parts));
+        Assert.Same(service, Assert.Single(serviceOrder.Services));
+
+        Assert.Equal(2, serviceOrder.StatusHistory.Count);
+        var history = serviceOrder.StatusHistory.Last();
+        Assert.Equal(ServiceOrderStatus.Diagnosing, history.PreviousStatus);
+        Assert.Equal(ServiceOrderStatus.AwaitingApproval, history.CurrentStatus);
+        Assert.Equal(changedBy, history.ChangedBy);
+    }
+
+    [Fact(DisplayName = "ServiceOrder >> Should throw >> When AddBudget is called and status is not Diagnosing")]
+    public void ServiceOrder_ShouldThrow_WhenAddBudgetIsCalledAndStatusIsNotDiagnosing()
+    {
+        // Arrange
+        var serviceOrder = CreateReceivedServiceOrder();
+
+        // Act
+        var act = () => serviceOrder.AddBudget([], [], Guid.NewGuid());
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(
+            string.Format(ServiceOrderErrors.InvalidStatusTransition, ServiceOrderStatus.Received, ServiceOrderStatus.AwaitingApproval),
+            exception.Message
+        );
+    }
 }
