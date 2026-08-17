@@ -478,6 +478,52 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
         Assert.False(exists);
     }
 
+    [Fact(DisplayName = "ServiceOrderRepository >> Should return true >> When inventory item has been used in a service order")]
+    public async Task ServiceOrderRepository_ShouldReturnTrue_WhenInventoryItemHasBeenUsedInServiceOrder()
+    {
+        // Arrange
+        var (customer, vehicle, user) = await SeedServiceOrderDependenciesAsync();
+
+        var inventoryItem = new InventoryItem(
+            Guid.NewGuid(), TestData.ShortString(20), "Brake Pad", "Brake pad set", 20, 0, 5,
+            89.90m, UnitOfMeasure.Piece, true, DateTime.UtcNow, DateTime.UtcNow);
+
+        await WithScopeAsync<IInventoryItemRepository>(async repo =>
+        {
+            await repo.AddAsync(inventoryItem, CancellationToken.None);
+            await repo.UnitOfWork.CommitAsync(CancellationToken.None);
+        });
+
+        var serviceOrder = CreateServiceOrder(customer, vehicle, user);
+
+        var orderPart = new ServiceOrderPart(
+            Guid.NewGuid(), serviceOrder.Id, inventoryItem.Id, inventoryItem.Name, inventoryItem.Description,
+            inventoryItem.UnitPrice, 1, DateTime.UtcNow, DateTime.UtcNow);
+
+        serviceOrder.AddParts([orderPart]);
+        await SeedServiceOrderAsync(serviceOrder);
+
+        // Act
+        var exists = false;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            exists = await repo.ExistsWithInventoryItemIdAsync(inventoryItem.Id, CancellationToken.None));
+
+        // Assert
+        Assert.True(exists);
+    }
+
+    [Fact(DisplayName = "ServiceOrderRepository >> Should return false >> When inventory item has never been used in a service order")]
+    public async Task ServiceOrderRepository_ShouldReturnFalse_WhenInventoryItemHasNeverBeenUsedInServiceOrder()
+    {
+        // Act
+        var exists = true;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            exists = await repo.ExistsWithInventoryItemIdAsync(Guid.NewGuid(), CancellationToken.None));
+
+        // Assert
+        Assert.False(exists);
+    }
+
     [Fact(DisplayName = "ServiceOrderRepository >> Should remove entity >> When removing an existing service order")]
     public async Task ServiceOrderRepository_ShouldRemoveEntity_WhenRemovingExistingServiceOrder()
     {
