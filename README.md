@@ -45,7 +45,7 @@ Regra de dependência: `Domain` não referencia nada; `Application` referencia `
 | Runtime | .NET 10 / C# `latest` |
 | API | Minimal APIs + `Asp.Versioning` (versionamento por segmento de URL, `/api/v1/...`) |
 | Documentação | `Microsoft.AspNetCore.OpenApi` + Swagger UI (`/swagger`) |
-| Autenticação | JWT Bearer, policies `AdminOnly` / `UserOnly` |
+| Autenticação | JWT Bearer, policies `AdminOnly` / `AttendantOnly` / `MechanicOnly` |
 | Hash de senha | BCrypt.Net-Next (work factor 12) |
 | Persistência | EF Core 10 + **SQL Server** |
 | Validação | FluentValidation |
@@ -56,18 +56,17 @@ Regra de dependência: `Domain` não referencia nada; `Application` referencia `
 
 ## O que já está implementado
 
-- Cadastro de usuário (`POST /api/v1/users`), com validação de e-mail único e senha (mínimo 8 caracteres). Endpoint exige um token JWT com role `Admin` — ainda não há um jeito de emitir esse token (ver observação abaixo), então na prática o endpoint só é exercitável em testes.
-- Entidades, persistência (EF Core) e repositórios para todos os agregados de negócio da oficina (`Cliente`, `Veículo`, `Serviço`, `Peça/Insumo`, `Ordem de Serviço`) — só falta a camada de use cases/endpoints por cima.
-- Schema de banco (`db/init.sql`) aplicado por um serviço de init do `docker-compose` antes da API subir — sem migration em runtime.
+- Cadastro de usuário (`POST /api/v1/users`), com validação de e-mail único e senha (mínimo 8 caracteres). Endpoint exige um token JWT com role `Admin` — obtido via login (`POST /api/v1/auth/login`) com o usuário Admin de bootstrap (ver seção "Como rodar localmente" abaixo).
+- Login (`POST /api/v1/auth/login`) e fluxo completo de Ordem de Serviço (`Recebida` → `Em diagnóstico` → `Aguardando aprovação` → `Em execução`/`Cancelada` → `Finalizada` → `Entregue`), CRUD parcial de `Cliente`/`Veículo`/`Serviço`/`Peça-Insumo`. Ver [`CONTEXT.md`](CONTEXT.md) e `docs/backlog-proximas-tarefas.md` pro estado atual detalhado — esta seção do README está desatualizada em relação ao progresso real, mantida aqui só pra não perder o contexto histórico do início do projeto.
+- Schema de banco (`db/init.sql`) aplicado por um serviço de init do `docker-compose` antes da API subir — sem migration em runtime. Inclui seed idempotente do primeiro usuário Admin (bootstrap).
 - Testes unitários cobrindo Domain e Application; projeto de testes de integração com SQL Server real via `docker-compose.tests.yml`.
-
-> Login (`POST /api/v1/auth/login`) e consulta de usuário por id ainda **não existem** — por isso hoje não há um caminho pela API para obter um token JWT e efetivamente chamar `POST /api/v1/users`. É a próxima pendência a resolver (ver roadmap).
 
 ## Roadmap / pendências do desafio
 
+> ⚠️ Lista abaixo desatualizada desde as primeiras branches do projeto — não reflete o progresso real (login, máquina de estados de OS e CRUDs parciais já existem). Ver [`CONTEXT.md`](CONTEXT.md) §9 pra pendências reais e `docs/backlog-proximas-tarefas.md` pro backlog refinado.
+
 Funcionalidades obrigatórias do Tech Challenge que **ainda não foram implementadas**:
 
-- **Login e bootstrap de usuário Admin**: hoje não existe endpoint de login nem seed de usuário administrador — sem isso, não há como obter um token pra chamar `POST /api/v1/users`. Bloqueia o uso ponta a ponta da API.
 - **Criação de OS**: identificação do cliente por CPF/CNPJ, cadastro de veículo (placa/marca/modelo/ano), inclusão de serviços e peças, orçamento automático, envio para aprovação do cliente.
 - **Acompanhamento de OS**: máquina de status (`Recebida` → `Em diagnóstico` → `Aguardando aprovação` → `Em execução` → `Finalizada` → `Entregue`), com consulta via API pelo cliente.
 - **Gestão administrativa**: CRUD de clientes, veículos, serviços, peças/insumos (com controle de estoque), listagem/detalhamento de OS, monitoramento do tempo médio de execução.
@@ -94,7 +93,14 @@ Pré-requisitos: [Docker](https://www.docker.com/) e Docker Compose.
    docker compose up -d --build
    ```
 
-3. A API estará disponível em `http://localhost:8080` (porta configurável via `API_PORT` no `.env`). O schema do banco é criado por um serviço de init (`sqlserver-init`) rodando `db/init.sql` antes da API subir.
+3. A API estará disponível em `http://localhost:8080` (porta configurável via `API_PORT` no `.env`). O schema do banco é criado por um serviço de init (`sqlserver-init`) rodando `db/init.sql` antes da API subir — inclui o seed de um usuário Admin de bootstrap:
+
+   | Campo | Valor |
+   |---|---|
+   | Email | `admin@admin.com` |
+   | Senha | `Admin@123` |
+
+   Use essas credenciais em `POST /api/v1/auth/login` pra obter um token JWT com role `Admin` e conseguir chamar endpoints protegidos (ex.: `POST /api/v1/users`, pra cadastrar os demais usuários). Troque essa senha em qualquer ambiente que não seja local/dev.
 
 4. Para derrubar o ambiente:
 
@@ -140,7 +146,7 @@ O documento OpenAPI puro fica em `/openapi/v1.json`.
 
 ## Autenticação
 
-`POST /api/v1/users` exige um token JWT com role `Admin` (policy `AdminOnly`). Não existe hoje endpoint de login nem qualquer outro jeito de emitir esse token — é uma pendência conhecida (ver roadmap e `CONTEXT.md`).
+`POST /api/v1/users` exige um token JWT com role `Admin` (policy `AdminOnly`). Obtenha um token via `POST /api/v1/auth/login`, usando o usuário Admin de bootstrap (`admin@admin.com` / `Admin@123`, ver "Como rodar localmente") — troque essa senha em qualquer ambiente que não seja local/dev.
 
 O `CorrelationId` esperado pelo cadastro de usuário vai no corpo da requisição (campo `correlationId`), não em um header.
 

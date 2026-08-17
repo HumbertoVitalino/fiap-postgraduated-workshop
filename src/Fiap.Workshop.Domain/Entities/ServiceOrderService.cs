@@ -13,6 +13,7 @@ public class ServiceOrderService
     public decimal UnitPrice { get; private set; }
     public int Quantity { get; private set; }
     public short EstimatedDuration { get; private set; }
+    public short? ActualDuration { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
@@ -26,7 +27,8 @@ public class ServiceOrderService
         short estimatedDuration,
         int quantity,
         DateTime createdAt,
-        DateTime updatedAt)
+        DateTime updatedAt,
+        short? actualDuration = null)
     {
         if (quantity <= 0)
             throw new DomainException(ServiceOrderErrors.InvalidQuantity);
@@ -47,5 +49,15 @@ public class ServiceOrderService
         Quantity = quantity;
         CreatedAt = createdAt;
         UpdatedAt = updatedAt;
+        ActualDuration = actualDuration;
+    }
+
+    public void RecordActualDuration(short actualDuration)
+    {
+        if (actualDuration <= 0)
+            throw new DomainException(ServiceOrderErrors.InvalidActualDuration);
+
+        ActualDuration = actualDuration;
+        UpdatedAt = DateTime.Now;
     }
 }

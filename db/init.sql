@@ -28,6 +28,25 @@ BEGIN
 END
 GO
 
+-- Seed do primeiro usuário Admin, necessário pra existir algum caminho de bootstrap:
+-- POST /users exige token JWT com role Admin e não tem AllowAnonymous, então sem este
+-- seed não haveria como criar o primeiro usuário pela API. Senha 'Admin@123', hash BCrypt
+-- (work factor 12, mesmo usado por PasswordService) pré-computado — trocar após o primeiro login.
+IF NOT EXISTS (SELECT 1 FROM Users WHERE Email = 'admin@admin.com')
+BEGIN
+    INSERT INTO Users (Id, Email, Name, Password, Role, CreatedAt, UpdatedAt)
+    VALUES (
+        NEWID(),
+        'admin@admin.com',
+        'Admin',
+        '$2a$12$z5dQEXYFKwxbD34DYblWE.yD6zcPS.DuWtmvRpFNJOmpRS16cPmXa',
+        'Admin',
+        GETDATE(),
+        GETDATE()
+    );
+END
+GO
+
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name = 'Customers' AND xtype = 'U')
 BEGIN
     CREATE TABLE Customers (
@@ -101,6 +120,7 @@ BEGIN
         Description       NVARCHAR(1000)   NOT NULL,
         BasePrice         DECIMAL(18,2)    NOT NULL,
         EstimatedDuration SMALLINT         NOT NULL,
+        ExecutionCount    INT              NOT NULL DEFAULT 0,
         IsActive          BIT              NOT NULL,
         CreatedAt         DATETIME2        NOT NULL,
         UpdatedAt         DATETIME2        NOT NULL,
@@ -108,6 +128,12 @@ BEGIN
     );
 
     CREATE UNIQUE INDEX IX_Services_Code ON Services (Code);
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'Services') AND name = 'ExecutionCount')
+BEGIN
+    ALTER TABLE Services ADD ExecutionCount INT NOT NULL CONSTRAINT DF_Services_ExecutionCount DEFAULT 0;
 END
 GO
 
@@ -179,6 +205,7 @@ BEGIN
         UnitPrice         DECIMAL(18,2)    NOT NULL,
         Quantity          INT              NOT NULL,
         EstimatedDuration SMALLINT         NOT NULL,
+        ActualDuration    SMALLINT         NULL,
         CreatedAt         DATETIME2        NOT NULL,
         UpdatedAt         DATETIME2        NOT NULL,
         CONSTRAINT PK_ServiceOrderServices PRIMARY KEY (Id),
@@ -190,6 +217,12 @@ BEGIN
 
     CREATE INDEX IX_ServiceOrderServices_ServiceOrderId ON ServiceOrderServices (ServiceOrderId);
     CREATE INDEX IX_ServiceOrderServices_ServiceId ON ServiceOrderServices (ServiceId);
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'ServiceOrderServices') AND name = 'ActualDuration')
+BEGIN
+    ALTER TABLE ServiceOrderServices ADD ActualDuration SMALLINT NULL;
 END
 GO
 

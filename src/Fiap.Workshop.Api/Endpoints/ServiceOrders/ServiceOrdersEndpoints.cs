@@ -62,7 +62,7 @@ public static class ServiceOrdersEndpoints
         .RequireAuthorization("AttendantOnly")
         .WithValidation<CreateServiceOrderRequest>();
 
-        group.MapPatch("{serviceOrderId}/diagnosis",
+        group.MapPost("{serviceOrderId}/diagnosis",
             async (
                 [Required][FromRoute] Guid serviceOrderId,
                 [FromBody] StartDiagnosisRequest request,
@@ -85,7 +85,7 @@ public static class ServiceOrdersEndpoints
         .RequireAuthorization("MechanicOnly")
         .WithValidation<StartDiagnosisRequest>();
 
-        group.MapPatch("{serviceOrderId}/budget",
+        group.MapPost("{serviceOrderId}/budget",
             async (
                 [Required][FromRoute] Guid serviceOrderId,
                 [FromBody] AddBudgetRequest request,
@@ -108,16 +108,16 @@ public static class ServiceOrdersEndpoints
         .RequireAuthorization("MechanicOnly")
         .WithValidation<AddBudgetRequest>();
 
-        group.MapPatch("{serviceOrderId}/approve",
+        group.MapPost("{serviceOrderId}/approval",
             async (
                 [Required][FromRoute] Guid serviceOrderId,
-                [FromBody] Guid request,
+                [FromBody] ApproveServiceOrderRequest request,
                 [FromServices] IApproveServiceOrderUseCase useCase,
                 [FromServices] ICurrentUserService currentUser,
                 CancellationToken cancellationToken
             ) =>
             {
-                var result = await useCase.Handle(ApproveServiceOrderMapper.MapToInput(request, serviceOrderId, currentUser.UserId), cancellationToken);
+                var result = await useCase.Handle(request.MapToInput(serviceOrderId, currentUser.UserId), cancellationToken);
                 if (!result.IsValid)
                     return Results.BadRequest(result);
 
@@ -128,18 +128,19 @@ public static class ServiceOrdersEndpoints
         .WithDescription("Registers the attendant's record of the customer's approval, commits the reserved inventory stock, and moves the service order from AwaitingApproval to InProgress.")
         .Produces<Output>(StatusCodes.Status200OK)
         .Produces<Output>(StatusCodes.Status400BadRequest)
-        .RequireAuthorization("AttendantOnly");
+        .RequireAuthorization("AttendantOnly")
+        .WithValidation<ApproveServiceOrderRequest>();
 
-        group.MapPatch("{serviceOrderId}/reject",
+        group.MapPost("{serviceOrderId}/rejection",
             async (
                 [Required][FromRoute] Guid serviceOrderId,
-                [FromBody] Guid request,
+                [FromBody] RejectServiceOrderRequest request,
                 [FromServices] IRejectServiceOrderUseCase useCase,
                 [FromServices] ICurrentUserService currentUser,
                 CancellationToken cancellationToken
             ) =>
             {
-                var result = await useCase.Handle(RejectServiceOrderMapper.MapToInput(request, serviceOrderId, currentUser.UserId), cancellationToken);
+                var result = await useCase.Handle(request.MapToInput(serviceOrderId, currentUser.UserId), cancellationToken);
                 if (!result.IsValid)
                     return Results.BadRequest(result);
 
@@ -150,6 +151,53 @@ public static class ServiceOrdersEndpoints
         .WithDescription("Registers the attendant's record of the customer's rejection, releases the reserved inventory stock, and moves the service order from AwaitingApproval to Cancelled.")
         .Produces<Output>(StatusCodes.Status200OK)
         .Produces<Output>(StatusCodes.Status400BadRequest)
-        .RequireAuthorization("AttendantOnly");
+        .RequireAuthorization("AttendantOnly")
+        .WithValidation<RejectServiceOrderRequest>();
+
+        group.MapPost("{serviceOrderId}/completion",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromBody] CompleteServiceOrderRequest request,
+                [FromServices] ICompleteServiceOrderUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(serviceOrderId, currentUser.UserId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Completes a service order.")
+        .WithDescription("Registers the actual duration of every service in the order, updates the catalog's incremental average duration for each touched service, and moves the service order from InProgress to Completed.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("MechanicOnly")
+        .WithValidation<CompleteServiceOrderRequest>();
+
+        group.MapPost("{serviceOrderId}/delivery",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromBody] DeliverServiceOrderRequest request,
+                [FromServices] IDeliverServiceOrderUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(serviceOrderId, currentUser.UserId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Delivers a service order's vehicle back to the customer.")
+        .WithDescription("Registers that the vehicle left the shop and closes the service order, moving it to Delivered. Accepts orders in Completed (repair finished) or Cancelled (customer rejected the budget and is picking up the vehicle without any repair).")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AttendantOnly")
+        .WithValidation<DeliverServiceOrderRequest>();
     }
 }

@@ -80,7 +80,8 @@ internal static class DomainMappers
             model.EstimatedDuration,
             model.IsActive,
             model.CreatedAt,
-            model.UpdatedAt
+            model.UpdatedAt,
+            model.ExecutionCount
         );
     }
 
@@ -140,7 +141,8 @@ internal static class DomainMappers
             model.EstimatedDuration,
             model.Quantity,
             model.CreatedAt,
-            model.UpdatedAt
+            model.UpdatedAt,
+            model.ActualDuration
         );
     }
 

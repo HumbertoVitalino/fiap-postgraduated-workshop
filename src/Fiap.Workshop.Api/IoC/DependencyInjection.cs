@@ -47,6 +47,10 @@ public static class DependencyInjection
         services.AddScoped<IValidator<CreateServiceOrderRequest>, CreateServiceOrderRequestValidator>();
         services.AddScoped<IValidator<StartDiagnosisRequest>, StartDiagnosisRequestValidator>();
         services.AddScoped<IValidator<AddBudgetRequest>, AddBudgetRequestValidator>();
+        services.AddScoped<IValidator<ApproveServiceOrderRequest>, ApproveServiceOrderRequestValidator>();
+        services.AddScoped<IValidator<RejectServiceOrderRequest>, RejectServiceOrderRequestValidator>();
+        services.AddScoped<IValidator<CompleteServiceOrderRequest>, CompleteServiceOrderRequestValidator>();
+        services.AddScoped<IValidator<DeliverServiceOrderRequest>, DeliverServiceOrderRequestValidator>();
 
         return services;
     }
