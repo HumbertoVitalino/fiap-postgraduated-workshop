@@ -112,4 +112,11 @@ internal sealed class ServiceOrderRepository(AppDbContext context) : Repository<
             .AsNoTracking()
             .AnyAsync(s => s.ServiceId == serviceId, cancellationToken);
     }
+
+    public async Task<bool> ExistsWithInventoryItemIdAsync(Guid inventoryItemId, CancellationToken cancellationToken)
+    {
+        return await _context.Set<ServiceOrderPartModel>()
+            .AsNoTracking()
+            .AnyAsync(p => p.InventoryItemId == inventoryItemId, cancellationToken);
+    }
 }
