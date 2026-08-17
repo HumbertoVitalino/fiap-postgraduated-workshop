@@ -77,4 +77,64 @@ public class VehicleUnitTests
         var exception = Assert.Throws<DomainException>(act);
         Assert.Equal(VehicleErrors.InvalidModelYear, exception.Message);
     }
+
+    [Fact(DisplayName = "Vehicle >> Should update profile >> When UpdateProfile is called")]
+    public void Vehicle_ShouldUpdateProfile_WhenUpdateProfileIsCalled()
+    {
+        // Arrange
+        var manufactureYear = 2020;
+        var vehicle = new Vehicle(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "ABC1234",
+            "Ford",
+            "Ka",
+            manufactureYear,
+            manufactureYear,
+            "Black",
+            DateTime.Now,
+            DateTime.Now
+        );
+        var originalUpdatedAt = vehicle.UpdatedAt;
+        var originalLicensePlate = vehicle.LicensePlate;
+        var originalManufactureYear = vehicle.ManufactureYear;
+
+        // Act
+        vehicle.UpdateProfile("Toyota", "Corolla", "White", manufactureYear + 1);
+
+        // Assert
+        Assert.Equal("Toyota", vehicle.Brand);
+        Assert.Equal("Corolla", vehicle.Model);
+        Assert.Equal("White", vehicle.Color);
+        Assert.Equal(manufactureYear + 1, vehicle.ModelYear);
+        Assert.Equal(originalLicensePlate, vehicle.LicensePlate);
+        Assert.Equal(originalManufactureYear, vehicle.ManufactureYear);
+        Assert.True(vehicle.UpdatedAt >= originalUpdatedAt);
+    }
+
+    [Fact(DisplayName = "Vehicle >> Should throw >> When UpdateProfile sets ModelYear earlier than ManufactureYear")]
+    public void Vehicle_ShouldThrow_WhenUpdateProfileSetsModelYearEarlierThanManufactureYear()
+    {
+        // Arrange
+        var manufactureYear = 2020;
+        var vehicle = new Vehicle(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "ABC1234",
+            "Ford",
+            "Ka",
+            manufactureYear,
+            manufactureYear,
+            "Black",
+            DateTime.Now,
+            DateTime.Now
+        );
+
+        // Act
+        var act = () => vehicle.UpdateProfile("Ford", "Ka", "Black", manufactureYear - 1);
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(VehicleErrors.InvalidModelYear, exception.Message);
+    }
 }

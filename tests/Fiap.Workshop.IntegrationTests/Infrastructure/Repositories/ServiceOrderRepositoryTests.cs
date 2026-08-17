@@ -403,6 +403,35 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
         Assert.Empty(found!);
     }
 
+    [Fact(DisplayName = "ServiceOrderRepository >> Should return true >> When vehicle has a service order")]
+    public async Task ServiceOrderRepository_ShouldReturnTrue_WhenVehicleHasServiceOrder()
+    {
+        // Arrange
+        var (customer, vehicle, user) = await SeedServiceOrderDependenciesAsync();
+        var serviceOrder = CreateServiceOrder(customer, vehicle, user);
+        await SeedServiceOrderAsync(serviceOrder);
+
+        // Act
+        var exists = false;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            exists = await repo.ExistsWithVehicleIdAsync(vehicle.Id, CancellationToken.None));
+
+        // Assert
+        Assert.True(exists);
+    }
+
+    [Fact(DisplayName = "ServiceOrderRepository >> Should return false >> When vehicle has no service orders")]
+    public async Task ServiceOrderRepository_ShouldReturnFalse_WhenVehicleHasNoServiceOrders()
+    {
+        // Act
+        var exists = true;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            exists = await repo.ExistsWithVehicleIdAsync(Guid.NewGuid(), CancellationToken.None));
+
+        // Assert
+        Assert.False(exists);
+    }
+
     [Fact(DisplayName = "ServiceOrderRepository >> Should remove entity >> When removing an existing service order")]
     public async Task ServiceOrderRepository_ShouldRemoveEntity_WhenRemovingExistingServiceOrder()
     {
