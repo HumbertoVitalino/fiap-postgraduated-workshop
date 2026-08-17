@@ -196,6 +196,23 @@ public sealed class VehicleRepositoryTests(DatabaseFixture fixture)
         Assert.False(exists);
     }
 
+    [Fact(DisplayName = "VehicleRepository >> Should retrieve all >> When vehicles exist")]
+    public async Task VehicleRepository_ShouldRetrieveAll_WhenVehiclesExist()
+    {
+        // Arrange
+        var customer = await SeedCustomerAsync();
+        var vehicle = CreateVehicle(customer.Id);
+        await SeedVehicleAsync(vehicle);
+
+        // Act
+        IEnumerable<Vehicle>? found = null;
+        await WithScopeAsync(async (IVehicleRepository repo) => found = await repo.GetAllAsync(CancellationToken.None));
+
+        // Assert
+        Assert.NotNull(found);
+        Assert.Contains(found!, v => v.Id == vehicle.Id);
+    }
+
     [Fact(DisplayName = "VehicleRepository >> Should remove entity >> When removing an existing vehicle")]
     public async Task VehicleRepository_ShouldRemoveEntity_WhenRemovingExistingVehicle()
     {
