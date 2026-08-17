@@ -64,7 +64,8 @@ public static class CreateServiceOrderMapper
             service.Description,
             service.UnitPrice,
             service.Quantity,
-            service.EstimatedDuration
+            service.EstimatedDuration,
+            service.ActualDuration
         );
     }
 

@@ -9,6 +9,7 @@ public sealed class ServiceOrderServiceModel : Model
     public decimal UnitPrice { get; private set; }
     public int Quantity { get; private set; }
     public short EstimatedDuration { get; private set; }
+    public short? ActualDuration { get; private set; }
 
     private ServiceOrderServiceModel() { }
 
@@ -22,7 +23,8 @@ public sealed class ServiceOrderServiceModel : Model
         short estimatedDuration,
         int quantity,
         DateTime createdAt,
-        DateTime updatedAt
+        DateTime updatedAt,
+        short? actualDuration = null
     ) : base(id, createdAt, updatedAt)
     {
         ServiceOrderId = serviceOrderId;
@@ -32,5 +34,6 @@ public sealed class ServiceOrderServiceModel : Model
         UnitPrice = unitPrice;
         EstimatedDuration = estimatedDuration;
         Quantity = quantity;
+        ActualDuration = actualDuration;
     }
 }

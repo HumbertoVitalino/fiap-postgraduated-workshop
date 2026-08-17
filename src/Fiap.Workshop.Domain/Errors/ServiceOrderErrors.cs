@@ -10,4 +10,6 @@ public static class ServiceOrderErrors
     public const string InvalidQuantity = "Quantity must be greater than zero.";
     public const string InvalidUnitPrice = "Unit price cannot be negative.";
     public const string InvalidEstimatedDuration = "Estimated duration cannot be negative.";
+    public const string InvalidActualDuration = "Actual duration must be greater than zero.";
+    public const string MissingServiceDuration = "All services in the service order must have an actual duration informed, with no missing or extra entries.";
 }

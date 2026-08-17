@@ -325,4 +325,167 @@ public class ServiceOrderUnitTests
             exception.Message
         );
     }
+
+    private ServiceOrder CreateInProgressServiceOrder(out ServiceOrderService orderService)
+    {
+        var serviceOrder = CreateDiagnosingServiceOrder();
+        orderService = CreateService(serviceOrder.Id, 120m, 1);
+
+        serviceOrder.AddBudget([orderService], [], Guid.NewGuid());
+        serviceOrder.Approve(Guid.NewGuid());
+
+        return serviceOrder;
+    }
+
+    [Fact(DisplayName = "ServiceOrder >> Should complete >> When status is InProgress and every service has a duration")]
+    public void ServiceOrder_ShouldComplete_WhenStatusIsInProgressAndEveryServiceHasADuration()
+    {
+        // Arrange
+        var serviceOrder = CreateInProgressServiceOrder(out var orderService);
+        var changedBy = Guid.NewGuid();
+        var before = DateTime.Now;
+
+        // Act
+        serviceOrder.Complete([(orderService.Id, (short)45)], changedBy);
+
+        // Assert
+        Assert.Equal(ServiceOrderStatus.Completed, serviceOrder.Status);
+        Assert.Equal((short)45, orderService.ActualDuration);
+        Assert.InRange(serviceOrder.UpdatedAt, before, DateTime.Now);
+
+        Assert.Equal(4, serviceOrder.StatusHistory.Count);
+        var history = serviceOrder.StatusHistory.Last();
+        Assert.Equal(ServiceOrderStatus.InProgress, history.PreviousStatus);
+        Assert.Equal(ServiceOrderStatus.Completed, history.CurrentStatus);
+        Assert.Equal(changedBy, history.ChangedBy);
+    }
+
+    [Fact(DisplayName = "ServiceOrder >> Should throw >> When Complete is called and status is not InProgress")]
+    public void ServiceOrder_ShouldThrow_WhenCompleteIsCalledAndStatusIsNotInProgress()
+    {
+        // Arrange
+        var serviceOrder = CreateAwaitingApprovalServiceOrder();
+
+        // Act
+        var act = () => serviceOrder.Complete([], Guid.NewGuid());
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(
+            string.Format(ServiceOrderErrors.InvalidStatusTransition, ServiceOrderStatus.AwaitingApproval, ServiceOrderStatus.Completed),
+            exception.Message
+        );
+    }
+
+    [Fact(DisplayName = "ServiceOrder >> Should throw >> When Complete is called and a service duration is missing")]
+    public void ServiceOrder_ShouldThrow_WhenCompleteIsCalledAndAServiceDurationIsMissing()
+    {
+        // Arrange
+        var serviceOrder = CreateInProgressServiceOrder(out _);
+
+        // Act
+        var act = () => serviceOrder.Complete([], Guid.NewGuid());
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(ServiceOrderErrors.MissingServiceDuration, exception.Message);
+        Assert.Equal(ServiceOrderStatus.InProgress, serviceOrder.Status);
+    }
+
+    [Fact(DisplayName = "ServiceOrder >> Should throw >> When Complete is called with a duration for a service that does not belong to the order")]
+    public void ServiceOrder_ShouldThrow_WhenCompleteIsCalledWithADurationForAServiceThatDoesNotBelongToTheOrder()
+    {
+        // Arrange
+        var serviceOrder = CreateInProgressServiceOrder(out var orderService);
+        var durations = new (Guid ServiceOrderServiceId, short ActualDuration)[]
+        {
+            (orderService.Id, (short)45),
+            (Guid.NewGuid(), (short)30)
+        };
+
+        // Act
+        var act = () => serviceOrder.Complete(durations, Guid.NewGuid());
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(ServiceOrderErrors.MissingServiceDuration, exception.Message);
+        Assert.Equal(ServiceOrderStatus.InProgress, serviceOrder.Status);
+    }
+
+    private ServiceOrder CreateCompletedServiceOrder()
+    {
+        var serviceOrder = CreateInProgressServiceOrder(out var orderService);
+        serviceOrder.Complete([(orderService.Id, (short)45)], Guid.NewGuid());
+        return serviceOrder;
+    }
+
+    private static ServiceOrder CreateCancelledServiceOrder()
+    {
+        var serviceOrder = CreateAwaitingApprovalServiceOrder();
+        serviceOrder.Reject(Guid.NewGuid());
+        return serviceOrder;
+    }
+
+    [Fact(DisplayName = "ServiceOrder >> Should deliver >> When status is Completed")]
+    public void ServiceOrder_ShouldDeliver_WhenStatusIsCompleted()
+    {
+        // Arrange
+        var serviceOrder = CreateCompletedServiceOrder();
+        var changedBy = Guid.NewGuid();
+        var before = DateTime.Now;
+
+        // Act
+        serviceOrder.Deliver(changedBy);
+
+        // Assert
+        Assert.Equal(ServiceOrderStatus.Delivered, serviceOrder.Status);
+        Assert.NotNull(serviceOrder.ClosedAt);
+        Assert.InRange(serviceOrder.ClosedAt!.Value, before, DateTime.Now);
+        Assert.InRange(serviceOrder.UpdatedAt, before, DateTime.Now);
+
+        var history = serviceOrder.StatusHistory.Last();
+        Assert.Equal(ServiceOrderStatus.Completed, history.PreviousStatus);
+        Assert.Equal(ServiceOrderStatus.Delivered, history.CurrentStatus);
+        Assert.Equal(changedBy, history.ChangedBy);
+    }
+
+    [Fact(DisplayName = "ServiceOrder >> Should deliver >> When status is Cancelled")]
+    public void ServiceOrder_ShouldDeliver_WhenStatusIsCancelled()
+    {
+        // Arrange — a rejected order still has the customer's vehicle at the shop until it is picked up.
+        var serviceOrder = CreateCancelledServiceOrder();
+        var changedBy = Guid.NewGuid();
+        var before = DateTime.Now;
+
+        // Act
+        serviceOrder.Deliver(changedBy);
+
+        // Assert
+        Assert.Equal(ServiceOrderStatus.Delivered, serviceOrder.Status);
+        Assert.NotNull(serviceOrder.ClosedAt);
+        Assert.InRange(serviceOrder.ClosedAt!.Value, before, DateTime.Now);
+
+        var history = serviceOrder.StatusHistory.Last();
+        Assert.Equal(ServiceOrderStatus.Cancelled, history.PreviousStatus);
+        Assert.Equal(ServiceOrderStatus.Delivered, history.CurrentStatus);
+        Assert.Equal(changedBy, history.ChangedBy);
+    }
+
+    [Fact(DisplayName = "ServiceOrder >> Should throw >> When Deliver is called and status is neither Completed nor Cancelled")]
+    public void ServiceOrder_ShouldThrow_WhenDeliverIsCalledAndStatusIsNeitherCompletedNorCancelled()
+    {
+        // Arrange
+        var serviceOrder = CreateDiagnosingServiceOrder();
+
+        // Act
+        var act = () => serviceOrder.Deliver(Guid.NewGuid());
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(
+            string.Format(ServiceOrderErrors.InvalidStatusTransition, ServiceOrderStatus.Diagnosing, ServiceOrderStatus.Delivered),
+            exception.Message
+        );
+        Assert.Null(serviceOrder.ClosedAt);
+    }
 }

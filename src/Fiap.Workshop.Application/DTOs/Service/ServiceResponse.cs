@@ -7,5 +7,6 @@ public sealed record ServiceResponse(
     string Description,
     decimal BasePrice,
     short EstimatedDuration,
+    int ExecutionCount,
     bool IsActive
 );

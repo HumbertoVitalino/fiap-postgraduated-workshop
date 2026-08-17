@@ -7,6 +7,7 @@ public sealed class ServiceModel : Model
     public string Description { get; private set; } = default!;
     public decimal BasePrice { get; private set; }
     public short EstimatedDuration { get; private set; }
+    public int ExecutionCount { get; private set; }
     public bool IsActive { get; private set; }
 
     private ServiceModel() { }
@@ -20,7 +21,8 @@ public sealed class ServiceModel : Model
         short estimatedDuration,
         bool isActive,
         DateTime createdAt,
-        DateTime updatedAt
+        DateTime updatedAt,
+        int executionCount = 0
     ) : base(id, createdAt, updatedAt)
     {
         Code = code;
@@ -29,5 +31,6 @@ public sealed class ServiceModel : Model
         BasePrice = basePrice;
         EstimatedDuration = estimatedDuration;
         IsActive = isActive;
+        ExecutionCount = executionCount;
     }
 }

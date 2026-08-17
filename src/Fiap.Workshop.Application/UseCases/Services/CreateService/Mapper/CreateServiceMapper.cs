@@ -30,6 +30,7 @@ public static class CreateServiceMapper
             service.Description,
             service.BasePrice,
             service.EstimatedDuration,
+            service.ExecutionCount,
             service.IsActive
         );
     }

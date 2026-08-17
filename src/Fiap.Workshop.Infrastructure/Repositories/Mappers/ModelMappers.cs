@@ -76,7 +76,8 @@ internal static class ModelMappers
             service.EstimatedDuration,
             service.IsActive,
             service.CreatedAt,
-            service.UpdatedAt
+            service.UpdatedAt,
+            service.ExecutionCount
         );
     }
 
@@ -134,7 +135,8 @@ internal static class ModelMappers
             service.EstimatedDuration,
             service.Quantity,
             service.CreatedAt,
-            service.UpdatedAt
+            service.UpdatedAt,
+            service.ActualDuration
         );
     }
 

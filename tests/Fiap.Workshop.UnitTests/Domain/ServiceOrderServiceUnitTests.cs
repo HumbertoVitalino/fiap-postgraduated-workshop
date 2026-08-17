@@ -50,6 +50,7 @@ public class ServiceOrderServiceUnitTests
         Assert.Equal(quantity, service.Quantity);
         Assert.Equal(createdAt, service.CreatedAt);
         Assert.Equal(updatedAt, service.UpdatedAt);
+        Assert.Null(service.ActualDuration);
     }
 
     [Theory(DisplayName = "ServiceOrderService >> Should throw >> When quantity is not greater than zero")]
@@ -118,5 +119,50 @@ public class ServiceOrderServiceUnitTests
         // Assert
         var exception = Assert.Throws<DomainException>(act);
         Assert.Equal(ServiceOrderErrors.InvalidEstimatedDuration, exception.Message);
+    }
+
+    private ServiceOrderService CreateServiceOrderService() => new(
+        Guid.NewGuid(),
+        Guid.NewGuid(),
+        Guid.NewGuid(),
+        _fixture.Create<string>(),
+        _fixture.Create<string>(),
+        _fixture.Create<decimal>(),
+        60,
+        _fixture.Create<int>(),
+        DateTime.Now,
+        DateTime.Now
+    );
+
+    [Fact(DisplayName = "ServiceOrderService >> Should record actual duration >> When actual duration is greater than zero")]
+    public void ServiceOrderService_ShouldRecordActualDuration_WhenActualDurationIsGreaterThanZero()
+    {
+        // Arrange
+        var service = CreateServiceOrderService();
+        var before = DateTime.Now;
+
+        // Act
+        service.RecordActualDuration(45);
+
+        // Assert
+        Assert.Equal((short)45, service.ActualDuration);
+        Assert.InRange(service.UpdatedAt, before, DateTime.Now);
+    }
+
+    [Theory(DisplayName = "ServiceOrderService >> Should throw >> When recording actual duration not greater than zero")]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void ServiceOrderService_ShouldThrow_WhenRecordingActualDurationNotGreaterThanZero(short actualDuration)
+    {
+        // Arrange
+        var service = CreateServiceOrderService();
+
+        // Act
+        var act = () => service.RecordActualDuration(actualDuration);
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(ServiceOrderErrors.InvalidActualDuration, exception.Message);
+        Assert.Null(service.ActualDuration);
     }
 }

@@ -183,4 +183,76 @@ public class ServiceOrder(
 
         SetUpdatedAt();
     }
+
+    public void Complete(IReadOnlyCollection<(Guid ServiceOrderServiceId, short ActualDuration)> durations, Guid changedBy)
+    {
+        if (Status != ServiceOrderStatus.InProgress)
+        {
+            throw new DomainException(
+                string.Format(
+                    ServiceOrderErrors.InvalidStatusTransition,
+                    Status,
+                    ServiceOrderStatus.Completed
+                )
+            );
+        }
+
+        var serviceIds = _services.Select(service => service.Id).ToHashSet();
+        var durationIds = durations.Select(duration => duration.ServiceOrderServiceId).ToHashSet();
+
+        if (!serviceIds.SetEquals(durationIds))
+            throw new DomainException(ServiceOrderErrors.MissingServiceDuration);
+
+        var durationsById = durations.ToDictionary(duration => duration.ServiceOrderServiceId, duration => duration.ActualDuration);
+
+        foreach (var service in _services)
+            service.RecordActualDuration(durationsById[service.Id]);
+
+        var previousStatus = Status;
+        Status = ServiceOrderStatus.Completed;
+
+        _statusHistory.Add(
+            new ServiceOrderStatusHistory(
+                Guid.NewGuid(),
+                Id,
+                previousStatus,
+                Status,
+                changedBy,
+                DateTime.Now
+            )
+        );
+
+        SetUpdatedAt();
+    }
+
+    public void Deliver(Guid changedBy)
+    {
+        if (Status != ServiceOrderStatus.Completed && Status != ServiceOrderStatus.Cancelled)
+        {
+            throw new DomainException(
+                string.Format(
+                    ServiceOrderErrors.InvalidStatusTransition,
+                    Status,
+                    ServiceOrderStatus.Delivered
+                )
+            );
+        }
+
+        var previousStatus = Status;
+        Status = ServiceOrderStatus.Delivered;
+        ClosedAt = DateTime.Now;
+
+        _statusHistory.Add(
+            new ServiceOrderStatusHistory(
+                Guid.NewGuid(),
+                Id,
+                previousStatus,
+                Status,
+                changedBy,
+                DateTime.Now
+            )
+        );
+
+        SetUpdatedAt();
+    }
 }
