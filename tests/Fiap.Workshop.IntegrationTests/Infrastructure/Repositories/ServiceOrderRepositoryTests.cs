@@ -367,6 +367,71 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
         Assert.Equal(2, found.StatusHistory.Count);
     }
 
+    [Fact(DisplayName = "ServiceOrderRepository >> Should retrieve all by vehicle id >> When vehicle has service orders")]
+    public async Task ServiceOrderRepository_ShouldRetrieveAllByVehicleId_WhenVehicleHasServiceOrders()
+    {
+        // Arrange
+        var (customer, vehicle, user) = await SeedServiceOrderDependenciesAsync();
+        var serviceOrder = CreateServiceOrder(customer, vehicle, user);
+        await SeedServiceOrderAsync(serviceOrder);
+
+        var (otherCustomer, otherVehicle, otherUser) = await SeedServiceOrderDependenciesAsync();
+        var otherServiceOrder = CreateServiceOrder(otherCustomer, otherVehicle, otherUser);
+        await SeedServiceOrderAsync(otherServiceOrder);
+
+        // Act
+        IReadOnlyCollection<ServiceOrder>? found = null;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            found = await repo.GetAllByVehicleIdAsync(vehicle.Id, CancellationToken.None));
+
+        // Assert
+        Assert.NotNull(found);
+        var match = Assert.Single(found!);
+        Assert.Equal(serviceOrder.Id, match.Id);
+    }
+
+    [Fact(DisplayName = "ServiceOrderRepository >> Should return empty >> When vehicle has no service orders")]
+    public async Task ServiceOrderRepository_ShouldReturnEmpty_WhenVehicleHasNoServiceOrders()
+    {
+        // Act
+        IReadOnlyCollection<ServiceOrder>? found = null;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            found = await repo.GetAllByVehicleIdAsync(Guid.NewGuid(), CancellationToken.None));
+
+        // Assert
+        Assert.NotNull(found);
+        Assert.Empty(found!);
+    }
+
+    [Fact(DisplayName = "ServiceOrderRepository >> Should return true >> When vehicle has a service order")]
+    public async Task ServiceOrderRepository_ShouldReturnTrue_WhenVehicleHasServiceOrder()
+    {
+        // Arrange
+        var (customer, vehicle, user) = await SeedServiceOrderDependenciesAsync();
+        var serviceOrder = CreateServiceOrder(customer, vehicle, user);
+        await SeedServiceOrderAsync(serviceOrder);
+
+        // Act
+        var exists = false;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            exists = await repo.ExistsWithVehicleIdAsync(vehicle.Id, CancellationToken.None));
+
+        // Assert
+        Assert.True(exists);
+    }
+
+    [Fact(DisplayName = "ServiceOrderRepository >> Should return false >> When vehicle has no service orders")]
+    public async Task ServiceOrderRepository_ShouldReturnFalse_WhenVehicleHasNoServiceOrders()
+    {
+        // Act
+        var exists = true;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            exists = await repo.ExistsWithVehicleIdAsync(Guid.NewGuid(), CancellationToken.None));
+
+        // Assert
+        Assert.False(exists);
+    }
+
     [Fact(DisplayName = "ServiceOrderRepository >> Should remove entity >> When removing an existing service order")]
     public async Task ServiceOrderRepository_ShouldRemoveEntity_WhenRemovingExistingServiceOrder()
     {

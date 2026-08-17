@@ -37,4 +37,16 @@ public class Vehicle : AggregateRoot
         ModelYear = modelYear;
         Color = color;
     }
+
+    public void UpdateProfile(string brand, string model, string color, int modelYear)
+    {
+        if (modelYear < ManufactureYear)
+            throw new DomainException(VehicleErrors.InvalidModelYear);
+
+        Brand = brand;
+        Model = model;
+        Color = color;
+        ModelYear = modelYear;
+        SetUpdatedAt();
+    }
 }

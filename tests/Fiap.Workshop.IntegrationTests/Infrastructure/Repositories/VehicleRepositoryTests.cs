@@ -133,6 +133,86 @@ public sealed class VehicleRepositoryTests(DatabaseFixture fixture)
         Assert.Equal("Updated Model", found!.Model);
     }
 
+    [Fact(DisplayName = "VehicleRepository >> Should retrieve by license plate >> When vehicle exists")]
+    public async Task VehicleRepository_ShouldRetrieveByLicensePlate_WhenVehicleExists()
+    {
+        // Arrange
+        var customer = await SeedCustomerAsync();
+        var vehicle = CreateVehicle(customer.Id);
+        await SeedVehicleAsync(vehicle);
+
+        // Act
+        Vehicle? found = null;
+        await WithScopeAsync(async (IVehicleRepository repo) =>
+            found = await repo.GetByLicensePlateAsync(vehicle.LicensePlate, CancellationToken.None));
+
+        // Assert
+        Assert.NotNull(found);
+        Assert.Equal(vehicle.Id, found!.Id);
+        Assert.Equal(vehicle.LicensePlate, found.LicensePlate);
+    }
+
+    [Fact(DisplayName = "VehicleRepository >> Should return null >> When license plate does not exist")]
+    public async Task VehicleRepository_ShouldReturnNull_WhenLicensePlateDoesNotExist()
+    {
+        // Act
+        Vehicle? found = null;
+        await WithScopeAsync(async (IVehicleRepository repo) =>
+            found = await repo.GetByLicensePlateAsync(TestData.ShortString(10).ToUpperInvariant(), CancellationToken.None));
+
+        // Assert
+        Assert.Null(found);
+    }
+
+    [Fact(DisplayName = "VehicleRepository >> Should return true >> When customer has a vehicle")]
+    public async Task VehicleRepository_ShouldReturnTrue_WhenCustomerHasVehicle()
+    {
+        // Arrange
+        var customer = await SeedCustomerAsync();
+        var vehicle = CreateVehicle(customer.Id);
+        await SeedVehicleAsync(vehicle);
+
+        // Act
+        var exists = false;
+        await WithScopeAsync(async (IVehicleRepository repo) =>
+            exists = await repo.ExistsWithCustomerIdAsync(customer.Id, CancellationToken.None));
+
+        // Assert
+        Assert.True(exists);
+    }
+
+    [Fact(DisplayName = "VehicleRepository >> Should return false >> When customer has no vehicles")]
+    public async Task VehicleRepository_ShouldReturnFalse_WhenCustomerHasNoVehicles()
+    {
+        // Arrange
+        var customer = await SeedCustomerAsync();
+
+        // Act
+        var exists = true;
+        await WithScopeAsync(async (IVehicleRepository repo) =>
+            exists = await repo.ExistsWithCustomerIdAsync(customer.Id, CancellationToken.None));
+
+        // Assert
+        Assert.False(exists);
+    }
+
+    [Fact(DisplayName = "VehicleRepository >> Should retrieve all >> When vehicles exist")]
+    public async Task VehicleRepository_ShouldRetrieveAll_WhenVehiclesExist()
+    {
+        // Arrange
+        var customer = await SeedCustomerAsync();
+        var vehicle = CreateVehicle(customer.Id);
+        await SeedVehicleAsync(vehicle);
+
+        // Act
+        IEnumerable<Vehicle>? found = null;
+        await WithScopeAsync(async (IVehicleRepository repo) => found = await repo.GetAllAsync(CancellationToken.None));
+
+        // Assert
+        Assert.NotNull(found);
+        Assert.Contains(found!, v => v.Id == vehicle.Id);
+    }
+
     [Fact(DisplayName = "VehicleRepository >> Should remove entity >> When removing an existing vehicle")]
     public async Task VehicleRepository_ShouldRemoveEntity_WhenRemovingExistingVehicle()
     {

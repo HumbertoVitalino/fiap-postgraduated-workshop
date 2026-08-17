@@ -96,6 +96,22 @@ public sealed class CustomerRepositoryTests(DatabaseFixture fixture)
         Assert.Equal("Updated Name", found!.Name);
     }
 
+    [Fact(DisplayName = "CustomerRepository >> Should retrieve all >> When customers exist")]
+    public async Task CustomerRepository_ShouldRetrieveAll_WhenCustomersExist()
+    {
+        // Arrange
+        var customer = CreateCustomer();
+        await SeedAsync(customer);
+
+        // Act
+        IEnumerable<Customer>? found = null;
+        await WithScopeAsync(async repo => found = await repo.GetAllAsync(CancellationToken.None));
+
+        // Assert
+        Assert.NotNull(found);
+        Assert.Contains(found!, c => c.Id == customer.Id);
+    }
+
     [Fact(DisplayName = "CustomerRepository >> Should remove entity >> When removing an existing customer")]
     public async Task CustomerRepository_ShouldRemoveEntity_WhenRemovingExistingCustomer()
     {

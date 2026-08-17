@@ -85,4 +85,24 @@ internal sealed class ServiceOrderRepository(AppDbContext context) : Repository<
 
     public override void Remove(ServiceOrder entity) =>
         Delete(_context.ServiceOrders, entity.MapToModel(), entity.Id);
+
+    public async Task<IReadOnlyCollection<ServiceOrder>> GetAllByVehicleIdAsync(Guid vehicleId, CancellationToken cancellationToken)
+    {
+        var models = await _context.ServiceOrders
+            .AsNoTracking()
+            .Include(so => so.Parts)
+            .Include(so => so.Services)
+            .Include(so => so.StatusHistory)
+            .Where(so => so.VehicleId == vehicleId)
+            .ToListAsync(cancellationToken);
+
+        return models.Select(model => model.MapToDomain()).ToList();
+    }
+
+    public async Task<bool> ExistsWithVehicleIdAsync(Guid vehicleId, CancellationToken cancellationToken)
+    {
+        return await _context.ServiceOrders
+            .AsNoTracking()
+            .AnyAsync(so => so.VehicleId == vehicleId, cancellationToken);
+    }
 }

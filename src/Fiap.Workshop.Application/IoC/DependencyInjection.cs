@@ -1,8 +1,13 @@
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.Users.ChangePassword;
 using Fiap.Workshop.Application.UseCases.Customers.CreateCustomer;
+using Fiap.Workshop.Application.UseCases.Customers.DeleteCustomer;
+using Fiap.Workshop.Application.UseCases.Customers.GetCustomers;
 using Fiap.Workshop.Application.UseCases.Users.CreateUser;
 using Fiap.Workshop.Application.UseCases.Vehicles.CreateVehicle;
+using Fiap.Workshop.Application.UseCases.Vehicles.DeleteVehicle;
+using Fiap.Workshop.Application.UseCases.Vehicles.GetVehicles;
+using Fiap.Workshop.Application.UseCases.Vehicles.UpdateVehicle;
 using Fiap.Workshop.Application.UseCases.Users.DeleteUser;
 using Fiap.Workshop.Application.UseCases.InventoryItems.CreateInventoryItem;
 using Fiap.Workshop.Application.UseCases.InventoryItems.GetInventoryItems;
@@ -20,6 +25,7 @@ using Fiap.Workshop.Application.UseCases.ServiceOrders.DeliverServiceOrder;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.GetServiceOrder;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.RejectServiceOrder;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.StartDiagnosis;
+using Fiap.Workshop.Application.UseCases.ServiceOrders.TrackServiceOrders;
 using Fiap.Workshop.Application.UseCases.Customers.UpdateCustomer;
 using Fiap.Workshop.Application.UseCases.Users.UpdateUser;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,6 +42,8 @@ public static class DependencyInjection
         services.AddScoped<ILoginUserUseCase, LoginUserUseCase>();
         services.AddScoped<ICreateCustomerUseCase, CreateCustomerUseCase>();
         services.AddScoped<IGetCustomerUseCase, GetCustomerUseCase>();
+        services.AddScoped<IGetCustomersUseCase, GetCustomersUseCase>();
+        services.AddScoped<IDeleteCustomerUseCase, DeleteCustomerUseCase>();
         services.AddScoped<IGetUsersUseCase, GetUsersUseCase>();
         services.AddScoped<IUpdateUserUseCase, UpdateUserUseCase>();
         services.AddScoped<IChangePasswordUseCase, ChangePasswordUseCase>();
@@ -43,6 +51,9 @@ public static class DependencyInjection
         services.AddScoped<IUpdateCustomerUseCase, UpdateCustomerUseCase>();
         services.AddScoped<ICreateVehicleUseCase, CreateVehicleUseCase>();
         services.AddScoped<IGetVehicleUseCase, GetVehicleUseCase>();
+        services.AddScoped<IGetVehiclesUseCase, GetVehiclesUseCase>();
+        services.AddScoped<IUpdateVehicleUseCase, UpdateVehicleUseCase>();
+        services.AddScoped<IDeleteVehicleUseCase, DeleteVehicleUseCase>();
         services.AddScoped<ICreateServiceUseCase, CreateServiceUseCase>();
         services.AddScoped<IGetServicesUseCase, GetServicesUseCase>();
         services.AddScoped<ICreateInventoryItemUseCase, CreateInventoryItemUseCase>();
@@ -55,6 +66,7 @@ public static class DependencyInjection
         services.AddScoped<IRejectServiceOrderUseCase, RejectServiceOrderUseCase>();
         services.AddScoped<ICompleteServiceOrderUseCase, CompleteServiceOrderUseCase>();
         services.AddScoped<IDeliverServiceOrderUseCase, DeliverServiceOrderUseCase>();
+        services.AddScoped<ITrackServiceOrdersUseCase, TrackServiceOrdersUseCase>();
 
         return services;
     }

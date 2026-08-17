@@ -37,4 +37,29 @@ internal sealed class VehicleRepository(AppDbContext context) : Repository<Vehic
             .AsNoTracking()
             .AnyAsync(x => x.LicensePlate == licensePlate, cancellationToken);
     }
+
+    public async Task<Vehicle?> GetByLicensePlateAsync(string licensePlate, CancellationToken cancellationToken)
+    {
+        var model = await _context.Vehicles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(v => v.LicensePlate == licensePlate, cancellationToken);
+
+        return model?.MapToDomain();
+    }
+
+    public async Task<bool> ExistsWithCustomerIdAsync(Guid customerId, CancellationToken cancellationToken)
+    {
+        return await _context.Vehicles
+            .AsNoTracking()
+            .AnyAsync(x => x.CustomerId == customerId, cancellationToken);
+    }
+
+    public async Task<IEnumerable<Vehicle>> GetAllAsync(CancellationToken cancellationToken)
+    {
+        var vehicles = await _context.Vehicles
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return vehicles.MapToDomain();
+    }
 }
