@@ -253,6 +253,9 @@ public sealed class AppDbContext(
             entity.Property(s => s.EstimatedDuration)
                 .IsRequired();
 
+            entity.Property(s => s.ExecutionCount)
+                .IsRequired();
+
             entity.Property(s => s.IsActive)
                 .IsRequired();
 
@@ -421,6 +424,8 @@ public sealed class AppDbContext(
 
             entity.Property(s => s.EstimatedDuration)
                 .IsRequired();
+
+            entity.Property(s => s.ActualDuration);
 
             entity.Property(s => s.CreatedAt)
                 .IsRequired();
