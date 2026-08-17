@@ -13,8 +13,10 @@ using Fiap.Workshop.Application.UseCases.Users.LoginUser;
 using Fiap.Workshop.Application.UseCases.Services.CreateService;
 using Fiap.Workshop.Application.UseCases.Services.GetServices;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.AddBudget;
+using Fiap.Workshop.Application.UseCases.ServiceOrders.ApproveServiceOrder;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.CreateServiceOrder;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.GetServiceOrder;
+using Fiap.Workshop.Application.UseCases.ServiceOrders.RejectServiceOrder;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.StartDiagnosis;
 using Fiap.Workshop.Application.UseCases.Customers.UpdateCustomer;
 using Fiap.Workshop.Application.UseCases.Users.UpdateUser;
@@ -47,6 +49,8 @@ public static class DependencyInjection
         services.AddScoped<IGetServiceOrderUseCase, GetServiceOrderUseCase>();
         services.AddScoped<IStartDiagnosisUseCase, StartDiagnosisUseCase>();
         services.AddScoped<IAddBudgetUseCase, AddBudgetUseCase>();
+        services.AddScoped<IApproveServiceOrderUseCase, ApproveServiceOrderUseCase>();
+        services.AddScoped<IRejectServiceOrderUseCase, RejectServiceOrderUseCase>();
 
         return services;
     }

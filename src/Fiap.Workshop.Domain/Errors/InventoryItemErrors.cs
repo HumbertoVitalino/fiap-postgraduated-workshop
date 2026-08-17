@@ -8,4 +8,6 @@ public static class InventoryItemErrors
     public const string InvalidMinimumStock = "Minimum stock cannot be negative.";
     public const string InvalidUnitPrice = "Unit price cannot be negative.";
     public const string InsufficientStock = "Insufficient stock available to reserve the requested quantity.";
+    public const string CommitQuantityExceedsReservedQuantity = "Cannot commit more than the reserved quantity.";
+    public const string ReleaseQuantityExceedsReservedQuantity = "Cannot release more than the reserved quantity.";
 }

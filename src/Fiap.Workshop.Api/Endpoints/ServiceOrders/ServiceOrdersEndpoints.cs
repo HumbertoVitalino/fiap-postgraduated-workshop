@@ -107,5 +107,49 @@ public static class ServiceOrdersEndpoints
         .Produces<Output>(StatusCodes.Status400BadRequest)
         .RequireAuthorization("MechanicOnly")
         .WithValidation<AddBudgetRequest>();
+
+        group.MapPatch("{serviceOrderId}/approve",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromBody] Guid request,
+                [FromServices] IApproveServiceOrderUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(ApproveServiceOrderMapper.MapToInput(request, serviceOrderId, currentUser.UserId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Approves the budget of a service order.")
+        .WithDescription("Registers the attendant's record of the customer's approval, commits the reserved inventory stock, and moves the service order from AwaitingApproval to InProgress.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AttendantOnly");
+
+        group.MapPatch("{serviceOrderId}/reject",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromBody] Guid request,
+                [FromServices] IRejectServiceOrderUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(RejectServiceOrderMapper.MapToInput(request, serviceOrderId, currentUser.UserId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Rejects the budget of a service order.")
+        .WithDescription("Registers the attendant's record of the customer's rejection, releases the reserved inventory stock, and moves the service order from AwaitingApproval to Cancelled.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AttendantOnly");
     }
 }
