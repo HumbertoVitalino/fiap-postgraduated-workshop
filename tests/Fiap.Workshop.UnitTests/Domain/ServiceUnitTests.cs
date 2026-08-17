@@ -59,6 +59,7 @@ public class ServiceUnitTests
         Assert.Equal(isActive, service.IsActive);
         Assert.Equal(createdAt, service.CreatedAt);
         Assert.Equal(updatedAt, service.UpdatedAt);
+        Assert.Equal(0, service.ExecutionCount);
     }
 
     [Fact(DisplayName = "Service >> Should throw DomainException >> When base price is negative")]
@@ -81,5 +82,54 @@ public class ServiceUnitTests
         // Assert
         var exception = Assert.Throws<DomainException>(act);
         Assert.Equal(ServiceErrors.InvalidEstimatedDuration, exception.Message);
+    }
+
+    [Fact(DisplayName = "Service >> Should set estimated duration to actual duration >> When it is the first recorded execution")]
+    public void Service_ShouldSetEstimatedDurationToActualDuration_WhenItIsTheFirstRecordedExecution()
+    {
+        // Arrange
+        var service = CreateService(150.00m, 60);
+        var before = DateTime.Now;
+
+        // Act
+        service.RecordExecution(90);
+
+        // Assert
+        Assert.Equal((short)90, service.EstimatedDuration);
+        Assert.Equal(1, service.ExecutionCount);
+        Assert.InRange(service.UpdatedAt, before, DateTime.Now);
+    }
+
+    [Fact(DisplayName = "Service >> Should update the incremental average >> When there are previous recorded executions")]
+    public void Service_ShouldUpdateTheIncrementalAverage_WhenThereArePreviousRecordedExecutions()
+    {
+        // Arrange
+        var service = CreateService(150.00m, 60);
+        service.RecordExecution(90);
+
+        // Act
+        service.RecordExecution(100);
+
+        // Assert
+        Assert.Equal((short)95, service.EstimatedDuration);
+        Assert.Equal(2, service.ExecutionCount);
+    }
+
+    [Fact(DisplayName = "Service >> Should truncate the average toward the previous estimate >> When the difference does not divide evenly")]
+    public void Service_ShouldTruncateTheAverageTowardThePreviousEstimate_WhenTheDifferenceDoesNotDivideEvenly()
+    {
+        // Arrange — after two executions with no drift, EstimatedDuration=60 and ExecutionCount=2. A one-minute
+        // difference (61-60=1) divided by (ExecutionCount+1)=3 truncates to zero under integer arithmetic, so
+        // the estimate does not move even though ExecutionCount still advances.
+        var service = CreateService(150.00m, 60);
+        service.RecordExecution(60);
+        service.RecordExecution(60);
+
+        // Act
+        service.RecordExecution(61);
+
+        // Assert
+        Assert.Equal((short)60, service.EstimatedDuration);
+        Assert.Equal(3, service.ExecutionCount);
     }
 }
