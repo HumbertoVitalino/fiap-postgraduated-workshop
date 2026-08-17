@@ -10,7 +10,7 @@ Este repositório é a primeira versão (MVP) do **back-end** de um Sistema Inte
 
 O desenvolvimento segue **Domain-Driven Design (DDD)**, com atenção a boas práticas de qualidade de software e segurança: arquitetura em camadas, testes automatizados, autenticação JWT e validação de dados sensíveis (CPF/CNPJ, placa de veículo).
 
-> ⚠️ **Estado atual do projeto**: só o fluxo de **criação de usuário** (`POST /api/v1/users`) está com a pilha completa (Domain → Application → Infrastructure → Api). Os agregados de negócio da oficina (`Cliente`, `Veículo`, `Serviço`, `Peça/Insumo`, `Ordem de Serviço`) já têm Domain e Infrastructure prontos (entidades, persistência, repositórios), mas ainda sem use cases nem endpoints por cima. Login e os demais fluxos de usuário existem só como rascunho. Ver [Roadmap / pendências do desafio](#roadmap--pendências-do-desafio) abaixo e [`CONTEXT.md`](CONTEXT.md) para o detalhamento técnico completo.
+> **Estado atual do projeto**: os quatro agregados de negócio da oficina (`Cliente`, `Veículo`, `Serviço`, `Peça/Insumo`) têm CRUD completo, a máquina de estados da Ordem de Serviço está fechada de ponta a ponta (`Recebida` → `Entregue`) e o cliente já consegue acompanhar sua OS via API pública, sem autenticação. Falta só a listagem administrativa de OS (`GET /service-orders`) para fechar as funcionalidades obrigatórias do desafio. Ver [O que falta](#o-que-falta) abaixo e [`CONTEXT.md`](CONTEXT.md) para o detalhamento técnico completo.
 
 ## Sumário
 
@@ -18,7 +18,7 @@ O desenvolvimento segue **Domain-Driven Design (DDD)**, com atenção a boas pr�
 - [Arquitetura](#arquitetura)
 - [Stack técnica](#stack-técnica)
 - [O que já está implementado](#o-que-já-está-implementado)
-- [Roadmap / pendências do desafio](#roadmap--pendências-do-desafio)
+- [O que falta](#o-que-falta)
 - [Como rodar localmente](#como-rodar-localmente)
 - [Rodando os testes](#rodando-os-testes)
 - [Documentação da API (Swagger)](#documentação-da-api-swagger)
@@ -56,24 +56,25 @@ Regra de dependência: `Domain` não referencia nada; `Application` referencia `
 
 ## O que já está implementado
 
-- Cadastro de usuário (`POST /api/v1/users`), com validação de e-mail único e senha (mínimo 8 caracteres). Endpoint exige um token JWT com role `Admin` — obtido via login (`POST /api/v1/auth/login`) com o usuário Admin de bootstrap (ver seção "Como rodar localmente" abaixo).
-- Login (`POST /api/v1/auth/login`) e fluxo completo de Ordem de Serviço (`Recebida` → `Em diagnóstico` → `Aguardando aprovação` → `Em execução`/`Cancelada` → `Finalizada` → `Entregue`), CRUD parcial de `Cliente`/`Veículo`/`Serviço`/`Peça-Insumo`. Ver [`CONTEXT.md`](CONTEXT.md) e `docs/backlog-proximas-tarefas.md` pro estado atual detalhado — esta seção do README está desatualizada em relação ao progresso real, mantida aqui só pra não perder o contexto histórico do início do projeto.
+- **Usuários**: cadastro (`POST /api/v1/users`, `AdminOnly`), login (`POST /api/v1/auth/login`), listagem, atualização de perfil, troca de senha (self-service) e remoção.
+- **Clientes**: CRUD completo — criação com validação de CPF/CNPJ, consulta por id, listagem, atualização (documento é imutável após o cadastro) e remoção (bloqueada com `400` se o cliente tiver veículos vinculados).
+- **Veículos**: CRUD completo — criação com validação de placa (Mercosul e padrão antigo) vinculada a um cliente existente, consulta por id, listagem, atualização (placa imutável) e remoção (bloqueada com `400` se houver OS vinculada).
+- **Serviços** (catálogo): CRUD completo — criação, consulta por id, listagem, atualização (código imutável; desativar um serviço o impede de entrar em orçamentos novos) e remoção (bloqueada com `400` se o serviço já tiver sido usado em alguma OS). O tempo estimado de execução (`EstimatedDuration`) é uma média incremental que se autoatualiza a cada OS concluída, com `ExecutionCount` exposto para indicar quantas amostras embasam o número — é como o desafio pede o "monitoramento do tempo médio de execução dos serviços".
+- **Peças/Insumos** (catálogo + estoque): CRUD completo — criação, consulta por id, listagem, atualização (código e quantidades de estoque ficam de fora: estoque só muda pelo fluxo de reserva/orçamento) e remoção (bloqueada com `400` se a peça já tiver sido usada em alguma OS). Desativar uma peça a impede de entrar em orçamentos novos.
+- **Ordem de Serviço**: máquina de estados completa — `Recebida` → `Em diagnóstico` → `Aguardando aprovação` → (`Em execução` → `Finalizada` | `Cancelada`) → `Entregue`, com orçamento calculado automaticamente a partir dos serviços/peças informados, reserva e baixa real de estoque, e histórico de status registrado a cada transição. Consulta pública e anônima da OS pelo cliente via CPF/CNPJ + placa (`GET /api/v1/service-orders/lookup`), sem vazar existência de cadastro.
 - Schema de banco (`db/init.sql`) aplicado por um serviço de init do `docker-compose` antes da API subir — sem migration em runtime. Inclui seed idempotente do primeiro usuário Admin (bootstrap).
-- Testes unitários cobrindo Domain e Application; projeto de testes de integração com SQL Server real via `docker-compose.tests.yml`.
+- Testes unitários (Domain + Application) e projeto de testes de integração com SQL Server real via `docker-compose.tests.yml`, cobrindo os fluxos acima.
 
-## Roadmap / pendências do desafio
+Ver [`CONTEXT.md`](CONTEXT.md) para o desenho técnico completo (camada por camada) e `docs/backlog-proximas-tarefas.md` para o histórico de tickets já fechados.
 
-> ⚠️ Lista abaixo desatualizada desde as primeiras branches do projeto — não reflete o progresso real (login, máquina de estados de OS e CRUDs parciais já existem). Ver [`CONTEXT.md`](CONTEXT.md) §9 pra pendências reais e `docs/backlog-proximas-tarefas.md` pro backlog refinado.
+## O que falta
 
-Funcionalidades obrigatórias do Tech Challenge que **ainda não foram implementadas**:
+Do que o desafio pede, ainda em aberto:
 
-- **Criação de OS**: identificação do cliente por CPF/CNPJ, cadastro de veículo (placa/marca/modelo/ano), inclusão de serviços e peças, orçamento automático, envio para aprovação do cliente.
-- **Acompanhamento de OS**: máquina de status (`Recebida` → `Em diagnóstico` → `Aguardando aprovação` → `Em execução` → `Finalizada` → `Entregue`), com consulta via API pelo cliente.
-- **Gestão administrativa**: CRUD de clientes, veículos, serviços, peças/insumos (com controle de estoque), listagem/detalhamento de OS, monitoramento do tempo médio de execução.
-- **Validação de dados sensíveis**: CPF/CNPJ e placa de veículo.
-- Cobertura mínima de testes de **80% nos domínios críticos** (ainda não medida/garantida).
-- Relatório de análise de vulnerabilidades (SAST) do código.
-- Documentação DDD (Event Storming, diagramas, linguagem ubíqua) dos fluxos de OS e de gestão de peças/insumos.
+- **Listagem administrativa de OS** (`GET /api/v1/service-orders`) — o detalhamento por id já existe, falta só a listagem (próximo item do backlog).
+- **Cobertura mínima de testes de 80% nos domínios críticos**: o pipeline já roda Coverlet + SonarQube Cloud a cada push em `release`, mas o número ainda não foi medido/confirmado contra a meta.
+- **Relatório de análise de vulnerabilidades (SAST)**: a análise em si já roda no CI (SonarQube Cloud), mas o relatório documentado com os achados ainda não foi escrito.
+- **Documentação DDD** (Event Storming, diagramas, linguagem ubíqua) dos fluxos de OS e de gestão de peças/insumos — entregável separado do código, ainda não iniciado.
 
 O histórico de decisões e o desenho detalhado do que já existe estão em [`CONTEXT.md`](CONTEXT.md).
 
