@@ -51,4 +51,13 @@ internal sealed class CustomerRepository(AppDbContext context) : Repository<Cust
             .AsNoTracking()
             .AnyAsync(x => x.Phone == phone, cancellationToken);
     }
+
+    public async Task<IEnumerable<Customer>> GetAllAsync(CancellationToken cancellationToken)
+    {
+        var customers = await _context.Customers
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return customers.MapToDomain();
+    }
 }

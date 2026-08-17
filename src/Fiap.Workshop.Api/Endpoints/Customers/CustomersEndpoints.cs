@@ -5,6 +5,7 @@ using Fiap.Workshop.Api.Requests.Customers;
 using Fiap.Workshop.Application.Commons;
 using Fiap.Workshop.Application.DTOs.Customer;
 using Fiap.Workshop.Application.Interfaces.UseCases;
+using Fiap.Workshop.Application.UseCases.Customers.DeleteCustomer.Boundaries;
 using Fiap.Workshop.Application.UseCases.Customers.GetCustomer.Boundaries;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
@@ -18,6 +19,22 @@ public static class CustomersEndpoints
         var group = app.MapGroup("api/v1/customers")
             .WithApiVersionSet(apiVersion)
             .WithTags("Customers");
+
+        group.MapGet("",
+            async (
+                [FromServices] IGetCustomersUseCase getAllUseCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await getAllUseCase.Handle(Guid.NewGuid(), cancellationToken);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Gets all customers.")
+        .WithDescription("Returns all existing customers, an empty array if none exist.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .RequireAuthorization("AttendantOnly");
 
         group.MapGet("{customerId}",
             async (
@@ -81,5 +98,25 @@ public static class CustomersEndpoints
         .Produces<Output>(StatusCodes.Status400BadRequest)
         .RequireAuthorization("AttendantOnly")
         .WithValidation<UpdateCustomerRequest>();
+
+        group.MapDelete("{customerId}",
+            async (
+                [Required][FromRoute] Guid customerId,
+                [FromServices] IDeleteCustomerUseCase useCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(new DeleteCustomerInput(Guid.NewGuid(), customerId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.NoContent();
+            }
+        )
+        .WithSummary("Deletes an existing customer.")
+        .WithDescription("Deletes an existing customer by id. Idempotent: returns No Content whether the customer existed or not. Fails if the customer has vehicles associated.")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AttendantOnly");
     }
 }

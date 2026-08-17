@@ -1,6 +1,8 @@
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.Users.ChangePassword;
 using Fiap.Workshop.Application.UseCases.Customers.CreateCustomer;
+using Fiap.Workshop.Application.UseCases.Customers.DeleteCustomer;
+using Fiap.Workshop.Application.UseCases.Customers.GetCustomers;
 using Fiap.Workshop.Application.UseCases.Users.CreateUser;
 using Fiap.Workshop.Application.UseCases.Vehicles.CreateVehicle;
 using Fiap.Workshop.Application.UseCases.Users.DeleteUser;
@@ -37,6 +39,8 @@ public static class DependencyInjection
         services.AddScoped<ILoginUserUseCase, LoginUserUseCase>();
         services.AddScoped<ICreateCustomerUseCase, CreateCustomerUseCase>();
         services.AddScoped<IGetCustomerUseCase, GetCustomerUseCase>();
+        services.AddScoped<IGetCustomersUseCase, GetCustomersUseCase>();
+        services.AddScoped<IDeleteCustomerUseCase, DeleteCustomerUseCase>();
         services.AddScoped<IGetUsersUseCase, GetUsersUseCase>();
         services.AddScoped<IUpdateUserUseCase, UpdateUserUseCase>();
         services.AddScoped<IChangePasswordUseCase, ChangePasswordUseCase>();
