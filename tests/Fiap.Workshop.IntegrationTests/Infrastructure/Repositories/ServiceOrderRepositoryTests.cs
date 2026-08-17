@@ -432,6 +432,52 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
         Assert.False(exists);
     }
 
+    [Fact(DisplayName = "ServiceOrderRepository >> Should return true >> When service has been used in a service order")]
+    public async Task ServiceOrderRepository_ShouldReturnTrue_WhenServiceHasBeenUsedInServiceOrder()
+    {
+        // Arrange
+        var (customer, vehicle, user) = await SeedServiceOrderDependenciesAsync();
+
+        var service = new Service(
+            Guid.NewGuid(), TestData.ShortString(20), "Oil Change", "Oil change service", 120.00m,
+            30, true, DateTime.UtcNow, DateTime.UtcNow);
+
+        await WithScopeAsync<IServiceRepository>(async repo =>
+        {
+            await repo.AddAsync(service, CancellationToken.None);
+            await repo.UnitOfWork.CommitAsync(CancellationToken.None);
+        });
+
+        var serviceOrder = CreateServiceOrder(customer, vehicle, user);
+
+        var orderService = new ServiceOrderService(
+            Guid.NewGuid(), serviceOrder.Id, service.Id, service.Name, service.Description,
+            service.BasePrice, service.EstimatedDuration, 1, DateTime.UtcNow, DateTime.UtcNow);
+
+        serviceOrder.AddServices([orderService]);
+        await SeedServiceOrderAsync(serviceOrder);
+
+        // Act
+        var exists = false;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            exists = await repo.ExistsWithServiceIdAsync(service.Id, CancellationToken.None));
+
+        // Assert
+        Assert.True(exists);
+    }
+
+    [Fact(DisplayName = "ServiceOrderRepository >> Should return false >> When service has never been used in a service order")]
+    public async Task ServiceOrderRepository_ShouldReturnFalse_WhenServiceHasNeverBeenUsedInServiceOrder()
+    {
+        // Act
+        var exists = true;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            exists = await repo.ExistsWithServiceIdAsync(Guid.NewGuid(), CancellationToken.None));
+
+        // Assert
+        Assert.False(exists);
+    }
+
     [Fact(DisplayName = "ServiceOrderRepository >> Should remove entity >> When removing an existing service order")]
     public async Task ServiceOrderRepository_ShouldRemoveEntity_WhenRemovingExistingServiceOrder()
     {

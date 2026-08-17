@@ -77,6 +77,18 @@ public sealed class AddBudgetUseCase(
                 return output;
             }
 
+            if (!service.IsActive)
+            {
+                _logger.LogWarning(
+                    "[{CorrelationId}] | Service with id {ServiceId} is inactive and cannot be added to a budget.",
+                    input.CorrelationId,
+                    serviceItem.ServiceId
+                );
+
+                output.AddErrorMessage("Service is inactive and cannot be added to a budget.");
+                return output;
+            }
+
             orderServices.Add(service.MapToServiceOrderService(serviceOrder.Id, serviceItem.Quantity));
         }
 

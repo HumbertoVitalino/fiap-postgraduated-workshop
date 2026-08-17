@@ -105,4 +105,11 @@ internal sealed class ServiceOrderRepository(AppDbContext context) : Repository<
             .AsNoTracking()
             .AnyAsync(so => so.VehicleId == vehicleId, cancellationToken);
     }
+
+    public async Task<bool> ExistsWithServiceIdAsync(Guid serviceId, CancellationToken cancellationToken)
+    {
+        return await _context.Set<ServiceOrderServiceModel>()
+            .AsNoTracking()
+            .AnyAsync(s => s.ServiceId == serviceId, cancellationToken);
+    }
 }
