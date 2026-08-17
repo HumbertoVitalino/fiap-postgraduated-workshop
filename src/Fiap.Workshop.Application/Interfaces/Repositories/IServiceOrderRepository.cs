@@ -7,4 +7,5 @@ public interface IServiceOrderRepository : IRepository<ServiceOrder>
 {
     Task UpdateAsync(ServiceOrder entity, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<ServiceOrder>> GetAllByVehicleIdAsync(Guid vehicleId, CancellationToken cancellationToken);
+    Task<bool> ExistsWithVehicleIdAsync(Guid vehicleId, CancellationToken cancellationToken);
 }

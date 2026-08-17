@@ -53,4 +53,13 @@ internal sealed class VehicleRepository(AppDbContext context) : Repository<Vehic
             .AsNoTracking()
             .AnyAsync(x => x.CustomerId == customerId, cancellationToken);
     }
+
+    public async Task<IEnumerable<Vehicle>> GetAllAsync(CancellationToken cancellationToken)
+    {
+        var vehicles = await _context.Vehicles
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return vehicles.MapToDomain();
+    }
 }
