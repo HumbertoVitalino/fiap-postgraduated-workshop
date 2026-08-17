@@ -33,6 +33,8 @@ internal static class DomainMappers
         );
     }
 
+    internal static IEnumerable<Customer> MapToDomain(this IEnumerable<CustomerModel> model) => model.Select(MapToDomain);
+
     internal static Vehicle MapToDomain(this VehicleModel model)
     {
         return new Vehicle(
