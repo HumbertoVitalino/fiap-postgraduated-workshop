@@ -20,6 +20,7 @@ using Fiap.Workshop.Application.UseCases.ServiceOrders.DeliverServiceOrder;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.GetServiceOrder;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.RejectServiceOrder;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.StartDiagnosis;
+using Fiap.Workshop.Application.UseCases.ServiceOrders.TrackServiceOrders;
 using Fiap.Workshop.Application.UseCases.Customers.UpdateCustomer;
 using Fiap.Workshop.Application.UseCases.Users.UpdateUser;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,6 +56,7 @@ public static class DependencyInjection
         services.AddScoped<IRejectServiceOrderUseCase, RejectServiceOrderUseCase>();
         services.AddScoped<ICompleteServiceOrderUseCase, CompleteServiceOrderUseCase>();
         services.AddScoped<IDeliverServiceOrderUseCase, DeliverServiceOrderUseCase>();
+        services.AddScoped<ITrackServiceOrdersUseCase, TrackServiceOrdersUseCase>();
 
         return services;
     }

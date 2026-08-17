@@ -133,6 +133,37 @@ public sealed class VehicleRepositoryTests(DatabaseFixture fixture)
         Assert.Equal("Updated Model", found!.Model);
     }
 
+    [Fact(DisplayName = "VehicleRepository >> Should retrieve by license plate >> When vehicle exists")]
+    public async Task VehicleRepository_ShouldRetrieveByLicensePlate_WhenVehicleExists()
+    {
+        // Arrange
+        var customer = await SeedCustomerAsync();
+        var vehicle = CreateVehicle(customer.Id);
+        await SeedVehicleAsync(vehicle);
+
+        // Act
+        Vehicle? found = null;
+        await WithScopeAsync(async (IVehicleRepository repo) =>
+            found = await repo.GetByLicensePlateAsync(vehicle.LicensePlate, CancellationToken.None));
+
+        // Assert
+        Assert.NotNull(found);
+        Assert.Equal(vehicle.Id, found!.Id);
+        Assert.Equal(vehicle.LicensePlate, found.LicensePlate);
+    }
+
+    [Fact(DisplayName = "VehicleRepository >> Should return null >> When license plate does not exist")]
+    public async Task VehicleRepository_ShouldReturnNull_WhenLicensePlateDoesNotExist()
+    {
+        // Act
+        Vehicle? found = null;
+        await WithScopeAsync(async (IVehicleRepository repo) =>
+            found = await repo.GetByLicensePlateAsync(TestData.ShortString(10).ToUpperInvariant(), CancellationToken.None));
+
+        // Assert
+        Assert.Null(found);
+    }
+
     [Fact(DisplayName = "VehicleRepository >> Should remove entity >> When removing an existing vehicle")]
     public async Task VehicleRepository_ShouldRemoveEntity_WhenRemovingExistingVehicle()
     {
