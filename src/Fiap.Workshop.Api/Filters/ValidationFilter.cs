@@ -4,7 +4,7 @@ using FluentValidation;
 namespace Fiap.Workshop.Api.Filters;
 
 public sealed class ValidationFilter<TRequest> : IEndpointFilter
-    where TRequest : class
+    where TRequest : notnull
 {
     public async ValueTask<object?> InvokeAsync(
         EndpointFilterInvocationContext context,
