@@ -46,4 +46,11 @@ internal sealed class VehicleRepository(AppDbContext context) : Repository<Vehic
 
         return model?.MapToDomain();
     }
+
+    public async Task<bool> ExistsWithCustomerIdAsync(Guid customerId, CancellationToken cancellationToken)
+    {
+        return await _context.Vehicles
+            .AsNoTracking()
+            .AnyAsync(x => x.CustomerId == customerId, cancellationToken);
+    }
 }
