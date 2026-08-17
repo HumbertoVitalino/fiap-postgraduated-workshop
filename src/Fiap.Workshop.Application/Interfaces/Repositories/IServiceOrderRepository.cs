@@ -9,4 +9,5 @@ public interface IServiceOrderRepository : IRepository<ServiceOrder>
     Task<IReadOnlyCollection<ServiceOrder>> GetAllByVehicleIdAsync(Guid vehicleId, CancellationToken cancellationToken);
     Task<bool> ExistsWithVehicleIdAsync(Guid vehicleId, CancellationToken cancellationToken);
     Task<bool> ExistsWithServiceIdAsync(Guid serviceId, CancellationToken cancellationToken);
+    Task<bool> ExistsWithInventoryItemIdAsync(Guid inventoryItemId, CancellationToken cancellationToken);
 }

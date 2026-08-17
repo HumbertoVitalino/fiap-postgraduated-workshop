@@ -55,6 +55,18 @@ public sealed class AddBudgetUseCase(
                 return output;
             }
 
+            if (!inventoryItem.IsActive)
+            {
+                _logger.LogWarning(
+                    "[{CorrelationId}] | Inventory item with id {InventoryItemId} is inactive and cannot be added to a budget.",
+                    input.CorrelationId,
+                    partItem.InventoryItemId
+                );
+
+                output.AddErrorMessage("Inventory item is inactive and cannot be added to a budget.");
+                return output;
+            }
+
             inventoryItem.Reserve(partItem.Quantity);
 
             inventoryItems.Add(inventoryItem);

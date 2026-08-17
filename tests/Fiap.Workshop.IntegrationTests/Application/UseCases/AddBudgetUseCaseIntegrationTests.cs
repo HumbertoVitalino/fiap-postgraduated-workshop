@@ -82,6 +82,20 @@ public sealed class AddBudgetUseCaseIntegrationTests(DatabaseFixture fixture)
         return service;
     }
 
+    private async Task<InventoryItem> CreateInactiveInventoryItemAsync(int quantityOnHand)
+    {
+        var inventoryItem = new InventoryItem(
+            Guid.NewGuid(), TestData.ShortString(20), "Discontinued Part", "No longer sold", quantityOnHand, 0, 5,
+            89.90m, UnitOfMeasure.Piece, false, DateTime.Now, DateTime.Now);
+
+        using var scope = fixture.Services.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IInventoryItemRepository>();
+        await repository.AddAsync(inventoryItem, CancellationToken.None);
+        await repository.UnitOfWork.CommitAsync(CancellationToken.None);
+
+        return inventoryItem;
+    }
+
     private async Task<Service> CreateInactiveServiceAsync()
     {
         var service = new Service(
@@ -215,6 +229,23 @@ public sealed class AddBudgetUseCaseIntegrationTests(DatabaseFixture fixture)
 
         // Assert
         result.ErrorMessages.Should().ContainSingle().Which.Should().Be("Service is inactive and cannot be added to a budget.");
+        result.Result.Should().BeNull();
+    }
+
+    [Fact(DisplayName = "AddBudgetUseCase >> Should fail >> When inventory item is inactive")]
+    public async Task Handle_ShouldFail_WhenInventoryItemIsInactive()
+    {
+        // Arrange
+        var serviceOrder = await CreateDiagnosingServiceOrderAsync();
+        var inventoryItem = await CreateInactiveInventoryItemAsync(20);
+        var changedBy = await CreateUserAsync();
+        var input = new AddBudgetInput(Guid.NewGuid(), serviceOrder.Id, changedBy, [], [new AddBudgetPartItem(inventoryItem.Id, 1)]);
+
+        // Act
+        var result = await HandleAsync(input);
+
+        // Assert
+        result.ErrorMessages.Should().ContainSingle().Which.Should().Be("Inventory item is inactive and cannot be added to a budget.");
         result.Result.Should().BeNull();
     }
 
