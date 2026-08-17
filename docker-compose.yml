@@ -15,6 +15,8 @@ services:
     depends_on:
       sqlserver-init:
         condition: service_completed_successfully
+      sqlserver-seed-demo:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   sqlserver:
@@ -57,6 +59,32 @@ services:
       - DatabaseName=Fiap_Workshop
       - -i
       - /init.sql
+    restart: "no"
+
+  # Popula o banco com dados de demonstração (clientes, veículos, catálogo de serviços/peças
+  # e um histórico de Ordens de Serviço em cada status) depois do schema pronto — só pra quem
+  # sobe o docker-compose querer explorar a API já com dado real, não é usado pelos testes
+  # de integração (ver comentário em db/seed-demo.sql).
+  sqlserver-seed-demo:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      sqlserver-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./db/seed-demo.sql:/seed-demo.sql:ro
+    entrypoint:
+      - /opt/mssql-tools18/bin/sqlcmd
+      - -S
+      - sqlserver
+      - -U
+      - sa
+      - -P
+      - ${SA_PASSWORD}
+      - -C
+      - -v
+      - DatabaseName=Fiap_Workshop
+      - -i
+      - /seed-demo.sql
     restart: "no"
 
 volumes:
