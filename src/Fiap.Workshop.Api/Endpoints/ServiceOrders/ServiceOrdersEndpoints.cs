@@ -20,6 +20,24 @@ public static class ServiceOrdersEndpoints
             .WithApiVersionSet(apiVersion)
             .WithTags("ServiceOrders");
 
+        group.MapGet("lookup",
+            async (
+                [AsParameters] TrackServiceOrdersRequest request,
+                [FromServices] ITrackServiceOrdersUseCase useCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(), cancellationToken);
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Looks up service orders for a vehicle.")
+        .WithDescription("Public, unauthenticated endpoint for the customer to track their vehicle's service orders. Requires both the vehicle's license plate and the owning customer's document; always returns 200 with an empty list when the plate doesn't exist or the document doesn't match its owner, so existence of a plate/document is never leaked.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .AllowAnonymous()
+        .WithValidation<TrackServiceOrdersRequest>();
+
         group.MapGet("{serviceOrderId}",
             async (
                 [Required][FromRoute] Guid serviceOrderId,
