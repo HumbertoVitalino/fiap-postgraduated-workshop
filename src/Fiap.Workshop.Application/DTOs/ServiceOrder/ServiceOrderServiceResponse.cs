@@ -7,5 +7,6 @@ public sealed record ServiceOrderServiceResponse(
     string Description,
     decimal UnitPrice,
     int Quantity,
-    short EstimatedDuration
+    short EstimatedDuration,
+    short? ActualDuration
 );
