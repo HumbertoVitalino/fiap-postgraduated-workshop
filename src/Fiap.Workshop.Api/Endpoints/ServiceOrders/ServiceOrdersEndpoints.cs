@@ -62,7 +62,7 @@ public static class ServiceOrdersEndpoints
         .RequireAuthorization("AttendantOnly")
         .WithValidation<CreateServiceOrderRequest>();
 
-        group.MapPatch("{serviceOrderId}/diagnosis",
+        group.MapPost("{serviceOrderId}/diagnosis",
             async (
                 [Required][FromRoute] Guid serviceOrderId,
                 [FromBody] StartDiagnosisRequest request,
@@ -85,7 +85,7 @@ public static class ServiceOrdersEndpoints
         .RequireAuthorization("MechanicOnly")
         .WithValidation<StartDiagnosisRequest>();
 
-        group.MapPatch("{serviceOrderId}/budget",
+        group.MapPost("{serviceOrderId}/budget",
             async (
                 [Required][FromRoute] Guid serviceOrderId,
                 [FromBody] AddBudgetRequest request,
@@ -108,7 +108,7 @@ public static class ServiceOrdersEndpoints
         .RequireAuthorization("MechanicOnly")
         .WithValidation<AddBudgetRequest>();
 
-        group.MapPatch("{serviceOrderId}/approve",
+        group.MapPost("{serviceOrderId}/approval",
             async (
                 [Required][FromRoute] Guid serviceOrderId,
                 [FromBody] ApproveServiceOrderRequest request,
@@ -131,7 +131,7 @@ public static class ServiceOrdersEndpoints
         .RequireAuthorization("AttendantOnly")
         .WithValidation<ApproveServiceOrderRequest>();
 
-        group.MapPatch("{serviceOrderId}/reject",
+        group.MapPost("{serviceOrderId}/rejection",
             async (
                 [Required][FromRoute] Guid serviceOrderId,
                 [FromBody] RejectServiceOrderRequest request,
@@ -154,7 +154,7 @@ public static class ServiceOrdersEndpoints
         .RequireAuthorization("AttendantOnly")
         .WithValidation<RejectServiceOrderRequest>();
 
-        group.MapPatch("{serviceOrderId}/complete",
+        group.MapPost("{serviceOrderId}/completion",
             async (
                 [Required][FromRoute] Guid serviceOrderId,
                 [FromBody] CompleteServiceOrderRequest request,
@@ -177,7 +177,7 @@ public static class ServiceOrdersEndpoints
         .RequireAuthorization("MechanicOnly")
         .WithValidation<CompleteServiceOrderRequest>();
 
-        group.MapPatch("{serviceOrderId}/deliver",
+        group.MapPost("{serviceOrderId}/delivery",
             async (
                 [Required][FromRoute] Guid serviceOrderId,
                 [FromBody] DeliverServiceOrderRequest request,
