@@ -164,6 +164,38 @@ public sealed class VehicleRepositoryTests(DatabaseFixture fixture)
         Assert.Null(found);
     }
 
+    [Fact(DisplayName = "VehicleRepository >> Should return true >> When customer has a vehicle")]
+    public async Task VehicleRepository_ShouldReturnTrue_WhenCustomerHasVehicle()
+    {
+        // Arrange
+        var customer = await SeedCustomerAsync();
+        var vehicle = CreateVehicle(customer.Id);
+        await SeedVehicleAsync(vehicle);
+
+        // Act
+        var exists = false;
+        await WithScopeAsync(async (IVehicleRepository repo) =>
+            exists = await repo.ExistsWithCustomerIdAsync(customer.Id, CancellationToken.None));
+
+        // Assert
+        Assert.True(exists);
+    }
+
+    [Fact(DisplayName = "VehicleRepository >> Should return false >> When customer has no vehicles")]
+    public async Task VehicleRepository_ShouldReturnFalse_WhenCustomerHasNoVehicles()
+    {
+        // Arrange
+        var customer = await SeedCustomerAsync();
+
+        // Act
+        var exists = true;
+        await WithScopeAsync(async (IVehicleRepository repo) =>
+            exists = await repo.ExistsWithCustomerIdAsync(customer.Id, CancellationToken.None));
+
+        // Assert
+        Assert.False(exists);
+    }
+
     [Fact(DisplayName = "VehicleRepository >> Should remove entity >> When removing an existing vehicle")]
     public async Task VehicleRepository_ShouldRemoveEntity_WhenRemovingExistingVehicle()
     {
