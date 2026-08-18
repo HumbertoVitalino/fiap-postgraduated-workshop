@@ -367,6 +367,27 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
         Assert.Equal(2, found.StatusHistory.Count);
     }
 
+    [Fact(DisplayName = "ServiceOrderRepository >> Should retrieve all >> When service orders exist")]
+    public async Task ServiceOrderRepository_ShouldRetrieveAll_WhenServiceOrdersExist()
+    {
+        // Arrange
+        var (customer, vehicle, user) = await SeedServiceOrderDependenciesAsync();
+        var serviceOrder = CreateServiceOrder(customer, vehicle, user);
+        await SeedServiceOrderAsync(serviceOrder);
+
+        // Act
+        IReadOnlyCollection<ServiceOrder>? found = null;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            found = await repo.GetAllAsync(CancellationToken.None));
+
+        // Assert — DatabaseFixture is shared without reset between tests, so other service orders may already
+        // exist; only assert that the one seeded here is present with its children loaded.
+        Assert.NotNull(found);
+        var match = Assert.Single(found!, so => so.Id == serviceOrder.Id);
+        Assert.Equal(serviceOrder.CustomerId, match.CustomerId);
+        Assert.Equal(serviceOrder.VehicleId, match.VehicleId);
+    }
+
     [Fact(DisplayName = "ServiceOrderRepository >> Should retrieve all by vehicle id >> When vehicle has service orders")]
     public async Task ServiceOrderRepository_ShouldRetrieveAllByVehicleId_WhenVehicleHasServiceOrders()
     {
@@ -427,6 +448,98 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
         var exists = true;
         await WithScopeAsync<IServiceOrderRepository>(async repo =>
             exists = await repo.ExistsWithVehicleIdAsync(Guid.NewGuid(), CancellationToken.None));
+
+        // Assert
+        Assert.False(exists);
+    }
+
+    [Fact(DisplayName = "ServiceOrderRepository >> Should return true >> When service has been used in a service order")]
+    public async Task ServiceOrderRepository_ShouldReturnTrue_WhenServiceHasBeenUsedInServiceOrder()
+    {
+        // Arrange
+        var (customer, vehicle, user) = await SeedServiceOrderDependenciesAsync();
+
+        var service = new Service(
+            Guid.NewGuid(), TestData.ShortString(20), "Oil Change", "Oil change service", 120.00m,
+            30, true, DateTime.UtcNow, DateTime.UtcNow);
+
+        await WithScopeAsync<IServiceRepository>(async repo =>
+        {
+            await repo.AddAsync(service, CancellationToken.None);
+            await repo.UnitOfWork.CommitAsync(CancellationToken.None);
+        });
+
+        var serviceOrder = CreateServiceOrder(customer, vehicle, user);
+
+        var orderService = new ServiceOrderService(
+            Guid.NewGuid(), serviceOrder.Id, service.Id, service.Name, service.Description,
+            service.BasePrice, service.EstimatedDuration, 1, DateTime.UtcNow, DateTime.UtcNow);
+
+        serviceOrder.AddServices([orderService]);
+        await SeedServiceOrderAsync(serviceOrder);
+
+        // Act
+        var exists = false;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            exists = await repo.ExistsWithServiceIdAsync(service.Id, CancellationToken.None));
+
+        // Assert
+        Assert.True(exists);
+    }
+
+    [Fact(DisplayName = "ServiceOrderRepository >> Should return false >> When service has never been used in a service order")]
+    public async Task ServiceOrderRepository_ShouldReturnFalse_WhenServiceHasNeverBeenUsedInServiceOrder()
+    {
+        // Act
+        var exists = true;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            exists = await repo.ExistsWithServiceIdAsync(Guid.NewGuid(), CancellationToken.None));
+
+        // Assert
+        Assert.False(exists);
+    }
+
+    [Fact(DisplayName = "ServiceOrderRepository >> Should return true >> When inventory item has been used in a service order")]
+    public async Task ServiceOrderRepository_ShouldReturnTrue_WhenInventoryItemHasBeenUsedInServiceOrder()
+    {
+        // Arrange
+        var (customer, vehicle, user) = await SeedServiceOrderDependenciesAsync();
+
+        var inventoryItem = new InventoryItem(
+            Guid.NewGuid(), TestData.ShortString(20), "Brake Pad", "Brake pad set", 20, 0, 5,
+            89.90m, UnitOfMeasure.Piece, true, DateTime.UtcNow, DateTime.UtcNow);
+
+        await WithScopeAsync<IInventoryItemRepository>(async repo =>
+        {
+            await repo.AddAsync(inventoryItem, CancellationToken.None);
+            await repo.UnitOfWork.CommitAsync(CancellationToken.None);
+        });
+
+        var serviceOrder = CreateServiceOrder(customer, vehicle, user);
+
+        var orderPart = new ServiceOrderPart(
+            Guid.NewGuid(), serviceOrder.Id, inventoryItem.Id, inventoryItem.Name, inventoryItem.Description,
+            inventoryItem.UnitPrice, 1, DateTime.UtcNow, DateTime.UtcNow);
+
+        serviceOrder.AddParts([orderPart]);
+        await SeedServiceOrderAsync(serviceOrder);
+
+        // Act
+        var exists = false;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            exists = await repo.ExistsWithInventoryItemIdAsync(inventoryItem.Id, CancellationToken.None));
+
+        // Assert
+        Assert.True(exists);
+    }
+
+    [Fact(DisplayName = "ServiceOrderRepository >> Should return false >> When inventory item has never been used in a service order")]
+    public async Task ServiceOrderRepository_ShouldReturnFalse_WhenInventoryItemHasNeverBeenUsedInServiceOrder()
+    {
+        // Act
+        var exists = true;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            exists = await repo.ExistsWithInventoryItemIdAsync(Guid.NewGuid(), CancellationToken.None));
 
         // Assert
         Assert.False(exists);

@@ -87,4 +87,22 @@ public class InventoryItem : AggregateRoot
 
         SetUpdatedAt();
     }
+
+    public void UpdateProfile(string name, string description, decimal unitPrice, int minimumStock, UnitOfMeasure unitOfMeasure, bool isActive)
+    {
+        if (minimumStock < 0)
+            throw new DomainException(InventoryItemErrors.InvalidMinimumStock);
+
+        if (unitPrice < 0)
+            throw new DomainException(InventoryItemErrors.InvalidUnitPrice);
+
+        Name = name;
+        Description = description;
+        MinimumStock = minimumStock;
+        UnitPrice = unitPrice;
+        UnitOfMeasure = unitOfMeasure;
+        IsActive = isActive;
+
+        SetUpdatedAt();
+    }
 }

@@ -132,4 +132,70 @@ public class ServiceUnitTests
         Assert.Equal((short)60, service.EstimatedDuration);
         Assert.Equal(3, service.ExecutionCount);
     }
+
+    [Fact(DisplayName = "Service >> Should update profile >> When estimated duration does not change")]
+    public void Service_ShouldUpdateProfile_WhenEstimatedDurationDoesNotChange()
+    {
+        // Arrange
+        var service = CreateService(150.00m, 60);
+        service.RecordExecution(90);
+        var originalCode = service.Code;
+        var currentEstimatedDuration = service.EstimatedDuration;
+
+        // Act
+        service.UpdateProfile("New Name", "New Description", 200.00m, currentEstimatedDuration, false);
+
+        // Assert
+        Assert.Equal("New Name", service.Name);
+        Assert.Equal("New Description", service.Description);
+        Assert.Equal(200.00m, service.BasePrice);
+        Assert.Equal(currentEstimatedDuration, service.EstimatedDuration);
+        Assert.False(service.IsActive);
+        Assert.Equal(originalCode, service.Code);
+        Assert.Equal(1, service.ExecutionCount);
+    }
+
+    [Fact(DisplayName = "Service >> Should reset execution count >> When estimated duration changes")]
+    public void Service_ShouldResetExecutionCount_WhenEstimatedDurationChanges()
+    {
+        // Arrange
+        var service = CreateService(150.00m, 60);
+        service.RecordExecution(90);
+        service.RecordExecution(100);
+
+        // Act
+        service.UpdateProfile("New Name", "New Description", 200.00m, 45, true);
+
+        // Assert
+        Assert.Equal((short)45, service.EstimatedDuration);
+        Assert.Equal(0, service.ExecutionCount);
+    }
+
+    [Fact(DisplayName = "Service >> Should throw DomainException >> When UpdateProfile sets a negative base price")]
+    public void Service_ShouldThrowDomainException_WhenUpdateProfileSetsNegativeBasePrice()
+    {
+        // Arrange
+        var service = CreateService(150.00m, 60);
+
+        // Act
+        var act = () => service.UpdateProfile("New Name", "New Description", -0.01m, 60, true);
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(ServiceErrors.InvalidBasePrice, exception.Message);
+    }
+
+    [Fact(DisplayName = "Service >> Should throw DomainException >> When UpdateProfile sets a negative estimated duration")]
+    public void Service_ShouldThrowDomainException_WhenUpdateProfileSetsNegativeEstimatedDuration()
+    {
+        // Arrange
+        var service = CreateService(150.00m, 60);
+
+        // Act
+        var act = () => service.UpdateProfile("New Name", "New Description", 150.00m, -1, true);
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(ServiceErrors.InvalidEstimatedDuration, exception.Message);
+    }
 }

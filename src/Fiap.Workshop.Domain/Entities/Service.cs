@@ -50,4 +50,26 @@ public class Service : AggregateRoot
 
         SetUpdatedAt();
     }
+
+    public void UpdateProfile(string name, string description, decimal basePrice, short estimatedDuration, bool isActive)
+    {
+        if (basePrice < 0)
+            throw new DomainException(ServiceErrors.InvalidBasePrice);
+
+        if (estimatedDuration < 0)
+            throw new DomainException(ServiceErrors.InvalidEstimatedDuration);
+
+        Name = name;
+        Description = description;
+        BasePrice = basePrice;
+        IsActive = isActive;
+
+        if (estimatedDuration != EstimatedDuration)
+        {
+            EstimatedDuration = estimatedDuration;
+            ExecutionCount = 0;
+        }
+
+        SetUpdatedAt();
+    }
 }

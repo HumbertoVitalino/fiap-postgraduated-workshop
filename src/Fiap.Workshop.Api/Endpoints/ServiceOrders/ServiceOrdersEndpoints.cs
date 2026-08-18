@@ -20,6 +20,22 @@ public static class ServiceOrdersEndpoints
             .WithApiVersionSet(apiVersion)
             .WithTags("ServiceOrders");
 
+        group.MapGet("",
+            async (
+                [FromServices] IGetServiceOrdersUseCase getAllUseCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await getAllUseCase.Handle(Guid.NewGuid(), cancellationToken);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Gets all service orders.")
+        .WithDescription("Returns all service orders registered in the system, including their status, budget items and status history. Returns an empty array if none exist.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .RequireAuthorization();
+
         group.MapGet("lookup",
             async (
                 [AsParameters] TrackServiceOrdersRequest request,

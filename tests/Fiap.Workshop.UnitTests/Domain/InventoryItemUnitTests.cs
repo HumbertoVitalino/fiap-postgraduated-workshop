@@ -223,4 +223,56 @@ public class InventoryItemUnitTests
         Assert.Equal(20, inventoryItem.QuantityOnHand);
         Assert.Equal(8, inventoryItem.ReservedQuantity);
     }
+
+    [Fact(DisplayName = "InventoryItem >> Should update profile >> When all values are valid")]
+    public void InventoryItem_ShouldUpdateProfile_WhenAllValuesAreValid()
+    {
+        // Arrange
+        var inventoryItem = CreateInventoryItem(20, 5, 5, 49.90m);
+        var originalCode = inventoryItem.Code;
+        var before = DateTime.Now;
+
+        // Act
+        inventoryItem.UpdateProfile("New Name", "New Description", 59.90m, 10, UnitOfMeasure.Liter, false);
+
+        // Assert
+        Assert.Equal("New Name", inventoryItem.Name);
+        Assert.Equal("New Description", inventoryItem.Description);
+        Assert.Equal(59.90m, inventoryItem.UnitPrice);
+        Assert.Equal(10, inventoryItem.MinimumStock);
+        Assert.Equal(UnitOfMeasure.Liter, inventoryItem.UnitOfMeasure);
+        Assert.False(inventoryItem.IsActive);
+        Assert.Equal(originalCode, inventoryItem.Code);
+        Assert.Equal(20, inventoryItem.QuantityOnHand);
+        Assert.Equal(5, inventoryItem.ReservedQuantity);
+        Assert.InRange(inventoryItem.UpdatedAt, before, DateTime.Now);
+    }
+
+    [Fact(DisplayName = "InventoryItem >> Should throw DomainException >> When UpdateProfile sets a negative unit price")]
+    public void InventoryItem_ShouldThrowDomainException_WhenUpdateProfileSetsNegativeUnitPrice()
+    {
+        // Arrange
+        var inventoryItem = CreateInventoryItem(20, 5, 5, 49.90m);
+
+        // Act
+        var act = () => inventoryItem.UpdateProfile("New Name", "New Description", -0.01m, 10, UnitOfMeasure.Liter, true);
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(InventoryItemErrors.InvalidUnitPrice, exception.Message);
+    }
+
+    [Fact(DisplayName = "InventoryItem >> Should throw DomainException >> When UpdateProfile sets a negative minimum stock")]
+    public void InventoryItem_ShouldThrowDomainException_WhenUpdateProfileSetsNegativeMinimumStock()
+    {
+        // Arrange
+        var inventoryItem = CreateInventoryItem(20, 5, 5, 49.90m);
+
+        // Act
+        var act = () => inventoryItem.UpdateProfile("New Name", "New Description", 49.90m, -1, UnitOfMeasure.Liter, true);
+
+        // Assert
+        var exception = Assert.Throws<DomainException>(act);
+        Assert.Equal(InventoryItemErrors.InvalidMinimumStock, exception.Message);
+    }
 }
