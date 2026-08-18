@@ -1,6 +1,11 @@
 -- Fonte única de verdade do schema, usada tanto pelo ambiente docker-compose (via sqlserver-init)
 -- quanto pelos testes de integração (via DatabaseFixture). Mantenha em sincronia com
 -- AppDbContext.OnModelCreating sempre que o modelo mudar.
+--
+-- Dados de demonstração (clientes/veículos/catálogo/Ordens de Serviço com histórico) ficam em
+-- db/seed-demo.sql, um arquivo separado aplicado só pelo docker-compose (serviço sqlserver-seed-demo,
+-- depois deste script) — não entra no banco dos testes de integração, só o seed mínimo abaixo
+-- (usuário Admin) é compartilhado pelos dois ambientes.
 
 IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = N'$(DatabaseName)')
 BEGIN

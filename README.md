@@ -10,7 +10,7 @@ Este repositório é a primeira versão (MVP) do **back-end** de um Sistema Inte
 
 O desenvolvimento segue **Domain-Driven Design (DDD)**, com atenção a boas práticas de qualidade de software e segurança: arquitetura em camadas, testes automatizados, autenticação JWT e validação de dados sensíveis (CPF/CNPJ, placa de veículo).
 
-> **Estado atual do projeto**: os quatro agregados de negócio da oficina (`Cliente`, `Veículo`, `Serviço`, `Peça/Insumo`) têm CRUD completo, a máquina de estados da Ordem de Serviço está fechada de ponta a ponta (`Recebida` → `Entregue`) e o cliente já consegue acompanhar sua OS via API pública, sem autenticação. Falta só a listagem administrativa de OS (`GET /service-orders`) para fechar as funcionalidades obrigatórias do desafio. Ver [O que falta](#o-que-falta) abaixo e [`CONTEXT.md`](CONTEXT.md) para o detalhamento técnico completo.
+> **Estado atual do projeto**: todas as funcionalidades obrigatórias do desafio estão implementadas — os quatro agregados de negócio da oficina (`Cliente`, `Veículo`, `Serviço`, `Peça/Insumo`) têm CRUD completo, a máquina de estados da Ordem de Serviço está fechada de ponta a ponta (`Recebida` → `Entregue`) com listagem e detalhamento administrativos, e o cliente já consegue acompanhar sua OS via API pública, sem autenticação. Restam só itens de qualidade/entrega (cobertura medida, relatório de SAST, documentação DDD) — ver [O que falta](#o-que-falta) abaixo e [`CONTEXT.md`](CONTEXT.md) para o detalhamento técnico completo.
 
 ## Sumário
 
@@ -61,7 +61,7 @@ Regra de dependência: `Domain` não referencia nada; `Application` referencia `
 - **Veículos**: CRUD completo — criação com validação de placa (Mercosul e padrão antigo) vinculada a um cliente existente, consulta por id, listagem, atualização (placa imutável) e remoção (bloqueada com `400` se houver OS vinculada).
 - **Serviços** (catálogo): CRUD completo — criação, consulta por id, listagem, atualização (código imutável; desativar um serviço o impede de entrar em orçamentos novos) e remoção (bloqueada com `400` se o serviço já tiver sido usado em alguma OS). O tempo estimado de execução (`EstimatedDuration`) é uma média incremental que se autoatualiza a cada OS concluída, com `ExecutionCount` exposto para indicar quantas amostras embasam o número — é como o desafio pede o "monitoramento do tempo médio de execução dos serviços".
 - **Peças/Insumos** (catálogo + estoque): CRUD completo — criação, consulta por id, listagem, atualização (código e quantidades de estoque ficam de fora: estoque só muda pelo fluxo de reserva/orçamento) e remoção (bloqueada com `400` se a peça já tiver sido usada em alguma OS). Desativar uma peça a impede de entrar em orçamentos novos.
-- **Ordem de Serviço**: máquina de estados completa — `Recebida` → `Em diagnóstico` → `Aguardando aprovação` → (`Em execução` → `Finalizada` | `Cancelada`) → `Entregue`, com orçamento calculado automaticamente a partir dos serviços/peças informados, reserva e baixa real de estoque, e histórico de status registrado a cada transição. Consulta pública e anônima da OS pelo cliente via CPF/CNPJ + placa (`GET /api/v1/service-orders/lookup`), sem vazar existência de cadastro.
+- **Ordem de Serviço**: máquina de estados completa — `Recebida` → `Em diagnóstico` → `Aguardando aprovação` → (`Em execução` → `Finalizada` | `Cancelada`) → `Entregue`, com orçamento calculado automaticamente a partir dos serviços/peças informados, reserva e baixa real de estoque, e histórico de status registrado a cada transição. Listagem (`GET /api/v1/service-orders`) e detalhamento por id (`GET /api/v1/service-orders/{id}`) para gestão administrativa. Consulta pública e anônima da OS pelo cliente via CPF/CNPJ + placa (`GET /api/v1/service-orders/lookup`), sem vazar existência de cadastro.
 - Schema de banco (`db/init.sql`) aplicado por um serviço de init do `docker-compose` antes da API subir — sem migration em runtime. Inclui seed idempotente do primeiro usuário Admin (bootstrap).
 - Testes unitários (Domain + Application) e projeto de testes de integração com SQL Server real via `docker-compose.tests.yml`, cobrindo os fluxos acima.
 
@@ -71,7 +71,6 @@ Ver [`CONTEXT.md`](CONTEXT.md) para o desenho técnico completo (camada por cama
 
 Do que o desafio pede, ainda em aberto:
 
-- **Listagem administrativa de OS** (`GET /api/v1/service-orders`) — o detalhamento por id já existe, falta só a listagem (próximo item do backlog).
 - **Cobertura mínima de testes de 80% nos domínios críticos**: o pipeline já roda Coverlet + SonarQube Cloud a cada push em `release`, mas o número ainda não foi medido/confirmado contra a meta.
 - **Relatório de análise de vulnerabilidades (SAST)**: a análise em si já roda no CI (SonarQube Cloud), mas o relatório documentado com os achados ainda não foi escrito.
 - **Documentação DDD** (Event Storming, diagramas, linguagem ubíqua) dos fluxos de OS e de gestão de peças/insumos — entregável separado do código, ainda não iniciado.
@@ -103,7 +102,14 @@ Pré-requisitos: [Docker](https://www.docker.com/) e Docker Compose.
 
    Use essas credenciais em `POST /api/v1/auth/login` pra obter um token JWT com role `Admin` e conseguir chamar endpoints protegidos (ex.: `POST /api/v1/users`, pra cadastrar os demais usuários). Troque essa senha em qualquer ambiente que não seja local/dev.
 
-4. Para derrubar o ambiente:
+4. Logo em seguida, outro serviço (`sqlserver-seed-demo`) popula o banco com dados de demonstração — 2 usuários extras, 4 clientes, 5 veículos, catálogo de serviços/peças com estoque e 6 Ordens de Serviço cobrindo cada status da máquina de estados, com histórico completo (ver `db/seed-demo.sql`). Não é aplicado nos testes de integração, só neste ambiente. Credenciais dos usuários extras (senha `Demo@123` pros dois):
+
+   | Papel | Email |
+   |---|---|
+   | Attendant | `atendente@oficina.com` |
+   | Mechanic | `mecanico@oficina.com` |
+
+5. Para derrubar o ambiente:
 
    ```bash
    docker compose down

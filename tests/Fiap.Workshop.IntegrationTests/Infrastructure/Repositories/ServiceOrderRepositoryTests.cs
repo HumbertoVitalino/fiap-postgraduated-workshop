@@ -367,6 +367,27 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
         Assert.Equal(2, found.StatusHistory.Count);
     }
 
+    [Fact(DisplayName = "ServiceOrderRepository >> Should retrieve all >> When service orders exist")]
+    public async Task ServiceOrderRepository_ShouldRetrieveAll_WhenServiceOrdersExist()
+    {
+        // Arrange
+        var (customer, vehicle, user) = await SeedServiceOrderDependenciesAsync();
+        var serviceOrder = CreateServiceOrder(customer, vehicle, user);
+        await SeedServiceOrderAsync(serviceOrder);
+
+        // Act
+        IReadOnlyCollection<ServiceOrder>? found = null;
+        await WithScopeAsync<IServiceOrderRepository>(async repo =>
+            found = await repo.GetAllAsync(CancellationToken.None));
+
+        // Assert — DatabaseFixture is shared without reset between tests, so other service orders may already
+        // exist; only assert that the one seeded here is present with its children loaded.
+        Assert.NotNull(found);
+        var match = Assert.Single(found!, so => so.Id == serviceOrder.Id);
+        Assert.Equal(serviceOrder.CustomerId, match.CustomerId);
+        Assert.Equal(serviceOrder.VehicleId, match.VehicleId);
+    }
+
     [Fact(DisplayName = "ServiceOrderRepository >> Should retrieve all by vehicle id >> When vehicle has service orders")]
     public async Task ServiceOrderRepository_ShouldRetrieveAllByVehicleId_WhenVehicleHasServiceOrders()
     {
