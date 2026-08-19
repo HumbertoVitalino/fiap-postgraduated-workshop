@@ -1,0 +1,91 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${API_PORT:-8080}:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection}
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+      Jwt__ExpirationInMinutes: ${Jwt__ExpirationInMinutes:-60}
+    depends_on:
+      sqlserver-init:
+        condition: service_completed_successfully
+      sqlserver-seed-demo:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: ${SA_PASSWORD}
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$SA_PASSWORD\" -Q 'SELECT 1' -b -C || exit 1"]
+      interval: 10s
+      retries: 10
+      start_period: 30s
+      timeout: 5s
+    restart: unless-stopped
+
+  # Cria o schema (tabelas, índices, FKs) a partir de db/init.sql antes da api subir.
+  # Substitui o antigo dbContext.Database.MigrateAsync() no Program.cs: o banco já
+  # nasce pronto, sem depender de EF Migrations em tempo de execução.
+  sqlserver-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    volumes:
+      - ./db/init.sql:/init.sql:ro
+    entrypoint:
+      - /opt/mssql-tools18/bin/sqlcmd
+      - -S
+      - sqlserver
+      - -U
+      - sa
+      - -P
+      - ${SA_PASSWORD}
+      - -C
+      - -v
+      - DatabaseName=Fiap_Workshop
+      - -i
+      - /init.sql
+    restart: "no"
+
+  # Popula o banco com dados de demonstração (clientes, veículos, catálogo de serviços/peças
+  # e um histórico de Ordens de Serviço em cada status) depois do schema pronto — só pra quem
+  # sobe o docker-compose querer explorar a API já com dado real, não é usado pelos testes
+  # de integração (ver comentário em db/seed-demo.sql).
+  sqlserver-seed-demo:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      sqlserver-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./db/seed-demo.sql:/seed-demo.sql:ro
+    entrypoint:
+      - /opt/mssql-tools18/bin/sqlcmd
+      - -S
+      - sqlserver
+      - -U
+      - sa
+      - -P
+      - ${SA_PASSWORD}
+      - -C
+      - -v
+      - DatabaseName=Fiap_Workshop
+      - -i
+      - /seed-demo.sql
+    restart: "no"
+
+volumes:
+  sqlserver-data:

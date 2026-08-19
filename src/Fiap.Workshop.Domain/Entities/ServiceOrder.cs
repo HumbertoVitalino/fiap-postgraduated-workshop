@@ -1,0 +1,258 @@
+using Fiap.Workshop.Domain.Abstractions;
+using Fiap.Workshop.Domain.Enums;
+using Fiap.Workshop.Domain.Errors;
+
+namespace Fiap.Workshop.Domain.Entities;
+
+public class ServiceOrder(
+    Guid id,
+    Guid customerId,
+    Guid vehicleId,
+    Guid createdBy,
+    string problemDescription,
+    int odometerReading,
+    DateTime createdAt,
+    DateTime updatedAt,
+    DateTime openedAt,
+    ServiceOrderStatus status = ServiceOrderStatus.Received,
+    string? diagnoseDescription = default,
+    decimal discount = default,
+    decimal subtotal = default,
+    decimal total = default,
+    DateTime? closedAt = null
+) : AggregateRoot(id, createdAt, updatedAt)
+{
+    public Guid CustomerId { get; private set; } = customerId;
+    public Guid VehicleId { get; private set; } = vehicleId;
+    public Guid CreatedBy { get; private set; } = createdBy;
+    public ServiceOrderStatus Status { get; private set; } = status;
+    public string ProblemDescription { get; private set; } = problemDescription;
+    public string? DiagnoseDescription { get; private set; } = diagnoseDescription;
+    public int OdometerReading { get; private set; } = odometerReading;
+    public decimal Discount { get; private set; } = discount;
+    public decimal Subtotal { get; private set; } = subtotal;
+    public decimal Total { get; private set; } = total;
+    public DateTime OpenedAt { get; private set; } = openedAt;
+    public DateTime? ClosedAt { get; private set; } = closedAt;
+
+    private readonly List<ServiceOrderPart> _parts = [];
+    public IReadOnlyCollection<ServiceOrderPart> Parts => _parts.AsReadOnly();
+
+    private readonly List<ServiceOrderService> _services = [];
+    public IReadOnlyCollection<ServiceOrderService> Services => _services.AsReadOnly();
+
+    private readonly List<ServiceOrderStatusHistory> _statusHistory = [];
+    public IReadOnlyCollection<ServiceOrderStatusHistory> StatusHistory => _statusHistory.AsReadOnly();
+
+    public void AddParts(IEnumerable<ServiceOrderPart> parts) => _parts.AddRange(parts);
+
+    public void AddServices(IEnumerable<ServiceOrderService> services) => _services.AddRange(services);
+
+    public void AddStatusHistory(IEnumerable<ServiceOrderStatusHistory> statusHistory) => _statusHistory.AddRange(statusHistory);
+
+    public void StartDiagnosis(string diagnoseDescription, Guid changedBy)
+    {
+        if (Status != ServiceOrderStatus.Received)
+        {
+            throw new DomainException(
+                string.Format(
+                    ServiceOrderErrors.InvalidStatusTransition,
+                    Status,
+                    ServiceOrderStatus.Diagnosing
+                )
+            );
+        }
+
+        var previousStatus = Status;
+
+        DiagnoseDescription = diagnoseDescription;
+        Status = ServiceOrderStatus.Diagnosing;
+
+        _statusHistory.Add(
+            new ServiceOrderStatusHistory(
+                Guid.NewGuid(),
+                Id,
+                previousStatus,
+                Status,
+                changedBy,
+                DateTime.Now
+            )
+        );
+
+        SetUpdatedAt();
+    }
+
+    public void AddBudget(IEnumerable<ServiceOrderService> services, IEnumerable<ServiceOrderPart> parts, Guid changedBy)
+    {
+        if (Status != ServiceOrderStatus.Diagnosing)
+        {
+            throw new DomainException(
+                string.Format(
+                    ServiceOrderErrors.InvalidStatusTransition,
+                    Status,
+                    ServiceOrderStatus.AwaitingApproval
+                )
+            );
+        }
+
+        var servicesList = services.ToList();
+        var partsList = parts.ToList();
+
+        var subtotal = servicesList.Sum(service => service.UnitPrice * service.Quantity)
+            + partsList.Sum(part => part.UnitPrice * part.Quantity);
+
+        var previousStatus = Status;
+
+        AddServices(servicesList);
+        AddParts(partsList);
+
+        Subtotal = subtotal;
+        Total = subtotal;
+        Status = ServiceOrderStatus.AwaitingApproval;
+
+        _statusHistory.Add(
+            new ServiceOrderStatusHistory(
+                Guid.NewGuid(),
+                Id,
+                previousStatus,
+                Status,
+                changedBy,
+                DateTime.Now
+            )
+        );
+
+        SetUpdatedAt();
+    }
+
+    public void Approve(Guid changedBy)
+    {
+        if (Status != ServiceOrderStatus.AwaitingApproval)
+        {
+            throw new DomainException(
+                string.Format(
+                    ServiceOrderErrors.InvalidStatusTransition,
+                    Status,
+                    ServiceOrderStatus.InProgress
+                )
+            );
+        }
+
+        var previousStatus = Status;
+        Status = ServiceOrderStatus.InProgress;
+
+        _statusHistory.Add(
+            new ServiceOrderStatusHistory(
+                Guid.NewGuid(),
+                Id,
+                previousStatus,
+                Status,
+                changedBy,
+                DateTime.Now
+            )
+        );
+
+        SetUpdatedAt();
+    }
+
+    public void Reject(Guid changedBy)
+    {
+        if (Status != ServiceOrderStatus.AwaitingApproval)
+        {
+            throw new DomainException(
+                string.Format(
+                    ServiceOrderErrors.InvalidStatusTransition,
+                    Status,
+                    ServiceOrderStatus.Cancelled
+                )
+            );
+        }
+
+        var previousStatus = Status;
+        Status = ServiceOrderStatus.Cancelled;
+
+        _statusHistory.Add(
+            new ServiceOrderStatusHistory(
+                Guid.NewGuid(),
+                Id,
+                previousStatus,
+                Status,
+                changedBy,
+                DateTime.Now
+            )
+        );
+
+        SetUpdatedAt();
+    }
+
+    public void Complete(IReadOnlyCollection<(Guid ServiceOrderServiceId, short ActualDuration)> durations, Guid changedBy)
+    {
+        if (Status != ServiceOrderStatus.InProgress)
+        {
+            throw new DomainException(
+                string.Format(
+                    ServiceOrderErrors.InvalidStatusTransition,
+                    Status,
+                    ServiceOrderStatus.Completed
+                )
+            );
+        }
+
+        var serviceIds = _services.Select(service => service.Id).ToHashSet();
+        var durationIds = durations.Select(duration => duration.ServiceOrderServiceId).ToHashSet();
+
+        if (!serviceIds.SetEquals(durationIds))
+            throw new DomainException(ServiceOrderErrors.MissingServiceDuration);
+
+        var durationsById = durations.ToDictionary(duration => duration.ServiceOrderServiceId, duration => duration.ActualDuration);
+
+        foreach (var service in _services)
+            service.RecordActualDuration(durationsById[service.Id]);
+
+        var previousStatus = Status;
+        Status = ServiceOrderStatus.Completed;
+
+        _statusHistory.Add(
+            new ServiceOrderStatusHistory(
+                Guid.NewGuid(),
+                Id,
+                previousStatus,
+                Status,
+                changedBy,
+                DateTime.Now
+            )
+        );
+
+        SetUpdatedAt();
+    }
+
+    public void Deliver(Guid changedBy)
+    {
+        if (Status != ServiceOrderStatus.Completed && Status != ServiceOrderStatus.Cancelled)
+        {
+            throw new DomainException(
+                string.Format(
+                    ServiceOrderErrors.InvalidStatusTransition,
+                    Status,
+                    ServiceOrderStatus.Delivered
+                )
+            );
+        }
+
+        var previousStatus = Status;
+        Status = ServiceOrderStatus.Delivered;
+        ClosedAt = DateTime.Now;
+
+        _statusHistory.Add(
+            new ServiceOrderStatusHistory(
+                Guid.NewGuid(),
+                Id,
+                previousStatus,
+                Status,
+                changedBy,
+                DateTime.Now
+            )
+        );
+
+        SetUpdatedAt();
+    }
+}

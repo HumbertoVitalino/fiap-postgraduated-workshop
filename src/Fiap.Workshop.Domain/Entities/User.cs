@@ -1,0 +1,45 @@
+using Fiap.Workshop.Domain.Abstractions;
+using Fiap.Workshop.Domain.Enums;
+using Fiap.Workshop.Domain.Events;
+
+namespace Fiap.Workshop.Domain.Entities;
+
+public sealed class User : AggregateRoot
+{
+    public string Name { get; private set; }
+    public string Password { get; private set; }
+    public UserRole Role { get; private set; }
+    public string Email { get; private set; }
+
+    public User(
+        Guid id,
+        string email,
+        string name,
+        string password,
+        UserRole role,
+        DateTime createdAt,
+        DateTime updatedAt
+    ) : base(id, createdAt, updatedAt)
+    {
+        Email = email;
+        Name = name;
+        Password = password;
+        Role = role;
+
+        RaiseDomainEvent(new UserCreatedEvent(id));
+    }
+
+    public void UpdateProfile(string name, string email, UserRole role)
+    {
+        Name = name;
+        Email = email;
+        Role = role;
+        SetUpdatedAt();
+    }
+
+    public void ChangePassword(string newPasswordHash)
+    {
+        Password = newPasswordHash;
+        SetUpdatedAt();
+    }
+}

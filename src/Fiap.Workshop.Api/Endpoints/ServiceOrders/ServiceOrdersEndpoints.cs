@@ -1,0 +1,237 @@
+using Asp.Versioning.Builder;
+using Fiap.Workshop.Api.Filters;
+using Fiap.Workshop.Api.Mappers;
+using Fiap.Workshop.Api.Requests.ServiceOrders;
+using Fiap.Workshop.Application.Commons;
+using Fiap.Workshop.Application.DTOs.ServiceOrder;
+using Fiap.Workshop.Application.Interfaces.Services;
+using Fiap.Workshop.Application.Interfaces.UseCases;
+using Fiap.Workshop.Application.UseCases.ServiceOrders.GetServiceOrder.Boundaries;
+using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
+
+namespace Fiap.Workshop.Api.Endpoints.ServiceOrders;
+
+public static class ServiceOrdersEndpoints
+{
+    public static void MapServiceOrdersEndpoints(this IEndpointRouteBuilder app, ApiVersionSet apiVersion)
+    {
+        var group = app.MapGroup("api/v1/service-orders")
+            .WithApiVersionSet(apiVersion)
+            .WithTags("ServiceOrders");
+
+        group.MapGet("",
+            async (
+                [FromServices] IGetServiceOrdersUseCase getAllUseCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await getAllUseCase.Handle(Guid.NewGuid(), cancellationToken);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Gets all service orders.")
+        .WithDescription("Returns all service orders registered in the system, including their status, budget items and status history. Returns an empty array if none exist.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .RequireAuthorization();
+
+        group.MapGet("lookup",
+            async (
+                [AsParameters] TrackServiceOrdersRequest request,
+                [FromServices] ITrackServiceOrdersUseCase useCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(), cancellationToken);
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Looks up service orders for a vehicle.")
+        .WithDescription("Public, unauthenticated endpoint for the customer to track their vehicle's service orders. Requires both the vehicle's license plate and the owning customer's document; always returns 200 with an empty list when the plate doesn't exist or the document doesn't match its owner, so existence of a plate/document is never leaked.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .AllowAnonymous()
+        .WithValidation<TrackServiceOrdersRequest>();
+
+        group.MapGet("{serviceOrderId}",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromServices] IGetServiceOrderUseCase getByIdUseCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await getByIdUseCase.Handle(new GetServiceOrderInput(Guid.NewGuid(), serviceOrderId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.NotFound(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Gets a service order by id.")
+        .WithDescription("Returns the service order that matches the given identifier, including its status, budget items and status history.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status404NotFound)
+        .RequireAuthorization();
+
+        group.MapPost("",
+            async (
+                [FromBody] CreateServiceOrderRequest request,
+                [FromServices] ICreateServiceOrderUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(currentUser.UserId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Created($"/api/v1/service-orders/{result.GetResult<ServiceOrderResponse>()?.Id}", result);
+            }
+        )
+        .WithSummary("Opens a new service order.")
+        .WithDescription("Opens a service order for an existing vehicle owned by an existing customer. The order starts in the Received status with no budget.")
+        .Produces<Output>(StatusCodes.Status201Created)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AttendantOnly")
+        .WithValidation<CreateServiceOrderRequest>();
+
+        group.MapPost("{serviceOrderId}/diagnosis",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromBody] StartDiagnosisRequest request,
+                [FromServices] IStartDiagnosisUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(serviceOrderId, currentUser.UserId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Starts the diagnosis of a service order.")
+        .WithDescription("Registers the diagnosis description and moves the service order from Received to Diagnosing.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("MechanicOnly")
+        .WithValidation<StartDiagnosisRequest>();
+
+        group.MapPost("{serviceOrderId}/budget",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromBody] AddBudgetRequest request,
+                [FromServices] IAddBudgetUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(serviceOrderId, currentUser.UserId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Adds a budget to a service order.")
+        .WithDescription("Calculates the subtotal/total from the given services and parts, reserves the requested inventory stock, and moves the service order from Diagnosing to AwaitingApproval.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("MechanicOnly")
+        .WithValidation<AddBudgetRequest>();
+
+        group.MapPost("{serviceOrderId}/approval",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromBody] ApproveServiceOrderRequest request,
+                [FromServices] IApproveServiceOrderUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(serviceOrderId, currentUser.UserId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Approves the budget of a service order.")
+        .WithDescription("Registers the attendant's record of the customer's approval, commits the reserved inventory stock, and moves the service order from AwaitingApproval to InProgress.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AttendantOnly")
+        .WithValidation<ApproveServiceOrderRequest>();
+
+        group.MapPost("{serviceOrderId}/rejection",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromBody] RejectServiceOrderRequest request,
+                [FromServices] IRejectServiceOrderUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(serviceOrderId, currentUser.UserId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Rejects the budget of a service order.")
+        .WithDescription("Registers the attendant's record of the customer's rejection, releases the reserved inventory stock, and moves the service order from AwaitingApproval to Cancelled.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AttendantOnly")
+        .WithValidation<RejectServiceOrderRequest>();
+
+        group.MapPost("{serviceOrderId}/completion",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromBody] CompleteServiceOrderRequest request,
+                [FromServices] ICompleteServiceOrderUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(serviceOrderId, currentUser.UserId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Completes a service order.")
+        .WithDescription("Registers the actual duration of every service in the order, updates the catalog's incremental average duration for each touched service, and moves the service order from InProgress to Completed.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("MechanicOnly")
+        .WithValidation<CompleteServiceOrderRequest>();
+
+        group.MapPost("{serviceOrderId}/delivery",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromBody] DeliverServiceOrderRequest request,
+                [FromServices] IDeliverServiceOrderUseCase useCase,
+                [FromServices] ICurrentUserService currentUser,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(serviceOrderId, currentUser.UserId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Delivers a service order's vehicle back to the customer.")
+        .WithDescription("Registers that the vehicle left the shop and closes the service order, moving it to Delivered. Accepts orders in Completed (repair finished) or Cancelled (customer rejected the budget and is picking up the vehicle without any repair).")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AttendantOnly")
+        .WithValidation<DeliverServiceOrderRequest>();
+    }
+}

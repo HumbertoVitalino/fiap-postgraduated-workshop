@@ -1,0 +1,141 @@
+name: CI - Feature
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore
+        run: dotnet restore Fiap.Workshop.slnx
+
+      - name: Build
+        run: dotnet build Fiap.Workshop.slnx --no-restore --configuration Release
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore
+        run: dotnet restore Fiap.Workshop.slnx
+
+      - name: Unit Tests
+        run: >
+          dotnet test
+          tests/Fiap.Workshop.UnitTests/Fiap.Workshop.UnitTests.csproj
+          --no-restore
+          --configuration Release
+          --logger "trx;LogFileName=unit-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: '**/*.trx'
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore
+        run: dotnet restore Fiap.Workshop.slnx
+
+      - name: Start SQL Server
+        run: docker compose -f docker-compose.tests.yml up -d
+
+      - name: Wait for SQL Server to be healthy
+        run: |
+          echo "Waiting for SQL Server..."
+          until [ "$(docker inspect integration-sql --format '{{.State.Health.Status}}')" = "healthy" ]; do
+            echo "  still waiting..."
+            sleep 5
+          done
+          echo "SQL Server is ready."
+
+      - name: Integration Tests
+        run: >
+          dotnet test
+          tests/Fiap.Workshop.IntegrationTests/Fiap.Workshop.IntegrationTests.csproj
+          --no-restore
+          --configuration Release
+          --logger "trx;LogFileName=integration-results.trx"
+        env:
+          ConnectionStrings__MasterConnection: "Server=localhost,14330;User Id=sa;Password=Integration@Test123;TrustServerCertificate=True;"
+          ConnectionStrings__DefaultConnection: "Server=localhost,14330;Database=IntegrationTestsDb;User Id=sa;Password=Integration@Test123;TrustServerCertificate=True;"
+
+      - name: Stop SQL Server
+        if: always()
+        run: docker compose -f docker-compose.tests.yml down
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: '**/*.trx'
+
+  functional-tests:
+    name: Functional Tests
+    runs-on: ubuntu-latest
+    needs: integration-tests
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore
+        run: dotnet restore Fiap.Workshop.slnx
+
+      - name: Functional Tests
+        run: >
+          dotnet test
+          tests/Fiap.Workshop.FunctionalTests/Fiap.Workshop.FunctionalTests.csproj
+          --no-restore
+          --configuration Release
+          --logger "trx;LogFileName=functional-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: functional-test-results
+          path: '**/*.trx'
