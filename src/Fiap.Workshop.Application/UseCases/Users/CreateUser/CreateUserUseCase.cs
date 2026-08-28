@@ -29,7 +29,7 @@ public sealed class CreateUserUseCase(
             _logger.LogWarning(
                 "[{CorrelationId}] | User with email {Email} already exists.",
                 input.CorrelationId,
-                input.Email
+                input.Email.MaskEmail()
             );
 
             output.AddErrorMessage($"User with email {input.Email} already exists.");
@@ -48,7 +48,7 @@ public sealed class CreateUserUseCase(
             _logger.LogError(
                 "[{CorrelationId}] | Error saving user with email {Email}.",
                 input.CorrelationId,
-                input.Email
+                input.Email.MaskEmail()
             );
 
             output.AddErrorMessage($"Error saving user with email {input.Email}.");

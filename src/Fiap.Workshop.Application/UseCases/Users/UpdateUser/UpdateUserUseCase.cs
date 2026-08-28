@@ -40,7 +40,7 @@ public sealed class UpdateUserUseCase(
                 _logger.LogWarning(
                     "[{CorrelationId}] | User with email {Email} already exists.",
                     input.CorrelationId,
-                    input.Email
+                    input.Email.MaskEmail()
                 );
 
                 output.AddErrorMessage($"User with email {input.Email} already exists.");

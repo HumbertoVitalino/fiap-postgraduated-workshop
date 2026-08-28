@@ -1,4 +1,5 @@
 ﻿using AutoFixture;
+using Fiap.Workshop.Application.Commons;
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.Interfaces.Services;
 using Fiap.Workshop.Application.UseCases.Users.CreateUser;
@@ -75,7 +76,7 @@ public class CreateUserUseCaseUnitTests : LoggerTestBase<CreateUserUseCase>
         result.Result.Should().BeNull();
         VerifyLog(
             LogLevel.Warning,
-            $"[{input.CorrelationId}] | User with email {input.Email} already exists.",
+            $"[{input.CorrelationId}] | User with email {input.Email.MaskEmail()} already exists.",
             Times.Once()
         );
     }
@@ -108,7 +109,7 @@ public class CreateUserUseCaseUnitTests : LoggerTestBase<CreateUserUseCase>
         result.Result.Should().BeNull();
         VerifyLog(
             LogLevel.Error,
-            $"[{input.CorrelationId}] | Error saving user with email {input.Email}.",
+            $"[{input.CorrelationId}] | Error saving user with email {input.Email.MaskEmail()}.",
             Times.Once()
         );
     }
