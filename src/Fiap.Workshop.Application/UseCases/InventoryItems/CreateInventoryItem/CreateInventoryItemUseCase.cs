@@ -25,7 +25,7 @@ public sealed class CreateInventoryItemUseCase(
             _logger.LogWarning(
                 "[{CorrelationId}] | Inventory item with code {Code} already exists.",
                 input.CorrelationId,
-                input.Code
+                input.Code.SanitizeForLog()
             );
 
             output.AddErrorMessage($"Inventory item with code {input.Code} already exists.");
@@ -42,7 +42,7 @@ public sealed class CreateInventoryItemUseCase(
             _logger.LogError(
                 "[{CorrelationId}] | Error saving inventory item with code {Code}.",
                 input.CorrelationId,
-                input.Code
+                input.Code.SanitizeForLog()
             );
 
             output.AddErrorMessage($"Error saving inventory item with code {input.Code}.");

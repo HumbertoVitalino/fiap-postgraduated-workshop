@@ -1,4 +1,5 @@
 using AutoFixture;
+using Fiap.Workshop.Application.Commons;
 using Fiap.Workshop.Application.DTOs.Customer;
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.UseCases.Customers.UpdateCustomer;
@@ -146,7 +147,7 @@ public class UpdateCustomerUseCaseUnitTests : LoggerTestBase<UpdateCustomerUseCa
         result.Result.Should().BeNull();
         VerifyLog(
             LogLevel.Warning,
-            $"[{input.CorrelationId}] | Customer with email {input.Email} already exists.",
+            $"[{input.CorrelationId}] | Customer with email {input.Email.MaskEmail()} already exists.",
             Times.Once()
         );
         _customerRepositoryMock.Verify(x => x.ExistsWithPhoneAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never());

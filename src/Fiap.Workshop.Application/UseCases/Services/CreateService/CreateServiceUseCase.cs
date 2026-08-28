@@ -25,7 +25,7 @@ public sealed class CreateServiceUseCase(
             _logger.LogWarning(
                 "[{CorrelationId}] | Service with code {Code} already exists.",
                 input.CorrelationId,
-                input.Code
+                input.Code.SanitizeForLog()
             );
 
             output.AddErrorMessage($"Service with code {input.Code} already exists.");
@@ -42,7 +42,7 @@ public sealed class CreateServiceUseCase(
             _logger.LogError(
                 "[{CorrelationId}] | Error saving service with code {Code}.",
                 input.CorrelationId,
-                input.Code
+                input.Code.SanitizeForLog()
             );
 
             output.AddErrorMessage($"Error saving service with code {input.Code}.");

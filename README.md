@@ -71,7 +71,7 @@ Ver [`CONTEXT.md`](CONTEXT.md) para o desenho técnico completo (camada por cama
 
 Do que o desafio pede, ainda em aberto:
 
-- **Cobertura mínima de testes de 80% nos domínios críticos**: o pipeline já roda Coverlet + SonarQube Cloud a cada push em `release`, mas o número ainda não foi medido/confirmado contra a meta.
+- ~~Cobertura mínima de testes de 80% nos domínios críticos~~: confirmado via SonarQube Cloud — **97,3%** de cobertura em `Domain`/`Application`, acima da meta.
 - **Relatório de análise de vulnerabilidades (SAST)**: a análise em si já roda no CI (SonarQube Cloud), mas o relatório documentado com os achados ainda não foi escrito.
 - **Documentação DDD** (Event Storming, diagramas, linguagem ubíqua) dos fluxos de OS e de gestão de peças/insumos — entregável separado do código, ainda não iniciado.
 
@@ -117,7 +117,7 @@ Pré-requisitos: [Docker](https://www.docker.com/) e Docker Compose.
 
 ### Rodando sem Docker (.NET SDK local)
 
-Requer .NET SDK 10 e uma instância de SQL Server acessível (ajuste `ConnectionStrings__DefaultConnection` em `src/Fiap.Workshop.Api/appsettings.Development.json` ou via variável de ambiente):
+Requer .NET SDK 10 e uma instância de SQL Server acessível (ajuste `ConnectionStrings:DefaultConnection` em `src/Fiap.Workshop.Api/appsettings.json` ou via variável de ambiente `ConnectionStrings__DefaultConnection`; o valor padrão já aponta para `localhost,1433`):
 
 ```bash
 dotnet restore Fiap.Workshop.slnx
@@ -155,7 +155,7 @@ O documento OpenAPI puro fica em `/openapi/v1.json`.
 
 `POST /api/v1/users` exige um token JWT com role `Admin` (policy `AdminOnly`). Obtenha um token via `POST /api/v1/auth/login`, usando o usuário Admin de bootstrap (`admin@admin.com` / `Admin@123`, ver "Como rodar localmente") — troque essa senha em qualquer ambiente que não seja local/dev.
 
-O `CorrelationId` esperado pelo cadastro de usuário vai no corpo da requisição (campo `correlationId`), não em um header.
+O `CorrelationId` esperado pela API vai no corpo da requisição (campo `correlationId`), não em um header — é um padrão presente em praticamente todos os Requests (criação e atualização de Clientes, Veículos, Serviços, Peças, Ordens de Serviço etc.), não só no cadastro de usuário.
 
 ## Estrutura do repositório
 
