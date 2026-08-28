@@ -40,7 +40,7 @@ public sealed class UpdateCustomerUseCase(
                 _logger.LogWarning(
                     "[{CorrelationId}] | Customer with email {Email} already exists.",
                     input.CorrelationId,
-                    input.Email
+                    input.Email.MaskEmail()
                 );
 
                 output.AddErrorMessage($"Customer with email {input.Email} already exists.");
@@ -56,7 +56,7 @@ public sealed class UpdateCustomerUseCase(
                 _logger.LogWarning(
                     "[{CorrelationId}] | Customer with phone {Phone} already exists.",
                     input.CorrelationId,
-                    input.Phone
+                    input.Phone.SanitizeForLog()
                 );
 
                 output.AddErrorMessage($"Customer with phone {input.Phone} already exists.");

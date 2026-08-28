@@ -29,7 +29,7 @@ public class LoginUserUseCase(
             _logger.LogWarning(
                 "[{CorrelationId}] User not found with email: {Email}",
                 input.CorrelationId,
-                input.Email
+                input.Email.MaskEmail()
             );
 
             output.AddErrorMessage("User not found.");
@@ -42,7 +42,7 @@ public class LoginUserUseCase(
             _logger.LogWarning(
                 "[{CorrelationId}] Invalid password for user: {Email}",
                 input.CorrelationId,
-                input.Email
+                input.Email.MaskEmail()
             );
 
             output.AddErrorMessage("Invalid password.");

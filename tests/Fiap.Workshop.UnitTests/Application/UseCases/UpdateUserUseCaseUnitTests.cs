@@ -1,4 +1,5 @@
 using AutoFixture;
+using Fiap.Workshop.Application.Commons;
 using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.UseCases.Users.UpdateUser;
@@ -145,7 +146,7 @@ public class UpdateUserUseCaseUnitTests : LoggerTestBase<UpdateUserUseCase>
         result.Result.Should().BeNull();
         VerifyLog(
             LogLevel.Warning,
-            $"[{input.CorrelationId}] | User with email {input.Email} already exists.",
+            $"[{input.CorrelationId}] | User with email {input.Email.MaskEmail()} already exists.",
             Times.Once()
         );
         _userRepositoryMock.Verify(x => x.Update(It.IsAny<User>()), Times.Never());
