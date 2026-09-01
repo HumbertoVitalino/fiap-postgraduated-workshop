@@ -72,8 +72,8 @@ Ver [`CONTEXT.md`](CONTEXT.md) para o desenho técnico completo (camada por cama
 Do que o desafio pede, ainda em aberto:
 
 - ~~Cobertura mínima de testes de 80% nos domínios críticos~~: confirmado via SonarQube Cloud — **97,3%** de cobertura em `Domain`/`Application`, acima da meta.
-- **Relatório de análise de vulnerabilidades (SAST)**: a análise em si já roda no CI (SonarQube Cloud), mas o relatório documentado com os achados ainda não foi escrito.
-- **Documentação DDD** (Event Storming, diagramas, linguagem ubíqua) dos fluxos de OS e de gestão de peças/insumos — entregável separado do código, ainda não iniciado.
+- ~~Relatório de análise de vulnerabilidades (SAST)~~: CodeQL + SonarQube Cloud rodam no CI; os achados de severidade `medium` (log forging e exposição de dado sensível em log) foram corrigidos — ver documento de entrega da Fase 1 para o relatório completo.
+- ~~Documentação DDD~~ (Event Storming, diagramas, linguagem ubíqua) dos fluxos de OS e de gestão de peças/insumos — feita no Miro, ver link no documento de entrega da Fase 1.
 
 O histórico de decisões e o desenho detalhado do que já existe estão em [`CONTEXT.md`](CONTEXT.md).
 
