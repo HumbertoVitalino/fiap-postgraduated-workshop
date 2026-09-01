@@ -1,4 +1,5 @@
 using AutoFixture;
+using Fiap.Workshop.Application.Commons;
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.Interfaces.Services;
 using Fiap.Workshop.Application.UseCases.Users.LoginUser;
@@ -89,7 +90,7 @@ public class LoginUserUseCaseUnitTests : LoggerTestBase<LoginUserUseCase>
         result.Result.Should().BeNull();
         VerifyLog(
             LogLevel.Warning,
-            $"[{input.CorrelationId}] User not found with email: {input.Email}",
+            $"[{input.CorrelationId}] User not found with email: {input.Email.MaskEmail()}",
             Times.Once()
         );
     }
@@ -119,7 +120,7 @@ public class LoginUserUseCaseUnitTests : LoggerTestBase<LoginUserUseCase>
         result.Result.Should().BeNull();
         VerifyLog(
             LogLevel.Warning,
-            $"[{input.CorrelationId}] Invalid password for user: {input.Email}",
+            $"[{input.CorrelationId}] Invalid password for user: {input.Email.MaskEmail()}",
             Times.Once()
         );
     }
