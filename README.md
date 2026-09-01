@@ -10,7 +10,7 @@ Este repositório é a primeira versão (MVP) do **back-end** de um Sistema Inte
 
 O desenvolvimento segue **Domain-Driven Design (DDD)**, com atenção a boas práticas de qualidade de software e segurança: arquitetura em camadas, testes automatizados, autenticação JWT e validação de dados sensíveis (CPF/CNPJ, placa de veículo).
 
-> **Estado atual do projeto**: todas as funcionalidades obrigatórias do desafio estão implementadas — os quatro agregados de negócio da oficina (`Cliente`, `Veículo`, `Serviço`, `Peça/Insumo`) têm CRUD completo, a máquina de estados da Ordem de Serviço está fechada de ponta a ponta (`Recebida` → `Entregue`) com listagem e detalhamento administrativos, e o cliente já consegue acompanhar sua OS via API pública, sem autenticação. Restam só itens de qualidade/entrega (cobertura medida, relatório de SAST, documentação DDD) — ver [O que falta](#o-que-falta) abaixo e [`CONTEXT.md`](CONTEXT.md) para o detalhamento técnico completo.
+> **Estado atual do projeto**: entrega da Fase 1 completa — todas as funcionalidades obrigatórias do desafio estão implementadas, os quatro agregados de negócio da oficina (`Cliente`, `Veículo`, `Serviço`, `Peça/Insumo`) têm CRUD completo, a máquina de estados da Ordem de Serviço está fechada de ponta a ponta (`Recebida` → `Entregue`) com listagem e detalhamento administrativos, e o cliente já consegue acompanhar sua OS via API pública, sem autenticação. Cobertura de testes, relatório de SAST e documentação DDD também estão fechados — ver [Qualidade e entrega](#qualidade-e-entrega) abaixo e [`CONTEXT.md`](CONTEXT.md) para o detalhamento técnico completo.
 
 ## Sumário
 
@@ -18,7 +18,7 @@ O desenvolvimento segue **Domain-Driven Design (DDD)**, com atenção a boas pr�
 - [Arquitetura](#arquitetura)
 - [Stack técnica](#stack-técnica)
 - [O que já está implementado](#o-que-já-está-implementado)
-- [O que falta](#o-que-falta)
+- [Qualidade e entrega](#qualidade-e-entrega)
 - [Como rodar localmente](#como-rodar-localmente)
 - [Rodando os testes](#rodando-os-testes)
 - [Documentação da API (Swagger)](#documentação-da-api-swagger)
@@ -65,15 +65,15 @@ Regra de dependência: `Domain` não referencia nada; `Application` referencia `
 - Schema de banco (`db/init.sql`) aplicado por um serviço de init do `docker-compose` antes da API subir — sem migration em runtime. Inclui seed idempotente do primeiro usuário Admin (bootstrap).
 - Testes unitários (Domain + Application) e projeto de testes de integração com SQL Server real via `docker-compose.tests.yml`, cobrindo os fluxos acima.
 
-Ver [`CONTEXT.md`](CONTEXT.md) para o desenho técnico completo (camada por camada) e `docs/backlog-proximas-tarefas.md` para o histórico de tickets já fechados.
+Ver [`CONTEXT.md`](CONTEXT.md) para o desenho técnico completo (camada por camada) e o histórico de decisões de cada ticket fechado.
 
-## O que falta
+## Qualidade e entrega
 
-Do que o desafio pede, ainda em aberto:
+Itens de qualidade/entrega exigidos pelo desafio, todos fechados:
 
-- ~~Cobertura mínima de testes de 80% nos domínios críticos~~: confirmado via SonarQube Cloud — **97,3%** de cobertura em `Domain`/`Application`, acima da meta.
-- ~~Relatório de análise de vulnerabilidades (SAST)~~: CodeQL + SonarQube Cloud rodam no CI; os achados de severidade `medium` (log forging e exposição de dado sensível em log) foram corrigidos — ver documento de entrega da Fase 1 para o relatório completo.
-- ~~Documentação DDD~~ (Event Storming, diagramas, linguagem ubíqua) dos fluxos de OS e de gestão de peças/insumos — feita no Miro, ver link no documento de entrega da Fase 1.
+- **Cobertura de testes**: confirmado via SonarQube Cloud — **97,3%** de cobertura em `Domain`/`Application`, acima da meta mínima de 80%.
+- **Relatório de análise de vulnerabilidades (SAST)**: CodeQL + SonarQube Cloud rodam no CI; os achados de severidade `medium` (log forging e exposição de dado sensível em log) foram corrigidos — ver [`docs/entrega-fase-1/entrega-fase-1.pdf`](docs/entrega-fase-1/entrega-fase-1.pdf) para o relatório completo.
+- **Documentação DDD** (Event Storming, diagramas, linguagem ubíqua) dos fluxos de OS e de gestão de peças/insumos — feita no Miro, [link no fim deste documento](#estrutura-do-repositório).
 
 O histórico de decisões e o desenho detalhado do que já existe estão em [`CONTEXT.md`](CONTEXT.md).
 
@@ -173,4 +173,4 @@ tests/
 
 Documentação técnica viva (arquitetura, decisões de design, pendências): [`CONTEXT.md`](CONTEXT.md).
 
-Link para o Miro: [Miro](https://miro.com/welcomeonboard/YTlnZGFLbXd2UmRNODRDdTk3d0owcXJ3V3lxakN1b0x6dXlJMVpRK2FaL05GcE0vbk5QUVBQUzBxZW5XNlRoc1ltQ01FS1pnMjY0K0pmLzJrWFRTR1p0cDlxSTRWWHF5YVpQcVZraXdudzF5SVNjYncyUVA4cGpXMTVZL0g1ZU1NakdSWkpBejJWRjJhRnhhb1UwcS9BPT0hdjE=?share_link_id=69986103094)
+Link para o Miro: [Miro](https://miro.com/app/board/uXjVH8El8JI=/?share_link_id=832021938476)
