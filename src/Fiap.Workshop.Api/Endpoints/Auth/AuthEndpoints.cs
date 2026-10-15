@@ -14,7 +14,6 @@ public static class AuthEndpoints
     {
         var group = app.MapGroup("api/v1/auth")
             .WithApiVersionSet(apiVersion)
-            .WithName("Auth")
             .WithTags("Auth");
 
         group.MapPost("/login",
