@@ -5,6 +5,8 @@ using Fiap.Workshop.Application.Interfaces.Services;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.Users.ChangePassword.Boundaries;
 using Fiap.Workshop.Application.UseCases.Users.CreateUser.Boundaries;
+using Fiap.Workshop.Application.UseCases.Users.LoginUser.Boundaries;
+using Fiap.Workshop.Application.UseCases.Users.RefreshAccessToken.Boundaries;
 using Fiap.Workshop.Domain.Enums;
 using Fiap.Workshop.IntegrationTests.Fixtures;
 using FluentAssertions;
@@ -64,6 +66,41 @@ public sealed class ChangePasswordUseCaseIntegrationTests(DatabaseFixture fixtur
         found.Should().NotBeNull();
         passwordService.Verify(newPassword, found!.Password).Should().BeTrue();
         passwordService.Verify(CurrentPassword, found.Password).Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "ChangePasswordUseCase >> Should revoke existing sessions >> When password is changed")]
+    public async Task Handle_ShouldRevokeExistingSessions_WhenPasswordIsChanged()
+    {
+        // Arrange
+        var created = await CreateUserAsync();
+
+        LoginResponse login;
+        using (var scope = fixture.Services.CreateScope())
+        {
+            var loginUseCase = scope.ServiceProvider.GetRequiredService<ILoginUserUseCase>();
+            var loginResult = await loginUseCase.Handle(
+                new LoginUserInput(Guid.NewGuid(), created.Email, CurrentPassword),
+                CancellationToken.None
+            );
+            login = loginResult.GetResult<LoginResponse>()!;
+        }
+
+        var input = new ChangePasswordInput(Guid.NewGuid(), created.Id, CurrentPassword, TestData.ShortString(16));
+
+        // Act
+        var result = await HandleAsync(input);
+
+        // Assert
+        result.ErrorMessages.Should().BeEmpty();
+
+        using var assertScope = fixture.Services.CreateScope();
+        var refreshUseCase = assertScope.ServiceProvider.GetRequiredService<IRefreshAccessTokenUseCase>();
+        var refreshResult = await refreshUseCase.Handle(
+            new RefreshAccessTokenInput(Guid.NewGuid(), login.RefreshToken),
+            CancellationToken.None
+        );
+
+        refreshResult.ErrorMessages.Should().ContainSingle().Which.Should().Be("Refresh token has already been revoked.");
     }
 
     [Fact(DisplayName = "ChangePasswordUseCase >> Should fail >> When user does not exist")]

@@ -56,7 +56,7 @@ Regra de dependência: `Domain` não referencia nada; `Application` referencia `
 
 ## O que já está implementado
 
-- **Usuários**: cadastro (`POST /api/v1/users`, `AdminOnly`), login (`POST /api/v1/auth/login`), listagem, atualização de perfil, troca de senha (self-service) e remoção.
+- **Usuários**: cadastro (`POST /api/v1/users`, `AdminOnly`), login (`POST /api/v1/auth/login`), renovação de sessão por refresh token com rotação (`POST /api/v1/auth/refresh`), logout (`POST /api/v1/auth/logout`), listagem, atualização de perfil, troca de senha (self-service, encerra todas as sessões do usuário) e remoção.
 - **Clientes**: CRUD completo — criação com validação de CPF/CNPJ, consulta por id, listagem, atualização (documento é imutável após o cadastro) e remoção (bloqueada com `400` se o cliente tiver veículos vinculados).
 - **Veículos**: CRUD completo — criação com validação de placa (Mercosul e padrão antigo) vinculada a um cliente existente, consulta por id, listagem, atualização (placa imutável) e remoção (bloqueada com `400` se houver OS vinculada).
 - **Serviços** (catálogo): CRUD completo — criação, consulta por id, listagem, atualização (código imutável; desativar um serviço o impede de entrar em orçamentos novos) e remoção (bloqueada com `400` se o serviço já tiver sido usado em alguma OS). O tempo estimado de execução (`EstimatedDuration`) é uma média incremental que se autoatualiza a cada OS concluída, com `ExecutionCount` exposto para indicar quantas amostras embasam o número — é como o desafio pede o "monitoramento do tempo médio de execução dos serviços".
@@ -100,7 +100,7 @@ Pré-requisitos: [Docker](https://www.docker.com/) e Docker Compose.
    | Email | `admin@admin.com` |
    | Senha | `Admin@123` |
 
-   Use essas credenciais em `POST /api/v1/auth/login` pra obter um token JWT com role `Admin` e conseguir chamar endpoints protegidos (ex.: `POST /api/v1/users`, pra cadastrar os demais usuários). Troque essa senha em qualquer ambiente que não seja local/dev.
+   Use essas credenciais em `POST /api/v1/auth/login` pra obter um access token JWT com role `Admin` (campo `result.accessToken` da resposta, ver "Autenticação") e conseguir chamar endpoints protegidos (ex.: `POST /api/v1/users`, pra cadastrar os demais usuários). Troque essa senha em qualquer ambiente que não seja local/dev.
 
 4. Logo em seguida, outro serviço (`sqlserver-seed-demo`) popula o banco com dados de demonstração — 2 usuários extras, 4 clientes, 5 veículos, catálogo de serviços/peças com estoque e 6 Ordens de Serviço cobrindo cada status da máquina de estados, com histórico completo (ver `db/seed-demo.sql`). Não é aplicado nos testes de integração, só neste ambiente. Credenciais dos usuários extras (senha `Demo@123` pros dois):
 
@@ -154,6 +154,21 @@ O documento OpenAPI puro fica em `/openapi/v1.json`.
 ## Autenticação
 
 `POST /api/v1/users` exige um token JWT com role `Admin` (policy `AdminOnly`). Obtenha um token via `POST /api/v1/auth/login`, usando o usuário Admin de bootstrap (`admin@admin.com` / `Admin@123`, ver "Como rodar localmente") — troque essa senha em qualquer ambiente que não seja local/dev.
+
+A autenticação usa um par de tokens:
+
+| Token | Formato | Validade padrão | Uso |
+|---|---|---|---|
+| `accessToken` | JWT (HS256) | 15 min (`Jwt__ExpirationInMinutes`) | Header `Authorization: Bearer <accessToken>` em toda rota protegida |
+| `refreshToken` | String aleatória opaca (só o hash SHA-256 fica no banco) | 7 dias (`Jwt__RefreshTokenExpirationInDays`) | Só em `POST /api/v1/auth/refresh` e `POST /api/v1/auth/logout` |
+
+Fluxo:
+
+1. **Login** — `POST /api/v1/auth/login` devolve `{ "result": { "accessToken": "...", "refreshToken": "..." } }`.
+2. **Renovação** — quando uma rota protegida responder `401`, chame `POST /api/v1/auth/refresh` com `{ "correlationId": "...", "refreshToken": "..." }` (sem header `Authorization`). A resposta traz um par **novo**: o refresh token usado é revogado na hora (rotação) e não funciona uma segunda vez. Token inválido, expirado ou já usado → `401`.
+3. **Logout** — `POST /api/v1/auth/logout` com o mesmo corpo revoga o refresh token (`204`, idempotente). Descarte os dois tokens no cliente.
+
+Trocar a senha (`PATCH /api/v1/users/{id}/password`) e remover o usuário encerram **todas** as sessões dele. Limitação conhecida: um access token já emitido continua válido até expirar (no máximo 15 min), mesmo após logout ou troca de senha — é o comportamento normal de JWT, que não consulta o banco a cada requisição.
 
 O `CorrelationId` esperado pela API vai no corpo da requisição (campo `correlationId`), não em um header — é um padrão presente em praticamente todos os Requests (criação e atualização de Clientes, Veículos, Serviços, Peças, Ordens de Serviço etc.), não só no cadastro de usuário.
 

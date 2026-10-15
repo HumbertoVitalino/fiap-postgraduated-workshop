@@ -251,3 +251,24 @@ BEGIN
     CREATE INDEX IX_ServiceOrderStatusHistories_ChangedBy ON ServiceOrderStatusHistories (ChangedBy);
 END
 GO
+
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name = 'RefreshTokens' AND xtype = 'U')
+BEGIN
+    CREATE TABLE RefreshTokens (
+        Id                UNIQUEIDENTIFIER NOT NULL,
+        UserId            UNIQUEIDENTIFIER NOT NULL,
+        TokenHash         NVARCHAR(64)     NOT NULL,
+        ExpiresAt         DATETIME2        NOT NULL,
+        RevokedAt         DATETIME2        NULL,
+        ReplacedByTokenId UNIQUEIDENTIFIER NULL,
+        CreatedAt         DATETIME2        NOT NULL,
+        UpdatedAt         DATETIME2        NOT NULL,
+        CONSTRAINT PK_RefreshTokens PRIMARY KEY (Id),
+        CONSTRAINT FK_RefreshTokens_Users_UserId FOREIGN KEY (UserId)
+            REFERENCES Users (Id) ON DELETE CASCADE
+    );
+
+    CREATE UNIQUE INDEX IX_RefreshTokens_TokenHash ON RefreshTokens (TokenHash);
+    CREATE INDEX IX_RefreshTokens_UserId ON RefreshTokens (UserId);
+END
+GO

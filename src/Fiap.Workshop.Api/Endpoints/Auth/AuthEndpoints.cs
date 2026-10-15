@@ -14,7 +14,6 @@ public static class AuthEndpoints
     {
         var group = app.MapGroup("api/v1/auth")
             .WithApiVersionSet(apiVersion)
-            .WithName("Auth")
             .WithTags("Auth");
 
         group.MapPost("/login",
@@ -32,10 +31,52 @@ public static class AuthEndpoints
             }
         )
         .WithSummary("Authenticates a user.")
-        .WithDescription("Validates the given credentials and returns a JWT access token on success.")
+        .WithDescription("Validates the given credentials and returns a JWT access token and a refresh token on success.")
         .Produces<Output>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .AllowAnonymous()
         .WithValidation<LoginRequest>();
+
+        group.MapPost("/refresh",
+            async (
+                [FromBody] RefreshTokenRequest request,
+                [FromServices] IRefreshAccessTokenUseCase useCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(), cancellationToken);
+                if (!result.IsValid)
+                    return Results.Unauthorized();
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Refreshes the access token.")
+        .WithDescription("Exchanges a valid refresh token for a new JWT access token and a new refresh token. The given refresh token is revoked and cannot be used again.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .AllowAnonymous()
+        .WithValidation<RefreshTokenRequest>();
+
+        group.MapPost("/logout",
+            async (
+                [FromBody] LogoutRequest request,
+                [FromServices] ILogoutUserUseCase useCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.NoContent();
+            }
+        )
+        .WithSummary("Logs out a session.")
+        .WithDescription("Revokes the given refresh token. Idempotent: an unknown or already revoked refresh token also results in 204 No Content.")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .AllowAnonymous()
+        .WithValidation<LogoutRequest>();
     }
 }

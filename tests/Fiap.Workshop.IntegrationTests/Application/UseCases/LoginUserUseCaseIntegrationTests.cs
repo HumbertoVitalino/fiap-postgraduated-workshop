@@ -1,4 +1,7 @@
 using Fiap.Workshop.Application.Commons;
+using Fiap.Workshop.Application.DTOs.Users;
+using Fiap.Workshop.Application.Interfaces.Repositories;
+using Fiap.Workshop.Application.Interfaces.Services;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.Users.CreateUser.Boundaries;
 using Fiap.Workshop.Application.UseCases.Users.LoginUser.Boundaries;
@@ -38,8 +41,8 @@ public sealed class LoginUserUseCaseIntegrationTests(DatabaseFixture fixture)
         return await useCase.Handle(input, CancellationToken.None);
     }
 
-    [Fact(DisplayName = "LoginUserUseCase >> Should return token >> When credentials are valid")]
-    public async Task Handle_ShouldReturnToken_WhenCredentialsAreValid()
+    [Fact(DisplayName = "LoginUserUseCase >> Should return tokens and persist refresh token >> When credentials are valid")]
+    public async Task Handle_ShouldReturnTokensAndPersistRefreshToken_WhenCredentialsAreValid()
     {
         // Arrange
         var email = await SeedUserAsync(TestData.Email());
@@ -50,8 +53,24 @@ public sealed class LoginUserUseCaseIntegrationTests(DatabaseFixture fixture)
 
         // Assert
         result.ErrorMessages.Should().BeEmpty();
-        var token = result.Result.Should().BeOfType<string>().Subject;
-        token.Should().NotBeNullOrWhiteSpace();
+        var response = result.Result.Should().BeOfType<LoginResponse>().Subject;
+        response.AccessToken.Should().NotBeNullOrWhiteSpace();
+        response.RefreshToken.Should().NotBeNullOrWhiteSpace();
+
+        using var scope = fixture.Services.CreateScope();
+        var refreshTokenService = scope.ServiceProvider.GetRequiredService<IRefreshTokenService>();
+        var refreshTokenRepository = scope.ServiceProvider.GetRequiredService<IRefreshTokenRepository>();
+        var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+
+        var user = await userRepository.GetByEmailAsync(email, CancellationToken.None);
+        var stored = await refreshTokenRepository.GetByTokenHashAsync(
+            refreshTokenService.Hash(response.RefreshToken),
+            CancellationToken.None
+        );
+
+        stored.Should().NotBeNull();
+        stored!.UserId.Should().Be(user!.Id);
+        stored.IsActive().Should().BeTrue();
     }
 
     [Fact(DisplayName = "LoginUserUseCase >> Should fail >> When user does not exist")]

@@ -161,4 +161,18 @@ internal static class DomainMappers
             model.ChangedAt
         );
     }
+
+    internal static RefreshToken MapToDomain(this RefreshTokenModel model)
+    {
+        return new RefreshToken(
+            model.Id,
+            model.UserId,
+            model.TokenHash,
+            model.ExpiresAt,
+            model.CreatedAt,
+            model.UpdatedAt,
+            model.RevokedAt,
+            model.ReplacedByTokenId
+        );
+    }
 }
