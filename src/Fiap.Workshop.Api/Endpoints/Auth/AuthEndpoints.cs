@@ -36,5 +36,26 @@ public static class AuthEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .AllowAnonymous()
         .WithValidation<LoginRequest>();
+
+        group.MapPost("/refresh",
+            async (
+                [FromBody] RefreshTokenRequest request,
+                [FromServices] IRefreshAccessTokenUseCase useCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(), cancellationToken);
+                if (!result.IsValid)
+                    return Results.Unauthorized();
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Refreshes the access token.")
+        .WithDescription("Exchanges a valid refresh token for a new JWT access token and a new refresh token. The given refresh token is revoked and cannot be used again.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .AllowAnonymous()
+        .WithValidation<RefreshTokenRequest>();
     }
 }
