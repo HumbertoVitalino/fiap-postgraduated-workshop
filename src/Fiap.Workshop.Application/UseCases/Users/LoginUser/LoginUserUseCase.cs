@@ -1,22 +1,28 @@
 ﻿using Fiap.Workshop.Application.Commons;
+using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.Interfaces.Services;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.Users.LoginUser.Boundaries;
+using Fiap.Workshop.Application.UseCases.Users.LoginUser.Mapper;
 using Microsoft.Extensions.Logging;
 
 namespace Fiap.Workshop.Application.UseCases.Users.LoginUser;
 
 public class LoginUserUseCase(
     IUserRepository userRepository,
+    IRefreshTokenRepository refreshTokenRepository,
     IPasswordService passwordService,
     IJwtService jwtService,
+    IRefreshTokenService refreshTokenService,
     ILogger<LoginUserUseCase> logger
 ) : ILoginUserUseCase
 {
     private readonly IUserRepository _userRepository = userRepository;
+    private readonly IRefreshTokenRepository _refreshTokenRepository = refreshTokenRepository;
     private readonly IPasswordService _passwordService = passwordService;
     private readonly IJwtService _jwtService = jwtService;
+    private readonly IRefreshTokenService _refreshTokenService = refreshTokenService;
     private readonly ILogger<LoginUserUseCase> _logger = logger;
 
     public async Task<Output> Handle(LoginUserInput input, CancellationToken cancellationToken)
@@ -49,9 +55,25 @@ public class LoginUserUseCase(
             return output;
         }
 
-        var token = _jwtService.GenerateToken(user);
+        var accessToken = _jwtService.GenerateToken(user);
+        var generatedRefreshToken = _refreshTokenService.Generate();
 
-        output.AddResult(token);
+        await _refreshTokenRepository.AddAsync(generatedRefreshToken.MapToDomain(user.Id), cancellationToken);
+
+        var saved = await _refreshTokenRepository.UnitOfWork.CommitAsync(cancellationToken);
+        if (!saved)
+        {
+            _logger.LogError(
+                "[{CorrelationId}] Error saving refresh token for user: {Email}",
+                input.CorrelationId,
+                input.Email.MaskEmail()
+            );
+
+            output.AddErrorMessage("Error saving refresh token.");
+            return output;
+        }
+
+        output.AddResult(new LoginResponse(accessToken, generatedRefreshToken.Token));
         return output;
     }
 }

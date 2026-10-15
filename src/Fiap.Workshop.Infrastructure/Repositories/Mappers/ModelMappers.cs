@@ -151,4 +151,18 @@ internal static class ModelMappers
             statusHistory.ChangedAt
         );
     }
+
+    internal static RefreshTokenModel MapToModel(this RefreshToken refreshToken)
+    {
+        return new(
+            refreshToken.Id,
+            refreshToken.UserId,
+            refreshToken.TokenHash,
+            refreshToken.ExpiresAt,
+            refreshToken.RevokedAt,
+            refreshToken.ReplacedByTokenId,
+            refreshToken.CreatedAt,
+            refreshToken.UpdatedAt
+        );
+    }
 }

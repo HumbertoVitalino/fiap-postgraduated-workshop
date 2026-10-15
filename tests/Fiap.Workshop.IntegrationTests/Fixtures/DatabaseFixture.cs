@@ -35,7 +35,8 @@ public sealed class DatabaseFixture : IAsyncLifetime
                 ["Jwt:SecretKey"] = "integration-test-secret-key-min-32-chars!!",
                 ["Jwt:Issuer"] = "test-issuer",
                 ["Jwt:Audience"] = "test-audience",
-                ["Jwt:ExpirationInMinutes"] = "60"
+                ["Jwt:ExpirationInMinutes"] = "60",
+                ["Jwt:RefreshTokenExpirationInDays"] = "7"
             })
             .Build();
 

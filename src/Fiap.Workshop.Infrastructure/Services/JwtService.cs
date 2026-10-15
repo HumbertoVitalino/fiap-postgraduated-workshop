@@ -24,7 +24,7 @@ internal sealed class JwtService(IConfiguration configuration) : IJwtService
 
         var expiration = int.TryParse(configuration["Jwt:ExpirationInMinutes"], out var minutes)
             ? minutes
-            : 60;
+            : 15;
 
         var token = new JwtSecurityToken(
             issuer: configuration["Jwt:Issuer"],
