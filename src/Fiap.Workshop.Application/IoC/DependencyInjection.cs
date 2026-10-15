@@ -36,6 +36,7 @@ using Fiap.Workshop.Application.UseCases.ServiceOrders.TrackServiceOrders;
 using Fiap.Workshop.Application.UseCases.Customers.UpdateCustomer;
 using Fiap.Workshop.Application.UseCases.Users.UpdateUser;
 using Fiap.Workshop.Application.UseCases.Users.RefreshAccessToken;
+using Fiap.Workshop.Application.UseCases.Users.LogoutUser;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
 
@@ -49,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<ICreateUserUseCase, CreateUserUseCase>();
         services.AddScoped<ILoginUserUseCase, LoginUserUseCase>();
         services.AddScoped<IRefreshAccessTokenUseCase, RefreshAccessTokenUseCase>();
+        services.AddScoped<ILogoutUserUseCase, LogoutUserUseCase>();
         services.AddScoped<ICreateCustomerUseCase, CreateCustomerUseCase>();
         services.AddScoped<IGetCustomerUseCase, GetCustomerUseCase>();
         services.AddScoped<IGetCustomersUseCase, GetCustomersUseCase>();

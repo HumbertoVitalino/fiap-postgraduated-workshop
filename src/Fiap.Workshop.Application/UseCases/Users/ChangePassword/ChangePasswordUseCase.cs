@@ -10,11 +10,13 @@ namespace Fiap.Workshop.Application.UseCases.Users.ChangePassword;
 
 public sealed class ChangePasswordUseCase(
     IUserRepository userRepository,
+    IRefreshTokenRepository refreshTokenRepository,
     IPasswordService passwordService,
     ILogger<ChangePasswordUseCase> logger
 ) : IChangePasswordUseCase
 {
     private readonly IUserRepository _userRepository = userRepository;
+    private readonly IRefreshTokenRepository _refreshTokenRepository = refreshTokenRepository;
     private readonly IPasswordService _passwordService = passwordService;
     private readonly ILogger<ChangePasswordUseCase> _logger = logger;
 
@@ -51,6 +53,13 @@ public sealed class ChangePasswordUseCase(
         user.ChangePassword(newPasswordHash);
 
         _userRepository.Update(user);
+
+        var activeRefreshTokens = await _refreshTokenRepository.GetAllActiveByUserIdAsync(user.Id, cancellationToken);
+        foreach (var refreshToken in activeRefreshTokens)
+        {
+            refreshToken.Revoke();
+            _refreshTokenRepository.Update(refreshToken);
+        }
 
         var saved = await _userRepository.UnitOfWork.CommitAsync(cancellationToken);
         if (!saved)

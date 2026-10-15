@@ -57,5 +57,26 @@ public static class AuthEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .AllowAnonymous()
         .WithValidation<RefreshTokenRequest>();
+
+        group.MapPost("/logout",
+            async (
+                [FromBody] LogoutRequest request,
+                [FromServices] ILogoutUserUseCase useCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await useCase.Handle(request.MapToInput(), cancellationToken);
+                if (!result.IsValid)
+                    return Results.BadRequest(result);
+
+                return Results.NoContent();
+            }
+        )
+        .WithSummary("Logs out a session.")
+        .WithDescription("Revokes the given refresh token. Idempotent: an unknown or already revoked refresh token also results in 204 No Content.")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces<Output>(StatusCodes.Status400BadRequest)
+        .AllowAnonymous()
+        .WithValidation<LogoutRequest>();
     }
 }
