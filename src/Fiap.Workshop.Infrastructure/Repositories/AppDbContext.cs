@@ -23,6 +23,7 @@ public sealed class AppDbContext(
     public DbSet<InventoryItemModel> InventoryItems => Set<InventoryItemModel>();
     public DbSet<ServiceModel> Services => Set<ServiceModel>();
     public DbSet<ServiceOrderModel> ServiceOrders => Set<ServiceOrderModel>();
+    public DbSet<RefreshTokenModel> RefreshTokens => Set<RefreshTokenModel>();
 
     internal void EnqueueDomainEvents(IEnumerable<IDomainEvent> events) =>
         _pendingEvents.AddRange(events);
@@ -461,6 +462,42 @@ public sealed class AppDbContext(
 
             entity.Property(h => h.ChangedAt)
                 .IsRequired();
+        });
+
+        modelBuilder.Entity<RefreshTokenModel>(entity =>
+        {
+            entity.ToTable("RefreshTokens");
+
+            entity.HasKey(rt => rt.Id);
+
+            entity.Property(rt => rt.UserId)
+                .IsRequired();
+
+            entity.HasIndex(rt => rt.UserId);
+
+            entity.HasOne<UserModel>()
+                .WithMany()
+                .HasForeignKey(rt => rt.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(rt => rt.TokenHash)
+                .HasMaxLength(64)
+                .IsRequired();
+
+            entity.HasIndex(rt => rt.TokenHash)
+                .IsUnique();
+
+            entity.Property(rt => rt.ExpiresAt)
+                .IsRequired();
+
+            entity.Property(rt => rt.RevokedAt);
+
+            entity.Property(rt => rt.ReplacedByTokenId);
+
+            entity.Property(rt => rt.CreatedAt)
+                .IsRequired();
+
+            entity.Property(rt => rt.UpdatedAt);
         });
     }
 }
