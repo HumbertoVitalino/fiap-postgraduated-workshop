@@ -32,7 +32,7 @@ public static class AuthEndpoints
             }
         )
         .WithSummary("Authenticates a user.")
-        .WithDescription("Validates the given credentials and returns a JWT access token on success.")
+        .WithDescription("Validates the given credentials and returns a JWT access token and a refresh token on success.")
         .Produces<Output>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .AllowAnonymous()

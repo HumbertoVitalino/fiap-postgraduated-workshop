@@ -47,6 +47,7 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordService, PasswordService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IJwtService, JwtService>();
+        services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 
         return services;
     }

@@ -12,6 +12,7 @@ services:
       Jwt__Issuer: ${Jwt__Issuer}
       Jwt__Audience: ${Jwt__Audience}
       Jwt__ExpirationInMinutes: ${Jwt__ExpirationInMinutes:-60}
+      Jwt__RefreshTokenExpirationInDays: ${Jwt__RefreshTokenExpirationInDays:-7}
     depends_on:
       sqlserver-init:
         condition: service_completed_successfully
