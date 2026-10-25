@@ -51,7 +51,8 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
         return (customer, vehicle, user);
     }
 
-    private static ServiceOrder CreateServiceOrder(Customer customer, Vehicle vehicle, User user, Guid? id = null) => new(
+    private static ServiceOrder CreateServiceOrder(
+        Customer customer, Vehicle vehicle, User user, Guid? id = null, ServiceOrderStatus status = ServiceOrderStatus.Received) => new(
         id ?? Guid.NewGuid(),
         customer.Id,
         vehicle.Id,
@@ -60,7 +61,8 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
         12000,
         DateTime.UtcNow,
         DateTime.UtcNow,
-        DateTime.UtcNow
+        DateTime.UtcNow,
+        status
     );
 
     private async Task SeedServiceOrderAsync(ServiceOrder serviceOrder) => await WithScopeAsync<IServiceOrderRepository>(async repo =>
@@ -367,25 +369,33 @@ public sealed class ServiceOrderRepositoryTests(DatabaseFixture fixture)
         Assert.Equal(2, found.StatusHistory.Count);
     }
 
-    [Fact(DisplayName = "ServiceOrderRepository >> Should retrieve all >> When service orders exist")]
-    public async Task ServiceOrderRepository_ShouldRetrieveAll_WhenServiceOrdersExist()
+    [Fact(DisplayName = "ServiceOrderRepository >> Should retrieve only requested statuses >> When service orders exist in every status")]
+    public async Task ServiceOrderRepository_ShouldRetrieveOnlyRequestedStatuses_WhenServiceOrdersExistInEveryStatus()
     {
         // Arrange
         var (customer, vehicle, user) = await SeedServiceOrderDependenciesAsync();
-        var serviceOrder = CreateServiceOrder(customer, vehicle, user);
-        await SeedServiceOrderAsync(serviceOrder);
+        var seeded = Enum.GetValues<ServiceOrderStatus>()
+            .Select(status => CreateServiceOrder(customer, vehicle, user, status: status))
+            .ToList();
+
+        foreach (var serviceOrder in seeded)
+            await SeedServiceOrderAsync(serviceOrder);
 
         // Act
         IReadOnlyCollection<ServiceOrder>? found = null;
         await WithScopeAsync<IServiceOrderRepository>(async repo =>
-            found = await repo.GetAllAsync(CancellationToken.None));
+            found = await repo.GetByStatusesAsync([ServiceOrderStatus.InProgress, ServiceOrderStatus.Cancelled], CancellationToken.None));
 
         // Assert — DatabaseFixture is shared without reset between tests, so other service orders may already
-        // exist; only assert that the one seeded here is present with its children loaded.
+        // exist; only assert over the ones seeded here.
         Assert.NotNull(found);
-        var match = Assert.Single(found!, so => so.Id == serviceOrder.Id);
-        Assert.Equal(serviceOrder.CustomerId, match.CustomerId);
-        Assert.Equal(serviceOrder.VehicleId, match.VehicleId);
+        Assert.All(found!, so => Assert.Contains(so.Status, new[] { ServiceOrderStatus.InProgress, ServiceOrderStatus.Cancelled }));
+
+        var seededIds = seeded.Select(so => so.Id).ToHashSet();
+        var foundSeeded = found!.Where(so => seededIds.Contains(so.Id)).ToList();
+        Assert.Equal(2, foundSeeded.Count);
+        Assert.Contains(foundSeeded, so => so.Status == ServiceOrderStatus.InProgress && so.CustomerId == customer.Id);
+        Assert.Contains(foundSeeded, so => so.Status == ServiceOrderStatus.Cancelled && so.VehicleId == vehicle.Id);
     }
 
     [Fact(DisplayName = "ServiceOrderRepository >> Should retrieve all by vehicle id >> When vehicle has service orders")]

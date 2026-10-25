@@ -1,5 +1,6 @@
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Domain.Entities;
+using Fiap.Workshop.Domain.Enums;
 using Fiap.Workshop.Infrastructure.Repositories.Mappers;
 using Fiap.Workshop.Infrastructure.Repositories.Models;
 using Microsoft.EntityFrameworkCore;
@@ -86,13 +87,14 @@ internal sealed class ServiceOrderRepository(AppDbContext context) : Repository<
     public override void Remove(ServiceOrder entity) =>
         Delete(_context.ServiceOrders, entity.MapToModel(), entity.Id);
 
-    public async Task<IReadOnlyCollection<ServiceOrder>> GetAllAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<ServiceOrder>> GetByStatusesAsync(IReadOnlyCollection<ServiceOrderStatus> statuses, CancellationToken cancellationToken)
     {
         var models = await _context.ServiceOrders
             .AsNoTracking()
             .Include(so => so.Parts)
             .Include(so => so.Services)
             .Include(so => so.StatusHistory)
+            .Where(so => statuses.Contains(so.Status))
             .ToListAsync(cancellationToken);
 
         return models.Select(model => model.MapToDomain()).ToList();
