@@ -31,8 +31,8 @@ public static class ServiceOrdersEndpoints
                 return Results.Ok(result);
             }
         )
-        .WithSummary("Gets all service orders.")
-        .WithDescription("Returns all service orders registered in the system, including their status, budget items and status history. Returns an empty array if none exist.")
+        .WithSummary("Gets the open service orders, by status priority.")
+        .WithDescription("Returns the service orders still in the workshop flow, including their status, budget items and status history, ordered by status (InProgress > AwaitingApproval > Diagnosing > Received > Cancelled) and then oldest first. Completed and Delivered orders are not listed. Returns an empty array if none exist.")
         .Produces<Output>(StatusCodes.Status200OK)
         .RequireAuthorization();
 
