@@ -94,4 +94,43 @@ public sealed class GetServiceOrdersUseCaseIntegrationTests(DatabaseFixture fixt
         serviceOrders.Should().ContainSingle(s => s.Id == created.Id)
             .Which.Should().BeEquivalentTo(created);
     }
+
+    [Fact(DisplayName = "GetServiceOrdersUseCase >> Should exclude delivered and order by priority >> When listing service orders")]
+    public async Task GetServiceOrdersUseCase_ShouldExcludeDeliveredAndOrderByPriority_WhenListingServiceOrders()
+    {
+        // Arrange
+        var created = await CreateServiceOrderAsync();
+        var delivered = new ServiceOrder(
+            Guid.NewGuid(), created.CustomerId, created.VehicleId, created.CreatedBy, "Engine noise", 12000,
+            DateTime.Now, DateTime.Now, DateTime.Now, ServiceOrderStatus.Delivered);
+
+        using (var scope = fixture.Services.CreateScope())
+        {
+            var serviceOrderRepository = scope.ServiceProvider.GetRequiredService<IServiceOrderRepository>();
+            await serviceOrderRepository.AddAsync(delivered, CancellationToken.None);
+            await serviceOrderRepository.UnitOfWork.CommitAsync(CancellationToken.None);
+        }
+
+        // Act
+        var result = await HandleAsync(Guid.NewGuid());
+
+        // Assert — DatabaseFixture is shared, so other service orders may exist; the ordering rule must still
+        // hold over the whole listing.
+        var serviceOrders = result.Result.Should().BeAssignableTo<IEnumerable<ServiceOrderResponse>>().Subject.ToList();
+        serviceOrders.Should().Contain(s => s.Id == created.Id);
+        serviceOrders.Should().NotContain(s => s.Id == delivered.Id);
+        serviceOrders.Should().NotContain(s =>
+            s.Status == nameof(ServiceOrderStatus.Completed) || s.Status == nameof(ServiceOrderStatus.Delivered));
+
+        string[] priority =
+        [
+            nameof(ServiceOrderStatus.InProgress),
+            nameof(ServiceOrderStatus.AwaitingApproval),
+            nameof(ServiceOrderStatus.Diagnosing),
+            nameof(ServiceOrderStatus.Received),
+            nameof(ServiceOrderStatus.Cancelled)
+        ];
+        serviceOrders.Should().Equal(
+            serviceOrders.OrderBy(s => Array.IndexOf(priority, s.Status)).ThenBy(s => s.OpenedAt));
+    }
 }
