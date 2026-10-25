@@ -7,6 +7,7 @@ using Fiap.Workshop.Application.DTOs.ServiceOrder;
 using Fiap.Workshop.Application.Interfaces.Services;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.GetServiceOrder.Boundaries;
+using Fiap.Workshop.Application.UseCases.ServiceOrders.GetServiceOrderStatus.Boundaries;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
@@ -70,6 +71,26 @@ public static class ServiceOrdersEndpoints
         )
         .WithSummary("Gets a service order by id.")
         .WithDescription("Returns the service order that matches the given identifier, including its status, budget items and status history.")
+        .Produces<Output>(StatusCodes.Status200OK)
+        .Produces<Output>(StatusCodes.Status404NotFound)
+        .RequireAuthorization();
+
+        group.MapGet("{serviceOrderId}/status",
+            async (
+                [Required][FromRoute] Guid serviceOrderId,
+                [FromServices] IGetServiceOrderStatusUseCase getStatusUseCase,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await getStatusUseCase.Handle(new GetServiceOrderStatusInput(Guid.NewGuid(), serviceOrderId), cancellationToken);
+                if (!result.IsValid)
+                    return Results.NotFound(result);
+
+                return Results.Ok(result);
+            }
+        )
+        .WithSummary("Gets the current status of a service order.")
+        .WithDescription("Returns only the current status of the service order that matches the given identifier and when it entered that status.")
         .Produces<Output>(StatusCodes.Status200OK)
         .Produces<Output>(StatusCodes.Status404NotFound)
         .RequireAuthorization();
