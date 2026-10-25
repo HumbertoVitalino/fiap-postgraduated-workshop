@@ -8,7 +8,7 @@
 
 | # | Feature | Status |
 |---|---|---|
-| 32 | Listagem de OS ordenada por prioridade de status | ⏳ a fazer |
+| 32 | Listagem de OS ordenada por prioridade de status | ✅ feito (revalidar antes da entrega) |
 | 33 | Consulta de status da OS | ⏳ a fazer |
 | 34 | Health checks (liveness/readiness) | ⏳ a fazer |
 | 35 | Testes funcionais (`WebApplicationFactory`) | ⏳ a fazer |
@@ -37,9 +37,7 @@
 - Dentro do mesmo status, mais antigas primeiro (`OpenedAt` ascendente)
 - `Completed` e `Delivered` não aparecem (exclusão lógica — nada é apagado)
 
-**Tarefas:**
-- Filtro e ordenação no repositório (no banco, não em memória)
-- Atualizar testes unitários/integração do ticket 30 e cobrir a ordem e a exclusão
+**Feito em 2026-10-25:** regra no use case (array `ListingPriority`: define os status listáveis e a prioridade), repositório com filtro genérico `GetByStatusesAsync` no banco, ordenação em memória. Alternativa descartada: filtro + ordenação na query (regra de negócio na Infrastructure). Detalhes em `CONTEXT.md` §4; pontos a revalidar antes da entrega em §9 item 18.
 
 ## Ticket 33: Consulta de status da OS
 
@@ -111,4 +109,5 @@
 - Teste de carga para demonstrar o HPA escalando
 - Vídeo de até 15 min (deploy, CI/CD, consumo das APIs, escalabilidade), no YouTube/Vimeo
 - PDF de entrega no portal, com o repositório compartilhado com o usuário GitHub `soat-architecture`
+- Antes de gravar: revalidar as decisões da listagem de OS (ticket 32, `CONTEXT.md` §9 item 18)
 - `terraform destroy` depois da gravação
