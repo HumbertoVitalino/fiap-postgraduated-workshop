@@ -17,6 +17,7 @@ namespace Fiap.Workshop.UnitTests.Application.UseCases;
 public class ChangePasswordUseCaseUnitTests : LoggerTestBase<ChangePasswordUseCase>
 {
     private readonly Mock<IUserRepository> _userRepositoryMock = new();
+    private readonly Mock<IRefreshTokenRepository> _refreshTokenRepositoryMock = new();
     private readonly Mock<IPasswordService> _passwordServiceMock = new();
     private readonly Fixture _fixture = new();
     private readonly ChangePasswordUseCase _useCase;
@@ -25,6 +26,7 @@ public class ChangePasswordUseCaseUnitTests : LoggerTestBase<ChangePasswordUseCa
     {
         _useCase = new(
             _userRepositoryMock.Object,
+            _refreshTokenRepositoryMock.Object,
             _passwordServiceMock.Object,
             LoggerMock.Object
         );
@@ -47,6 +49,19 @@ public class ChangePasswordUseCaseUnitTests : LoggerTestBase<ChangePasswordUseCa
         DateTime.Now
     );
 
+    private static RefreshToken CreateRefreshToken(Guid userId) => new(
+        Guid.NewGuid(),
+        userId,
+        Guid.NewGuid().ToString("N"),
+        DateTime.Now.AddDays(7),
+        DateTime.Now,
+        DateTime.Now
+    );
+
+    private void SetupActiveRefreshTokens(Guid userId, params RefreshToken[] refreshTokens) =>
+        _refreshTokenRepositoryMock.Setup(x => x.GetAllActiveByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(refreshTokens);
+
     [Fact(DisplayName = "Handle >> Should Success >> When current password is valid")]
     public async Task Handle_ShouldSuccess_WhenCurrentPasswordIsValid()
     {
@@ -64,6 +79,10 @@ public class ChangePasswordUseCaseUnitTests : LoggerTestBase<ChangePasswordUseCa
         _passwordServiceMock.Setup(x => x.Hash(input.NewPassword))
             .Returns(newPasswordHash);
 
+        var firstSession = CreateRefreshToken(user.Id);
+        var secondSession = CreateRefreshToken(user.Id);
+        SetupActiveRefreshTokens(user.Id, firstSession, secondSession);
+
         _userRepositoryMock.Setup(x => x.UnitOfWork.CommitAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
@@ -77,6 +96,13 @@ public class ChangePasswordUseCaseUnitTests : LoggerTestBase<ChangePasswordUseCa
 
         user.Password.Should().Be(newPasswordHash);
         _userRepositoryMock.Verify(x => x.Update(user), Times.Once());
+
+        firstSession.IsRevoked.Should().BeTrue();
+        firstSession.ReplacedByTokenId.Should().BeNull();
+        secondSession.IsRevoked.Should().BeTrue();
+        secondSession.ReplacedByTokenId.Should().BeNull();
+        _refreshTokenRepositoryMock.Verify(x => x.Update(firstSession), Times.Once());
+        _refreshTokenRepositoryMock.Verify(x => x.Update(secondSession), Times.Once());
     }
 
     [Fact(DisplayName = "Handle >> Should Fail >> When user does not exist")]
@@ -128,6 +154,7 @@ public class ChangePasswordUseCaseUnitTests : LoggerTestBase<ChangePasswordUseCa
             Times.Once()
         );
         _userRepositoryMock.Verify(x => x.Update(It.IsAny<User>()), Times.Never());
+        _refreshTokenRepositoryMock.Verify(x => x.Update(It.IsAny<RefreshToken>()), Times.Never());
     }
 
     [Fact(DisplayName = "Handle >> Should Fail >> When error saving new password")]
@@ -145,6 +172,8 @@ public class ChangePasswordUseCaseUnitTests : LoggerTestBase<ChangePasswordUseCa
 
         _passwordServiceMock.Setup(x => x.Hash(input.NewPassword))
             .Returns(_fixture.Create<string>());
+
+        SetupActiveRefreshTokens(user.Id);
 
         _userRepositoryMock.Setup(x => x.UnitOfWork.CommitAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
