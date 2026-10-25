@@ -12,6 +12,8 @@ namespace Fiap.Workshop.Infrastructure.IoC;
 [ExcludeFromCodeCoverage]
 public static class DependencyInjection
 {
+    public const string ReadinessTag = "ready";
+
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddRepositories(configuration);
@@ -30,6 +32,9 @@ public static class DependencyInjection
         {
             options.UseSqlServer(connectionString);
         });
+
+        services.AddHealthChecks()
+            .AddDbContextCheck<AppDbContext>("database", tags: [ReadinessTag]);
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ICustomerRepository, CustomerRepository>();
