@@ -9,7 +9,7 @@
 | # | Feature | Status |
 |---|---|---|
 | 32 | Listagem de OS ordenada por prioridade de status | ✅ feito (revalidar antes da entrega) |
-| 33 | Consulta de status da OS | ⏳ a fazer |
+| 33 | Consulta de status da OS | ✅ feito |
 | 34 | Health checks (liveness/readiness) | ⏳ a fazer |
 | 35 | Testes funcionais (`WebApplicationFactory`) | ⏳ a fazer |
 | 36 | Webhook de aprovação/recusa de orçamento | ⏳ a fazer |
@@ -43,7 +43,7 @@
 
 **Descrição:** endpoint enxuto `GET v1/service-orders/{id}/status` devolvendo id, status atual e data da última mudança — o `GET /{id}` já existe, mas devolve a OS inteira.
 
-**A decidir:** policy (proposta: a mesma do `GET /{id}`, autenticado sem papel específico).
+**Feito em 2026-10-25:** mesma policy do `GET /{id}` (autenticado sem papel específico), `404` se não existir. "Data da última mudança" = `ChangedAt` mais recente do histórico, ou `OpenedAt` se vazio (`UpdatedAt` descartado — mede qualquer alteração, não a mudança de status). Detalhes em `CONTEXT.md` §4/§6.
 
 ## Ticket 34: Health checks
 
