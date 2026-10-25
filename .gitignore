@@ -427,3 +427,7 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Entrega da Fase 1: vídeo e zip passam do limite de 100 MB do GitHub
+docs/entrega-fase-1/*.mp4
+docs/entrega-fase-1/*.zip
