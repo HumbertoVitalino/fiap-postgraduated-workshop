@@ -3,6 +3,7 @@ using Fiap.Workshop.Domain.Abstractions;
 using Fiap.Workshop.Domain.Entities;
 using Fiap.Workshop.Domain.Enums;
 using Fiap.Workshop.Domain.Errors;
+using Fiap.Workshop.Domain.Events;
 using Xunit;
 
 namespace Fiap.Workshop.UnitTests.Domain;
@@ -105,6 +106,52 @@ public class ServiceOrderUnitTests
         Assert.Empty(serviceOrder.Parts);
         Assert.Empty(serviceOrder.Services);
         Assert.Empty(serviceOrder.StatusHistory);
+        Assert.Empty(serviceOrder.GetDomainEvents());
+    }
+
+    [Fact(DisplayName = "ServiceOrder >> Should not raise events >> When rehydrated in any status")]
+    public void ServiceOrder_ShouldNotRaiseEvents_WhenRehydratedInAnyStatus()
+    {
+        // Act — the constructor also rebuilds orders loaded from the database, so it must never raise events.
+        var serviceOrders = Enum.GetValues<ServiceOrderStatus>()
+            .Select(status => new ServiceOrder(
+                Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Engine noise", 12000,
+                DateTime.Now, DateTime.Now, DateTime.Now, status))
+            .ToList();
+
+        // Assert
+        Assert.All(serviceOrders, serviceOrder => Assert.Empty(serviceOrder.GetDomainEvents()));
+    }
+
+    [Fact(DisplayName = "ServiceOrder >> Should not raise events >> When a status transition is invalid")]
+    public void ServiceOrder_ShouldNotRaiseEvents_WhenAStatusTransitionIsInvalid()
+    {
+        // Arrange
+        var serviceOrder = CreateReceivedServiceOrder();
+
+        // Act
+        Assert.Throws<DomainException>(() => serviceOrder.AddBudget([], [], Guid.NewGuid()));
+        Assert.Throws<DomainException>(() => serviceOrder.Approve(Guid.NewGuid()));
+        Assert.Throws<DomainException>(() => serviceOrder.Reject(Guid.NewGuid()));
+        Assert.Throws<DomainException>(() => serviceOrder.Complete([], Guid.NewGuid()));
+        Assert.Throws<DomainException>(() => serviceOrder.Deliver(Guid.NewGuid()));
+
+        // Assert
+        Assert.Empty(serviceOrder.GetDomainEvents());
+        Assert.Empty(serviceOrder.StatusHistory);
+    }
+
+    private static void AssertLastStatusChangedEvent(
+        ServiceOrder serviceOrder, ServiceOrderStatus previousStatus, ServiceOrderStatus currentStatus)
+    {
+        Assert.Equal(serviceOrder.StatusHistory.Count, serviceOrder.GetDomainEvents().Count);
+
+        var statusChanged = Assert.IsType<ServiceOrderStatusChangedEvent>(serviceOrder.GetDomainEvents()[^1]);
+        Assert.Equal(serviceOrder.Id, statusChanged.ServiceOrderId);
+        Assert.Equal(serviceOrder.CustomerId, statusChanged.CustomerId);
+        Assert.Equal(previousStatus, statusChanged.PreviousStatus);
+        Assert.Equal(currentStatus, statusChanged.CurrentStatus);
+        Assert.Equal(serviceOrder.StatusHistory.Last().ChangedAt, statusChanged.ChangedAt);
     }
 
     private static ServiceOrder CreateReceivedServiceOrder() => new(
@@ -142,6 +189,7 @@ public class ServiceOrderUnitTests
         Assert.Equal(ServiceOrderStatus.Diagnosing, history.CurrentStatus);
         Assert.Equal(changedBy, history.ChangedBy);
         Assert.InRange(history.ChangedAt, before, DateTime.Now);
+        AssertLastStatusChangedEvent(serviceOrder, ServiceOrderStatus.Received, ServiceOrderStatus.Diagnosing);
     }
 
     [Fact(DisplayName = "ServiceOrder >> Should throw >> When StartDiagnosis is called and status is not Received")]
@@ -222,6 +270,7 @@ public class ServiceOrderUnitTests
         Assert.Equal(ServiceOrderStatus.Diagnosing, history.PreviousStatus);
         Assert.Equal(ServiceOrderStatus.AwaitingApproval, history.CurrentStatus);
         Assert.Equal(changedBy, history.ChangedBy);
+        AssertLastStatusChangedEvent(serviceOrder, ServiceOrderStatus.Diagnosing, ServiceOrderStatus.AwaitingApproval);
     }
 
     [Fact(DisplayName = "ServiceOrder >> Should throw >> When AddBudget is called and status is not Diagnosing")]
@@ -268,6 +317,7 @@ public class ServiceOrderUnitTests
         Assert.Equal(ServiceOrderStatus.AwaitingApproval, history.PreviousStatus);
         Assert.Equal(ServiceOrderStatus.InProgress, history.CurrentStatus);
         Assert.Equal(changedBy, history.ChangedBy);
+        AssertLastStatusChangedEvent(serviceOrder, ServiceOrderStatus.AwaitingApproval, ServiceOrderStatus.InProgress);
     }
 
     [Fact(DisplayName = "ServiceOrder >> Should throw >> When Approve is called and status is not AwaitingApproval")]
@@ -307,6 +357,7 @@ public class ServiceOrderUnitTests
         Assert.Equal(ServiceOrderStatus.AwaitingApproval, history.PreviousStatus);
         Assert.Equal(ServiceOrderStatus.Cancelled, history.CurrentStatus);
         Assert.Equal(changedBy, history.ChangedBy);
+        AssertLastStatusChangedEvent(serviceOrder, ServiceOrderStatus.AwaitingApproval, ServiceOrderStatus.Cancelled);
     }
 
     [Fact(DisplayName = "ServiceOrder >> Should throw >> When Reject is called and status is not AwaitingApproval")]
@@ -358,6 +409,7 @@ public class ServiceOrderUnitTests
         Assert.Equal(ServiceOrderStatus.InProgress, history.PreviousStatus);
         Assert.Equal(ServiceOrderStatus.Completed, history.CurrentStatus);
         Assert.Equal(changedBy, history.ChangedBy);
+        AssertLastStatusChangedEvent(serviceOrder, ServiceOrderStatus.InProgress, ServiceOrderStatus.Completed);
     }
 
     [Fact(DisplayName = "ServiceOrder >> Should throw >> When Complete is called and status is not InProgress")]
@@ -447,6 +499,7 @@ public class ServiceOrderUnitTests
         Assert.Equal(ServiceOrderStatus.Completed, history.PreviousStatus);
         Assert.Equal(ServiceOrderStatus.Delivered, history.CurrentStatus);
         Assert.Equal(changedBy, history.ChangedBy);
+        AssertLastStatusChangedEvent(serviceOrder, ServiceOrderStatus.Completed, ServiceOrderStatus.Delivered);
     }
 
     [Fact(DisplayName = "ServiceOrder >> Should deliver >> When status is Cancelled")]
@@ -469,6 +522,7 @@ public class ServiceOrderUnitTests
         Assert.Equal(ServiceOrderStatus.Cancelled, history.PreviousStatus);
         Assert.Equal(ServiceOrderStatus.Delivered, history.CurrentStatus);
         Assert.Equal(changedBy, history.ChangedBy);
+        AssertLastStatusChangedEvent(serviceOrder, ServiceOrderStatus.Cancelled, ServiceOrderStatus.Delivered);
     }
 
     [Fact(DisplayName = "ServiceOrder >> Should throw >> When Deliver is called and status is neither Completed nor Cancelled")]
