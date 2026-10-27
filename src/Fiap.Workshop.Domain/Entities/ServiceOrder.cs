@@ -1,6 +1,7 @@
 using Fiap.Workshop.Domain.Abstractions;
 using Fiap.Workshop.Domain.Enums;
 using Fiap.Workshop.Domain.Errors;
+using Fiap.Workshop.Domain.Events;
 
 namespace Fiap.Workshop.Domain.Entities;
 
@@ -63,23 +64,9 @@ public class ServiceOrder(
             );
         }
 
-        var previousStatus = Status;
-
         DiagnoseDescription = diagnoseDescription;
-        Status = ServiceOrderStatus.Diagnosing;
 
-        _statusHistory.Add(
-            new ServiceOrderStatusHistory(
-                Guid.NewGuid(),
-                Id,
-                previousStatus,
-                Status,
-                changedBy,
-                DateTime.Now
-            )
-        );
-
-        SetUpdatedAt();
+        ChangeStatus(ServiceOrderStatus.Diagnosing, changedBy);
     }
 
     public void AddBudget(IEnumerable<ServiceOrderService> services, IEnumerable<ServiceOrderPart> parts, Guid changedBy)
@@ -101,27 +88,13 @@ public class ServiceOrder(
         var subtotal = servicesList.Sum(service => service.UnitPrice * service.Quantity)
             + partsList.Sum(part => part.UnitPrice * part.Quantity);
 
-        var previousStatus = Status;
-
         AddServices(servicesList);
         AddParts(partsList);
 
         Subtotal = subtotal;
         Total = subtotal;
-        Status = ServiceOrderStatus.AwaitingApproval;
 
-        _statusHistory.Add(
-            new ServiceOrderStatusHistory(
-                Guid.NewGuid(),
-                Id,
-                previousStatus,
-                Status,
-                changedBy,
-                DateTime.Now
-            )
-        );
-
-        SetUpdatedAt();
+        ChangeStatus(ServiceOrderStatus.AwaitingApproval, changedBy);
     }
 
     public void Approve(Guid changedBy)
@@ -137,21 +110,7 @@ public class ServiceOrder(
             );
         }
 
-        var previousStatus = Status;
-        Status = ServiceOrderStatus.InProgress;
-
-        _statusHistory.Add(
-            new ServiceOrderStatusHistory(
-                Guid.NewGuid(),
-                Id,
-                previousStatus,
-                Status,
-                changedBy,
-                DateTime.Now
-            )
-        );
-
-        SetUpdatedAt();
+        ChangeStatus(ServiceOrderStatus.InProgress, changedBy);
     }
 
     public void Reject(Guid changedBy)
@@ -167,21 +126,7 @@ public class ServiceOrder(
             );
         }
 
-        var previousStatus = Status;
-        Status = ServiceOrderStatus.Cancelled;
-
-        _statusHistory.Add(
-            new ServiceOrderStatusHistory(
-                Guid.NewGuid(),
-                Id,
-                previousStatus,
-                Status,
-                changedBy,
-                DateTime.Now
-            )
-        );
-
-        SetUpdatedAt();
+        ChangeStatus(ServiceOrderStatus.Cancelled, changedBy);
     }
 
     public void Complete(IReadOnlyCollection<(Guid ServiceOrderServiceId, short ActualDuration)> durations, Guid changedBy)
@@ -208,21 +153,7 @@ public class ServiceOrder(
         foreach (var service in _services)
             service.RecordActualDuration(durationsById[service.Id]);
 
-        var previousStatus = Status;
-        Status = ServiceOrderStatus.Completed;
-
-        _statusHistory.Add(
-            new ServiceOrderStatusHistory(
-                Guid.NewGuid(),
-                Id,
-                previousStatus,
-                Status,
-                changedBy,
-                DateTime.Now
-            )
-        );
-
-        SetUpdatedAt();
+        ChangeStatus(ServiceOrderStatus.Completed, changedBy);
     }
 
     public void Deliver(Guid changedBy)
@@ -238,18 +169,36 @@ public class ServiceOrder(
             );
         }
 
-        var previousStatus = Status;
-        Status = ServiceOrderStatus.Delivered;
         ClosedAt = DateTime.Now;
+
+        ChangeStatus(ServiceOrderStatus.Delivered, changedBy);
+    }
+
+    private void ChangeStatus(ServiceOrderStatus newStatus, Guid changedBy)
+    {
+        var previousStatus = Status;
+        var changedAt = DateTime.Now;
+
+        Status = newStatus;
 
         _statusHistory.Add(
             new ServiceOrderStatusHistory(
                 Guid.NewGuid(),
                 Id,
                 previousStatus,
-                Status,
+                newStatus,
                 changedBy,
-                DateTime.Now
+                changedAt
+            )
+        );
+
+        RaiseDomainEvent(
+            new ServiceOrderStatusChangedEvent(
+                Id,
+                CustomerId,
+                previousStatus,
+                newStatus,
+                changedAt
             )
         );
 
