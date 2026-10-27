@@ -1,8 +1,10 @@
 using Fiap.Workshop.Api.Endpoints;
+using Fiap.Workshop.Api.Endpoints.Health;
 using Fiap.Workshop.Api.IoC;
 using Fiap.Workshop.Application.IoC;
 using Fiap.Workshop.Infrastructure.IoC;
 using Serilog;
+using Serilog.Events;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -33,8 +35,15 @@ app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseSerilogRequestLogging();
+app.UseSerilogRequestLogging(options =>
+{
+    options.GetLevel = (httpContext, _, exception) =>
+        exception is not null || httpContext.Response.StatusCode > 499 ? LogEventLevel.Error
+        : httpContext.Request.Path.StartsWithSegments("/health") ? LogEventLevel.Verbose
+        : LogEventLevel.Information;
+});
 
 app.MapMinimalApisV1();
+app.MapHealthEndpoints();
 
 app.Run();

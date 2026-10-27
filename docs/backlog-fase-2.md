@@ -10,7 +10,7 @@
 |---|---|---|
 | 32 | Listagem de OS ordenada por prioridade de status | ✅ feito (revalidar antes da entrega) |
 | 33 | Consulta de status da OS | ✅ feito |
-| 34 | Health checks (liveness/readiness) | ⏳ a fazer |
+| 34 | Health checks (liveness/readiness) | ✅ feito |
 | 35 | Testes funcionais (`WebApplicationFactory`) | ⏳ a fazer |
 | 36 | Webhook de aprovação/recusa de orçamento | ⏳ a fazer |
 | 37 | Notificação de status da OS por e-mail | ⏳ a fazer |
@@ -49,7 +49,9 @@
 
 **Descrição:** `/health/live` e `/health/ready` para as probes do Kubernetes.
 
-**Cuidado (Azure SQL free offer):** as probes **não** podem consultar o banco — elas rodam a cada poucos segundos, impediriam o auto-pause e esgotariam a cota mensal (100.000 vCore-segundos) em poucos dias, pausando o banco até o mês seguinte.
+**Cuidado (Azure SQL free offer):** as probes periódicas **não** podem consultar o banco — elas rodam a cada poucos segundos, impediriam o auto-pause e esgotariam a cota mensal (100.000 vCore-segundos) em poucos dias, pausando o banco até o mês seguinte.
+
+**Feito em 2026-10-25 (opção B, decisão do usuário):** `/health/live` sem checks (liveness + readiness) e `/health/ready` com check de conexão ao banco, usado **só pela startupProbe** — um pod novo com banco inalcançável não recebe tráfego e o rollout trava, sem consumir a cota. Pacote oficial `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore` 10.0.13. Detalhes em `CONTEXT.md` §6.
 
 ## Ticket 35: Testes funcionais
 
@@ -89,6 +91,8 @@
 ## Ticket 39: Manifestos Kubernetes (`/k8s`)
 
 **Descrição:** Deployment e Service da Api, ConfigMap, Secret, HPA (CPU/memória) e Mailpit. Validados num cluster local (kind/k3d) antes de existir qualquer recurso na Azure.
+
+**Probes (do ticket 34):** liveness e readiness em `/health/live`; startupProbe em `/health/ready`. Na startupProbe, `timeoutSeconds` precisa passar do padrão de 1 s (com o banco fora, o check leva ~15 s até o timeout de conexão) e `failureThreshold` × `periodSeconds` precisa cobrir ~1 min de retomada do Azure SQL após auto-pause.
 
 ## Ticket 40: Terraform (`/infra`) — Azure
 
