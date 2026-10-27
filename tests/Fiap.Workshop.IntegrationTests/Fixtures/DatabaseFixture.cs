@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Fiap.Workshop.Application.Interfaces.Services;
 using Fiap.Workshop.Application.IoC;
 using Fiap.Workshop.Infrastructure.IoC;
 using Microsoft.Data.SqlClient;
@@ -45,6 +46,9 @@ public sealed class DatabaseFixture : IAsyncLifetime
         services.AddSingleton<IConfiguration>(configuration);
         services.AddApplication();
         services.AddInfrastructure(configuration);
+
+        services.AddSingleton<FakeEmailService>();
+        services.AddSingleton<IEmailService>(provider => provider.GetRequiredService<FakeEmailService>());
 
         Services = services.BuildServiceProvider();
     }

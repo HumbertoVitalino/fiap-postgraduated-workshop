@@ -1,3 +1,5 @@
+using Fiap.Workshop.Application.Abstractions;
+using Fiap.Workshop.Application.EventHandlers.ServiceOrders;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.Users.ChangePassword;
 using Fiap.Workshop.Application.UseCases.Customers.CreateCustomer;
@@ -38,6 +40,7 @@ using Fiap.Workshop.Application.UseCases.Customers.UpdateCustomer;
 using Fiap.Workshop.Application.UseCases.Users.UpdateUser;
 using Fiap.Workshop.Application.UseCases.Users.RefreshAccessToken;
 using Fiap.Workshop.Application.UseCases.Users.LogoutUser;
+using Fiap.Workshop.Domain.Events;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
 
@@ -47,6 +50,14 @@ namespace Fiap.Workshop.Application.IoC;
 public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
+    {
+        services.AddUseCases();
+        services.AddEvents();
+
+        return services;
+    }
+
+    private static IServiceCollection AddUseCases(this IServiceCollection services)
     {
         services.AddScoped<ICreateUserUseCase, CreateUserUseCase>();
         services.AddScoped<ILoginUserUseCase, LoginUserUseCase>();
@@ -87,6 +98,13 @@ public static class DependencyInjection
         services.AddScoped<ICompleteServiceOrderUseCase, CompleteServiceOrderUseCase>();
         services.AddScoped<IDeliverServiceOrderUseCase, DeliverServiceOrderUseCase>();
         services.AddScoped<ITrackServiceOrdersUseCase, TrackServiceOrdersUseCase>();
+
+        return services;
+    }
+
+    private static IServiceCollection AddEvents(this IServiceCollection services)
+    {
+        services.AddScoped<IDomainEventHandler<ServiceOrderStatusChangedEvent>, SendStatusChangedEmailHandler>();
 
         return services;
     }

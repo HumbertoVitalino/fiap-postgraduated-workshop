@@ -13,11 +13,30 @@ services:
       Jwt__Audience: ${Jwt__Audience}
       Jwt__ExpirationInMinutes: ${Jwt__ExpirationInMinutes:-15}
       Jwt__RefreshTokenExpirationInDays: ${Jwt__RefreshTokenExpirationInDays:-7}
+      Email__Host: ${Email__Host:-mailpit}
+      Email__Port: ${Email__Port:-1025}
+      Email__SecureSocketOptions: ${Email__SecureSocketOptions:-Auto}
+      Email__FromAddress: ${Email__FromAddress:-nao-responda@oficina-fiap.local}
+      Email__FromName: ${Email__FromName:-Oficina FIAP}
+      Email__Username: ${Email__Username:-}
+      Email__Password: ${Email__Password:-}
+      TZ: America/Sao_Paulo
     depends_on:
       sqlserver-init:
         condition: service_completed_successfully
       sqlserver-seed-demo:
         condition: service_completed_successfully
+      mailpit:
+        condition: service_started
+    restart: unless-stopped
+
+  # Servidor SMTP falso para desenvolvimento: captura todo e-mail enviado pela api
+  # (nada é entregue de verdade) e mostra numa caixa de entrada em http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.31.6
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
     restart: unless-stopped
 
   sqlserver:

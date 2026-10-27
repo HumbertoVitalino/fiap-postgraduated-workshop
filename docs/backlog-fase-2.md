@@ -10,10 +10,10 @@
 |---|---|---|
 | 32 | Listagem de OS ordenada por prioridade de status | ✅ feito (revalidar antes da entrega) |
 | 33 | Consulta de status da OS | ✅ feito |
-| 34 | Health checks (liveness/readiness) | ⏳ a fazer |
+| 34 | Health checks (liveness/readiness) | ✅ feito |
 | 35 | Testes funcionais (`WebApplicationFactory`) | ⏳ a fazer |
 | 36 | Webhook de aprovação/recusa de orçamento | ⏳ a fazer |
-| 37 | Notificação de status da OS por e-mail | ⏳ a fazer |
+| 37 | Notificação de status da OS por e-mail | ✅ feito |
 | 38 | Refatoração — dívida técnica e cobertura | ⏳ a fazer |
 | 39 | Manifestos Kubernetes (`/k8s`) | ⏳ a fazer |
 | 40 | Terraform (`/infra`) — Azure | ⏳ a fazer |
@@ -49,7 +49,9 @@
 
 **Descrição:** `/health/live` e `/health/ready` para as probes do Kubernetes.
 
-**Cuidado (Azure SQL free offer):** as probes **não** podem consultar o banco — elas rodam a cada poucos segundos, impediriam o auto-pause e esgotariam a cota mensal (100.000 vCore-segundos) em poucos dias, pausando o banco até o mês seguinte.
+**Cuidado (Azure SQL free offer):** as probes periódicas **não** podem consultar o banco — elas rodam a cada poucos segundos, impediriam o auto-pause e esgotariam a cota mensal (100.000 vCore-segundos) em poucos dias, pausando o banco até o mês seguinte.
+
+**Feito em 2026-10-25 (opção B, decisão do usuário):** `/health/live` sem checks (liveness + readiness) e `/health/ready` com check de conexão ao banco, usado **só pela startupProbe** — um pod novo com banco inalcançável não recebe tráfego e o rollout trava, sem consumir a cota. Pacote oficial `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore` 10.0.13. Detalhes em `CONTEXT.md` §6.
 
 ## Ticket 35: Testes funcionais
 
@@ -77,6 +79,14 @@
 
 **A decidir:** `ServiceOrder` só conhece o `CustomerId` — o handler precisa carregar o `Customer` para obter o e-mail (diverge da preferência por "evento gordo" registrada em §11). Avaliar também se a abertura da OS (`Received`) notifica.
 
+**Feito em 2026-10-26**, em 4 etapas (domínio → Application → Infrastructure → validação HTTP):
+- `ServiceOrderStatusChangedEvent` disparado pelo novo `ServiceOrder.ChangeStatus`, que concentra o bloco antes repetido nas 6 transições
+- Abertura da OS **não** gera e-mail (decisão do usuário: o PDF pede "atualização"; o construtor também reidrata do banco)
+- `IEmailService.SendAsync(EmailMessage)` genérica; o texto (português, nomes de status do PDF) mora no handler `SendStatusChangedEmailHandler`, que busca o cliente pelo `CustomerId`
+- `SmtpEmailService` com MailKit 4.18.1; Mailpit v1.31.6 no docker-compose; `TZ=America/Sao_Paulo` no container (o horário deve ser o de Brasília — o container rodava em UTC)
+- Falha de SMTP não desfaz a mudança de status: só `LogError`
+- Detalhes e alternativas descartadas em `CONTEXT.md` §3/§4/§5/§7/§11
+
 ## Ticket 38: Refatoração — dívida técnica e cobertura
 
 **Descrição:** requisito "refatorar aplicando Clean Code / Clean Architecture + testes dos fluxos críticos". Itens já conhecidos (`CONTEXT.md` §9):
@@ -85,10 +95,19 @@
 - JSON malformado virando `500` em vez de `400` (item 16)
 - Medir a cobertura dos domínios críticos (nunca foi medida contra a meta)
 - Revisão de dependências entre camadas, a fazer antes de listar outros itens
+- Extrair a validação de status de origem repetida nas 6 transições de `ServiceOrder` (o bloco de mudança de status já foi extraído para `ChangeStatus` no ticket 37)
 
 ## Ticket 39: Manifestos Kubernetes (`/k8s`)
 
 **Descrição:** Deployment e Service da Api, ConfigMap, Secret, HPA (CPU/memória) e Mailpit. Validados num cluster local (kind/k3d) antes de existir qualquer recurso na Azure.
+
+**Do ticket 37 (e-mail):**
+- `TZ: America/Sao_Paulo` no Deployment da Api (o horário do sistema e do e-mail é o de Brasília)
+- Mailpit (`axllent/mailpit:v1.31.6`) como Deployment + Service **interno** (`ClusterIP`); a Api envia para `mailpit:1025`
+- `Email__Host/Port/SecureSocketOptions/FromAddress/FromName` no ConfigMap; `Email__Username/Password` no Secret (vazios com o Mailpit, mas a estrutura fica pronta para um provedor real)
+- Não expor a interface do Mailpit na internet: no vídeo, `kubectl port-forward svc/mailpit 8025:8025` e abrir `localhost:8025`
+
+**Probes (do ticket 34):** liveness e readiness em `/health/live`; startupProbe em `/health/ready`. Na startupProbe, `timeoutSeconds` precisa passar do padrão de 1 s (com o banco fora, o check leva ~15 s até o timeout de conexão) e `failureThreshold` × `periodSeconds` precisa cobrir ~1 min de retomada do Azure SQL após auto-pause.
 
 ## Ticket 40: Terraform (`/infra`) — Azure
 
