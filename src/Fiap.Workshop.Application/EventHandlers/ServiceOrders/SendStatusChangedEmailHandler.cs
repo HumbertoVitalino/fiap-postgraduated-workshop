@@ -33,16 +33,18 @@ public sealed class SendStatusChangedEmailHandler(
         }
 
         var currentStatus = ToDisplayName(domainEvent.CurrentStatus);
-        var subject = $"Sua ordem de serviço agora está \"{currentStatus}\"";
-        var body =
+        var message = new EmailMessage(
+            customer.Email,
+            $"Sua ordem de serviço agora está \"{currentStatus}\"",
             $"Olá, {customer.Name}.\n\n" +
             $"O status da sua ordem de serviço mudou de \"{ToDisplayName(domainEvent.PreviousStatus)}\" " +
             $"para \"{currentStatus}\" em {domainEvent.ChangedAt.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture)}.\n\n" +
-            "Esta é uma mensagem automática, não é necessário respondê-la.";
+            "Esta é uma mensagem automática, não é necessário respondê-la."
+        );
 
         try
         {
-            await _emailService.SendAsync(customer.Email, subject, body, cancellationToken);
+            await _emailService.SendAsync(message, cancellationToken);
         }
         catch (Exception ex)
         {

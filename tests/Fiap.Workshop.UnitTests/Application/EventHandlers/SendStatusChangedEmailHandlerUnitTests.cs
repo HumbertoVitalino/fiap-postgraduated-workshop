@@ -63,11 +63,11 @@ public class SendStatusChangedEmailHandlerUnitTests : LoggerTestBase<SendStatusC
 
         // Assert
         _emailServiceMock.Verify(x => x.SendAsync(
-            customer.Email,
-            "Sua ordem de serviço agora está \"Em execução\"",
-            It.Is<string>(body =>
-                body.Contains("Olá, Maria Silva.") &&
-                body.Contains("mudou de \"Aguardando aprovação\" para \"Em execução\" em 26/10/2026 14:32.")),
+            It.Is<EmailMessage>(message =>
+                message.To == customer.Email &&
+                message.Subject == "Sua ordem de serviço agora está \"Em execução\"" &&
+                message.Body.Contains("Olá, Maria Silva.") &&
+                message.Body.Contains("mudou de \"Aguardando aprovação\" para \"Em execução\" em 26/10/2026 14:32.")),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -94,9 +94,9 @@ public class SendStatusChangedEmailHandlerUnitTests : LoggerTestBase<SendStatusC
 
         // Assert
         _emailServiceMock.Verify(x => x.SendAsync(
-            customer.Email,
-            $"Sua ordem de serviço agora está \"{displayName}\"",
-            It.IsAny<string>(),
+            It.Is<EmailMessage>(message =>
+                message.To == customer.Email &&
+                message.Subject == $"Sua ordem de serviço agora está \"{displayName}\""),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -111,9 +111,7 @@ public class SendStatusChangedEmailHandlerUnitTests : LoggerTestBase<SendStatusC
         await _handler.HandleAsync(domainEvent, CancellationToken.None);
 
         // Assert
-        _emailServiceMock.Verify(x => x.SendAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        _emailServiceMock.Verify(x => x.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Never);
         VerifyLog(
             LogLevel.Warning,
             $"Unable to find customer [{domainEvent.CustomerId}] to notify status change of service order [{domainEvent.ServiceOrderId}].",
@@ -130,8 +128,7 @@ public class SendStatusChangedEmailHandlerUnitTests : LoggerTestBase<SendStatusC
 
         _customerRepositoryMock.Setup(x => x.GetByIdAsync(customer.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(customer);
-        _emailServiceMock.Setup(x => x.SendAsync(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _emailServiceMock.Setup(x => x.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("SMTP server unavailable"));
 
         // Act
