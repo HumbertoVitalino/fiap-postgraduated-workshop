@@ -1,4 +1,5 @@
 using Fiap.Workshop.Api.Requests.Users;
+using Fiap.Workshop.Domain.Enums;
 using FluentValidation;
 
 namespace Fiap.Workshop.Api.Validators.Users;
@@ -19,6 +20,8 @@ public sealed class UpdateUserRequestValidator : AbstractValidator<UpdateUserReq
             .EmailAddress();
 
         RuleFor(request => request.Role)
-            .IsInEnum();
+            .IsInEnum()
+            .NotEqual(UserRole.System)
+            .WithMessage("Role System is reserved for internal integrations.");
     }
 }

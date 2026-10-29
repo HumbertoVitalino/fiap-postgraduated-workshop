@@ -6,6 +6,7 @@ using Fiap.Workshop.Api.Endpoints.Services;
 using Fiap.Workshop.Api.Endpoints.ServiceOrders;
 using Fiap.Workshop.Api.Endpoints.Users;
 using Fiap.Workshop.Api.Endpoints.Vehicles;
+using Fiap.Workshop.Api.Endpoints.Webhooks;
 
 namespace Fiap.Workshop.Api.Endpoints;
 
@@ -25,6 +26,7 @@ public static class EndpointsExtensions
         app.MapServicesEndpoints(apiVersion);
         app.MapInventoryItemsEndpoints(apiVersion);
         app.MapServiceOrdersEndpoints(apiVersion);
+        app.MapWebhooksEndpoints(apiVersion);
 
         return app;
     }

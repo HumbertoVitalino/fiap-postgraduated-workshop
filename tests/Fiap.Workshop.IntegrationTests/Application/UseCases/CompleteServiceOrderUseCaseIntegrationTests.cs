@@ -6,9 +6,9 @@ using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.Customers.CreateCustomer.Boundaries;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.AddBudget.Boundaries;
-using Fiap.Workshop.Application.UseCases.ServiceOrders.ApproveServiceOrder.Boundaries;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.CompleteServiceOrder.Boundaries;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.CreateServiceOrder.Boundaries;
+using Fiap.Workshop.Application.UseCases.ServiceOrders.ProcessBudgetDecision.Boundaries;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.StartDiagnosis.Boundaries;
 using Fiap.Workshop.Application.UseCases.Vehicles.CreateVehicle.Boundaries;
 using Fiap.Workshop.Domain.Entities;
@@ -99,10 +99,9 @@ public sealed class CompleteServiceOrderUseCaseIntegrationTests(DatabaseFixture 
         var budgetResult = await addBudgetUseCase.Handle(budgetInput, CancellationToken.None);
         var withBudget = budgetResult.Result.Should().BeOfType<ServiceOrderResponse>().Subject;
 
-        var attendantId = await CreateUserAsync(UserRole.Attendant);
-        var approveServiceOrderUseCase = scope.ServiceProvider.GetRequiredService<IApproveServiceOrderUseCase>();
-        var approveInput = new ApproveServiceOrderInput(Guid.NewGuid(), withBudget.Id, attendantId);
-        var approveResult = await approveServiceOrderUseCase.Handle(approveInput, CancellationToken.None);
+        var budgetDecisionUseCase = scope.ServiceProvider.GetRequiredService<IProcessBudgetDecisionUseCase>();
+        var approveInput = new ProcessBudgetDecisionInput(Guid.NewGuid(), withBudget.Id, BudgetDecision.Approved);
+        var approveResult = await budgetDecisionUseCase.Handle(approveInput, CancellationToken.None);
         var inProgress = approveResult.Result.Should().BeOfType<ServiceOrderResponse>().Subject;
 
         return (inProgress, mechanicId);
