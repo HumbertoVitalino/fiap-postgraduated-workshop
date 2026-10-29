@@ -52,6 +52,25 @@ BEGIN
 END
 GO
 
+-- Seed do usuário de sistema, autor (ChangedBy) das decisões de orçamento recebidas pelo webhook:
+-- ServiceOrderStatusHistories.ChangedBy tem FK para Users e a chamada externa não tem usuário.
+-- Id fixo porque o código precisa referenciá-lo. Role System não passa em nenhuma policy, e o
+-- hash é de uma senha aleatória descartada na geração — ninguém consegue logar com ele.
+IF NOT EXISTS (SELECT 1 FROM Users WHERE Id = '2f31de13-df54-4036-a42a-59940c7796d3')
+BEGIN
+    INSERT INTO Users (Id, Email, Name, Password, Role, CreatedAt, UpdatedAt)
+    VALUES (
+        '2f31de13-df54-4036-a42a-59940c7796d3',
+        'webhook@system.local',
+        N'Integração de orçamentos',
+        '$2a$12$9Bsk3OG5pOJvv8sC4BMjhesWkcZFWjph5VH1XCPvaFfZ5hqccqpJ2',
+        'System',
+        GETDATE(),
+        GETDATE()
+    );
+END
+GO
+
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name = 'Customers' AND xtype = 'U')
 BEGIN
     CREATE TABLE Customers (

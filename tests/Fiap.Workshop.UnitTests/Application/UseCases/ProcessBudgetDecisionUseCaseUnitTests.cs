@@ -1,8 +1,9 @@
 using AutoFixture;
 using Fiap.Workshop.Application.DTOs.ServiceOrder;
 using Fiap.Workshop.Application.Interfaces.Repositories;
-using Fiap.Workshop.Application.UseCases.ServiceOrders.ApproveServiceOrder;
-using Fiap.Workshop.Application.UseCases.ServiceOrders.ApproveServiceOrder.Boundaries;
+using Fiap.Workshop.Application.UseCases.ServiceOrders.ProcessBudgetDecision;
+using Fiap.Workshop.Application.UseCases.ServiceOrders.ProcessBudgetDecision.Boundaries;
+using Fiap.Workshop.Domain.Abstractions;
 using Fiap.Workshop.Domain.Entities;
 using Fiap.Workshop.Domain.Enums;
 using Fiap.Workshop.UnitTests.Common;
@@ -13,14 +14,14 @@ using Xunit;
 
 namespace Fiap.Workshop.UnitTests.Application.UseCases;
 
-public class ApproveServiceOrderUseCaseUnitTests : LoggerTestBase<ApproveServiceOrderUseCase>
+public class ProcessBudgetDecisionUseCaseUnitTests : LoggerTestBase<ProcessBudgetDecisionUseCase>
 {
     private readonly Mock<IServiceOrderRepository> _serviceOrderRepositoryMock = new();
     private readonly Mock<IInventoryItemRepository> _inventoryItemRepositoryMock = new();
     private readonly Fixture _fixture = new();
-    private readonly ApproveServiceOrderUseCase _useCase;
+    private readonly ProcessBudgetDecisionUseCase _useCase;
 
-    public ApproveServiceOrderUseCaseUnitTests()
+    public ProcessBudgetDecisionUseCaseUnitTests()
     {
         _useCase = new(
             _serviceOrderRepositoryMock.Object,
@@ -74,6 +75,18 @@ public class ApproveServiceOrderUseCaseUnitTests : LoggerTestBase<ApproveService
         return serviceOrder;
     }
 
+    private static ServiceOrder CreateDecidedServiceOrder(Guid id, BudgetDecision decision)
+    {
+        var serviceOrder = CreateAwaitingApprovalServiceOrderWithNoParts(id);
+
+        if (decision == BudgetDecision.Approved)
+            serviceOrder.Approve(Guid.NewGuid());
+        else
+            serviceOrder.Reject(Guid.NewGuid());
+
+        return serviceOrder;
+    }
+
     private static InventoryItem CreateInventoryItem(Guid id, int quantityOnHand, int reservedQuantity) => new(
         id,
         "BP-001",
@@ -89,20 +102,20 @@ public class ApproveServiceOrderUseCaseUnitTests : LoggerTestBase<ApproveService
         DateTime.Now
     );
 
-    private ApproveServiceOrderInput CreateInput(Guid serviceOrderId) => new(
+    private ProcessBudgetDecisionInput CreateInput(Guid serviceOrderId, BudgetDecision decision) => new(
         _fixture.Create<Guid>(),
         serviceOrderId,
-        _fixture.Create<Guid>()
+        decision
     );
 
-    [Fact(DisplayName = "Handle >> Should Success >> When service order is AwaitingApproval and all reserved parts exist")]
-    public async Task Handle_ShouldSuccess_WhenServiceOrderIsAwaitingApprovalAndAllReservedPartsExist()
+    [Fact(DisplayName = "Handle >> Should commit stock and move to InProgress >> When decision is Approved and service order is AwaitingApproval")]
+    public async Task Handle_ShouldCommitStockAndMoveToInProgress_WhenDecisionIsApprovedAndServiceOrderIsAwaitingApproval()
     {
         // Arrange
         var inventoryItemId = _fixture.Create<Guid>();
         var serviceOrder = CreateAwaitingApprovalServiceOrder(_fixture.Create<Guid>(), inventoryItemId, 3);
         var inventoryItem = CreateInventoryItem(inventoryItemId, 20, 8);
-        var input = CreateInput(serviceOrder.Id);
+        var input = CreateInput(serviceOrder.Id, BudgetDecision.Approved);
 
         _serviceOrderRepositoryMock.Setup(x => x.GetByIdAsync(input.ServiceOrderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(serviceOrder);
@@ -121,6 +134,8 @@ public class ApproveServiceOrderUseCaseUnitTests : LoggerTestBase<ApproveService
         result.ErrorMessages.Should().BeEmpty();
         var response = result.Result.Should().BeOfType<ServiceOrderResponse>().Which;
         response.Status.Should().Be(ServiceOrderStatus.InProgress.ToString());
+        response.StatusHistory.Should().ContainSingle(h => h.CurrentStatus == ServiceOrderStatus.InProgress.ToString())
+            .Which.ChangedBy.Should().Be(ProcessBudgetDecisionUseCase.SystemUserId);
 
         inventoryItem.QuantityOnHand.Should().Be(17);
         inventoryItem.ReservedQuantity.Should().Be(5);
@@ -129,11 +144,98 @@ public class ApproveServiceOrderUseCaseUnitTests : LoggerTestBase<ApproveService
         _serviceOrderRepositoryMock.Verify(x => x.UpdateAsync(serviceOrder, It.IsAny<CancellationToken>()), Times.Once());
     }
 
+    [Fact(DisplayName = "Handle >> Should release stock and move to Cancelled >> When decision is Rejected and service order is AwaitingApproval")]
+    public async Task Handle_ShouldReleaseStockAndMoveToCancelled_WhenDecisionIsRejectedAndServiceOrderIsAwaitingApproval()
+    {
+        // Arrange
+        var inventoryItemId = _fixture.Create<Guid>();
+        var serviceOrder = CreateAwaitingApprovalServiceOrder(_fixture.Create<Guid>(), inventoryItemId, 3);
+        var inventoryItem = CreateInventoryItem(inventoryItemId, 20, 8);
+        var input = CreateInput(serviceOrder.Id, BudgetDecision.Rejected);
+
+        _serviceOrderRepositoryMock.Setup(x => x.GetByIdAsync(input.ServiceOrderId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(serviceOrder);
+
+        _inventoryItemRepositoryMock.Setup(x => x.GetByIdAsync(inventoryItemId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(inventoryItem);
+
+        _serviceOrderRepositoryMock.Setup(x => x.UnitOfWork.CommitAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        // Act
+        var result = await _useCase.Handle(input, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.ErrorMessages.Should().BeEmpty();
+        var response = result.Result.Should().BeOfType<ServiceOrderResponse>().Which;
+        response.Status.Should().Be(ServiceOrderStatus.Cancelled.ToString());
+        response.StatusHistory.Should().ContainSingle(h => h.CurrentStatus == ServiceOrderStatus.Cancelled.ToString())
+            .Which.ChangedBy.Should().Be(ProcessBudgetDecisionUseCase.SystemUserId);
+
+        inventoryItem.QuantityOnHand.Should().Be(20);
+        inventoryItem.ReservedQuantity.Should().Be(5);
+
+        _inventoryItemRepositoryMock.Verify(x => x.Update(inventoryItem), Times.Once());
+        _serviceOrderRepositoryMock.Verify(x => x.UpdateAsync(serviceOrder, It.IsAny<CancellationToken>()), Times.Once());
+    }
+
+    [Theory(DisplayName = "Handle >> Should succeed without changes >> When the same decision was already applied")]
+    [InlineData(BudgetDecision.Approved)]
+    [InlineData(BudgetDecision.Rejected)]
+    public async Task Handle_ShouldSucceedWithoutChanges_WhenTheSameDecisionWasAlreadyApplied(BudgetDecision decision)
+    {
+        // Arrange
+        var serviceOrder = CreateDecidedServiceOrder(_fixture.Create<Guid>(), decision);
+        var input = CreateInput(serviceOrder.Id, decision);
+
+        _serviceOrderRepositoryMock.Setup(x => x.GetByIdAsync(input.ServiceOrderId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(serviceOrder);
+
+        // Act
+        var result = await _useCase.Handle(input, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsValid.Should().BeTrue();
+        result.ErrorMessages.Should().BeEmpty();
+        result.Messages.Should().ContainSingle().Which.Should().Be("Budget decision already applied");
+        result.Result.Should().BeOfType<ServiceOrderResponse>().Which.Status.Should().Be(serviceOrder.Status.ToString());
+        VerifyLog(
+            LogLevel.Warning,
+            $"[{input.CorrelationId}] | Budget decision {decision} already applied to service order [{input.ServiceOrderId}].",
+            Times.Once()
+        );
+        _serviceOrderRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<ServiceOrder>(), It.IsAny<CancellationToken>()), Times.Never());
+        _serviceOrderRepositoryMock.Verify(x => x.UnitOfWork.CommitAsync(It.IsAny<CancellationToken>()), Times.Never());
+    }
+
+    [Theory(DisplayName = "Handle >> Should throw >> When the opposite decision was already applied")]
+    [InlineData(BudgetDecision.Approved, BudgetDecision.Rejected)]
+    [InlineData(BudgetDecision.Rejected, BudgetDecision.Approved)]
+    public async Task Handle_ShouldThrow_WhenTheOppositeDecisionWasAlreadyApplied(BudgetDecision appliedDecision, BudgetDecision decision)
+    {
+        // Arrange
+        var serviceOrder = CreateDecidedServiceOrder(_fixture.Create<Guid>(), appliedDecision);
+        var input = CreateInput(serviceOrder.Id, decision);
+
+        _serviceOrderRepositoryMock.Setup(x => x.GetByIdAsync(input.ServiceOrderId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(serviceOrder);
+
+        // Act
+        var act = async () => await _useCase.Handle(input, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<DomainException>();
+        _inventoryItemRepositoryMock.Verify(x => x.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never());
+        _serviceOrderRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<ServiceOrder>(), It.IsAny<CancellationToken>()), Times.Never());
+    }
+
     [Fact(DisplayName = "Handle >> Should Fail >> When service order does not exist")]
     public async Task Handle_ShouldFail_WhenServiceOrderDoesNotExist()
     {
         // Arrange
-        var input = CreateInput(_fixture.Create<Guid>());
+        var input = CreateInput(_fixture.Create<Guid>(), BudgetDecision.Approved);
 
         _serviceOrderRepositoryMock.Setup(x => x.GetByIdAsync(input.ServiceOrderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ServiceOrder?)null);
@@ -158,7 +260,7 @@ public class ApproveServiceOrderUseCaseUnitTests : LoggerTestBase<ApproveService
         // Arrange
         var inventoryItemId = _fixture.Create<Guid>();
         var serviceOrder = CreateAwaitingApprovalServiceOrder(_fixture.Create<Guid>(), inventoryItemId, 3);
-        var input = CreateInput(serviceOrder.Id);
+        var input = CreateInput(serviceOrder.Id, BudgetDecision.Approved);
 
         _serviceOrderRepositoryMock.Setup(x => x.GetByIdAsync(input.ServiceOrderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(serviceOrder);
@@ -186,7 +288,7 @@ public class ApproveServiceOrderUseCaseUnitTests : LoggerTestBase<ApproveService
     {
         // Arrange
         var serviceOrder = CreateAwaitingApprovalServiceOrderWithNoParts(_fixture.Create<Guid>());
-        var input = CreateInput(serviceOrder.Id);
+        var input = CreateInput(serviceOrder.Id, BudgetDecision.Approved);
 
         _serviceOrderRepositoryMock.Setup(x => x.GetByIdAsync(input.ServiceOrderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(serviceOrder);

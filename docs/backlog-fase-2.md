@@ -11,8 +11,8 @@
 | 32 | Listagem de OS ordenada por prioridade de status | ✅ feito (revalidar antes da entrega) |
 | 33 | Consulta de status da OS | ✅ feito |
 | 34 | Health checks (liveness/readiness) | ✅ feito |
-| 35 | Testes funcionais (`WebApplicationFactory`) | ⏳ a fazer |
-| 36 | Webhook de aprovação/recusa de orçamento | ⏳ a fazer |
+| 35 | Testes E2E contra o ambiente no ar | ⏳ a fazer (junto do ticket 41) |
+| 36 | Webhook de aprovação/recusa de orçamento | ✅ feito |
 | 37 | Notificação de status da OS por e-mail | ✅ feito |
 | 38 | Refatoração — dívida técnica e cobertura | ⏳ a fazer |
 | 39 | Manifestos Kubernetes (`/k8s`) | ⏳ a fazer |
@@ -53,20 +53,28 @@
 
 **Feito em 2026-10-25 (opção B, decisão do usuário):** `/health/live` sem checks (liveness + readiness) e `/health/ready` com check de conexão ao banco, usado **só pela startupProbe** — um pod novo com banco inalcançável não recebe tráfego e o rollout trava, sem consumir a cota. Pacote oficial `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore` 10.0.13. Detalhes em `CONTEXT.md` §6.
 
-## Ticket 35: Testes funcionais
+## Ticket 35: Testes E2E contra o ambiente no ar
 
-**Descrição:** dar conteúdo ao projeto `Fiap.Workshop.FunctionalTests` (vazio desde a Fase 1, ver `CONTEXT.md` §9 item 5) com `WebApplicationFactory`, cobrindo a composição de DI/rotas da Api.
+**Redefinido pelo usuário em 2026-10-26:** a proposta original era dar conteúdo ao `Fiap.Workshop.FunctionalTests` com `WebApplicationFactory` (Api em memória). O usuário preferiu testar contra o **ambiente real da aplicação no ar**, como smoke/E2E depois do deploy, dentro do CD (ticket 41).
 
-**Por que tão cedo:** o webhook (ticket 36) traz um esquema de autenticação novo, e bugs de composição (validator não registrado, `.WithName` duplicado) só aparecem com a Api rodando de ponta a ponta. Cobrir 32-34 aqui e seguir escrevendo funcionais junto com cada ticket seguinte.
+**Cobrir pelo menos:**
+- Os fluxos críticos da OS via HTTP (abertura → diagnóstico → orçamento → webhook → conclusão → entrega)
+- O webhook do ticket 36: `401` sem `X-Api-Key` ou com chave errada; `400` com `decision` omitido ou fora do enum; repetir a mesma decisão = `200` sem efeito; decisão contrária = `400`
+- Validators da Api, que hoje não têm teste automatizado (`CONTEXT.md` §9 item 19)
 
 ## Ticket 36: Webhook de aprovação/recusa de orçamento
 
-**Descrição:** endpoint para um sistema externo notificar a decisão do cliente sobre o orçamento. Reaproveita `ApproveServiceOrderUseCase`/`RejectServiceOrderUseCase`; os endpoints atuais do atendente (`/approval`, `/rejection`) continuam existindo.
+**Descrição:** endpoint para um sistema externo notificar a decisão do cliente sobre o orçamento.
 
-**A decidir antes de implementar:**
-- Formato da rota/corpo (proposta: `POST v1/webhooks/budget-decisions` com `serviceOrderId` + `decision`)
-- **Quem é o `ChangedBy`**: `ServiceOrderStatusHistories.ChangedBy` tem FK para `Users`, e uma chamada externa não tem usuário. Opções: usuário "de sistema" semeado no `init.sql` (mesmo padrão do bootstrap de Admin) ou relaxar a FK.
-- Política de idempotência: repetir a mesma decisão para uma OS que já saiu de `AwaitingApproval` por essa mesma decisão = sucesso sem efeito; decisão contraditória = erro (`400`, ver `docs/standards/ddd-guidelines.md` §8)
+**Feito em 2026-10-28**, em 4 etapas (usuário de sistema → use case → Api → docs):
+- `POST /api/v1/webhooks/budget-decisions` com `{ correlationId, serviceOrderId, decision }` (`0` = Approved, `1` = Rejected), autenticado por `X-Api-Key` (`Webhooks__ApiKey`), sem JWT
+- **Os endpoints do atendente (`/approval`, `/rejection`) foram removidos**, ao contrário do plano original: a aprovação e a recusa passam a vir só do cliente, pelo sistema externo (decisão do usuário)
+- `ApproveServiceOrderUseCase`/`RejectServiceOrderUseCase` fundidos em `ProcessBudgetDecisionUseCase`. O plano original era reaproveitar os dois, e um use case chamando outro foi rejeitado pelo usuário
+- `ChangedBy` = usuário de sistema `webhook@system.local` (role nova `UserRole.System`, semeado no `db/init.sql`, sem login possível)
+- Idempotente: repetir a mesma decisão = `200` com a mensagem "Budget decision already applied", sem efeito e sem e-mail; decisão contrária = `400`
+- Detalhes e alternativas descartadas em `CONTEXT.md` §3/§4/§6/§11
+
+**Para o ticket 39:** `Webhooks__ApiKey` vai no Secret do K8s, nunca no ConfigMap.
 
 ## Ticket 37: Notificação de status da OS por e-mail
 
@@ -96,6 +104,7 @@
 - Medir a cobertura dos domínios críticos (nunca foi medida contra a meta)
 - Revisão de dependências entre camadas, a fazer antes de listar outros itens
 - Extrair a validação de status de origem repetida nas 6 transições de `ServiceOrder` (o bloco de mudança de status já foi extraído para `ChangeStatus` no ticket 37)
+- Proteger o usuário de sistema `webhook@system.local` contra remoção e troca de papel em `DeleteUser`/`UpdateUser` (item 21; sem ele, todo webhook falha)
 
 ## Ticket 39: Manifestos Kubernetes (`/k8s`)
 
@@ -105,6 +114,8 @@
 - `TZ: America/Sao_Paulo` no Deployment da Api (o horário do sistema e do e-mail é o de Brasília)
 - Mailpit (`axllent/mailpit:v1.31.6`) como Deployment + Service **interno** (`ClusterIP`); a Api envia para `mailpit:1025`
 - `Email__Host/Port/SecureSocketOptions/FromAddress/FromName` no ConfigMap; `Email__Username/Password` no Secret (vazios com o Mailpit, mas a estrutura fica pronta para um provedor real)
+
+**Do ticket 36 (webhook):** `Webhooks__ApiKey` no Secret. Sem ela, o placeholder do `appsettings.json` valeria em produção; vazia, o webhook recusa tudo com `401`.
 - Não expor a interface do Mailpit na internet: no vídeo, `kubectl port-forward svc/mailpit 8025:8025` e abrir `localhost:8025`
 
 **Probes (do ticket 34):** liveness e readiness em `/health/live`; startupProbe em `/health/ready`. Na startupProbe, `timeoutSeconds` precisa passar do padrão de 1 s (com o banco fora, o check leva ~15 s até o timeout de conexão) e `failureThreshold` × `periodSeconds` precisa cobrir ~1 min de retomada do Azure SQL após auto-pause.
@@ -117,7 +128,7 @@
 
 ## Ticket 41: CI/CD com deploy no cluster
 
-**Descrição:** pipeline (GitHub Actions) com build, testes, build/push da imagem, deploy do schema do banco e `kubectl apply` dos manifestos.
+**Descrição:** pipeline (GitHub Actions) com build, testes, build/push da imagem, deploy do schema do banco e `kubectl apply` dos manifestos. Depois do deploy, rodar os testes E2E do ticket 35 contra o ambiente no ar.
 
 **A decidir:** registry da imagem (proposta: GHCR) e como o CD alcança o cluster (runner self-hosted na VM, sem expor a porta 6443, vs. runner hospedado com kubeconfig em secret). Login na Azure via OIDC (o diretório da conta é pessoal, então permite registrar o app).
 

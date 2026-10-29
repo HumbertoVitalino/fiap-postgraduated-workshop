@@ -2,23 +2,45 @@ using Fiap.Workshop.Application.Commons;
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.CreateServiceOrder.Mapper;
-using Fiap.Workshop.Application.UseCases.ServiceOrders.RejectServiceOrder.Boundaries;
+using Fiap.Workshop.Application.UseCases.ServiceOrders.ProcessBudgetDecision.Boundaries;
 using Fiap.Workshop.Domain.Entities;
+using Fiap.Workshop.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
-namespace Fiap.Workshop.Application.UseCases.ServiceOrders.RejectServiceOrder;
+namespace Fiap.Workshop.Application.UseCases.ServiceOrders.ProcessBudgetDecision;
 
-public sealed class RejectServiceOrderUseCase(
+public sealed class ProcessBudgetDecisionUseCase(
     IServiceOrderRepository serviceOrderRepository,
     IInventoryItemRepository inventoryItemRepository,
-    ILogger<RejectServiceOrderUseCase> logger
-) : IRejectServiceOrderUseCase
+    ILogger<ProcessBudgetDecisionUseCase> logger
+) : IProcessBudgetDecisionUseCase
 {
+    public static readonly Guid SystemUserId = Guid.Parse("2f31de13-df54-4036-a42a-59940c7796d3");
     private readonly IServiceOrderRepository _serviceOrderRepository = serviceOrderRepository;
     private readonly IInventoryItemRepository _inventoryItemRepository = inventoryItemRepository;
-    private readonly ILogger<RejectServiceOrderUseCase> _logger = logger;
+    private readonly ILogger<ProcessBudgetDecisionUseCase> _logger = logger;
 
-    public async Task<Output> Handle(RejectServiceOrderInput input, CancellationToken cancellationToken)
+    private sealed record DecisionRule(
+        ServiceOrderStatus ResultingStatus,
+        Action<ServiceOrder, Guid> ApplyToServiceOrder,
+        Action<InventoryItem, int> SettleReservation
+    );
+
+    private static readonly Dictionary<BudgetDecision, DecisionRule> DecisionRules = new()
+    {
+        [BudgetDecision.Approved] = new(
+            ServiceOrderStatus.InProgress,
+            (serviceOrder, changedBy) => serviceOrder.Approve(changedBy),
+            (inventoryItem, quantity) => inventoryItem.CommitReservation(quantity)
+        ),
+        [BudgetDecision.Rejected] = new(
+            ServiceOrderStatus.Cancelled,
+            (serviceOrder, changedBy) => serviceOrder.Reject(changedBy),
+            (inventoryItem, quantity) => inventoryItem.ReleaseReservation(quantity)
+        )
+    };
+
+    public async Task<Output> Handle(ProcessBudgetDecisionInput input, CancellationToken cancellationToken)
     {
         Output output = new();
 
@@ -34,6 +56,24 @@ public sealed class RejectServiceOrderUseCase(
             output.AddErrorMessage("Unable to find service order");
             return output;
         }
+
+        var rule = DecisionRules[input.Decision];
+
+        if (serviceOrder.Status == rule.ResultingStatus)
+        {
+            _logger.LogWarning(
+                "[{CorrelationId}] | Budget decision {Decision} already applied to service order [{ServiceOrderId}].",
+                input.CorrelationId,
+                input.Decision,
+                input.ServiceOrderId
+            );
+
+            output.AddMessage("Budget decision already applied");
+            output.AddResult(serviceOrder.MapToDto());
+            return output;
+        }
+
+        rule.ApplyToServiceOrder(serviceOrder, SystemUserId);
 
         var inventoryItems = new List<InventoryItem>();
         foreach (var part in serviceOrder.Parts)
@@ -51,11 +91,9 @@ public sealed class RejectServiceOrderUseCase(
                 return output;
             }
 
-            inventoryItem.ReleaseReservation(part.Quantity);
+            rule.SettleReservation(inventoryItem, part.Quantity);
             inventoryItems.Add(inventoryItem);
         }
-
-        serviceOrder.Reject(input.ChangedBy);
 
         await _serviceOrderRepository.UpdateAsync(serviceOrder, cancellationToken);
 

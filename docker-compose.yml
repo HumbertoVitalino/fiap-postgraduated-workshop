@@ -13,6 +13,7 @@ services:
       Jwt__Audience: ${Jwt__Audience}
       Jwt__ExpirationInMinutes: ${Jwt__ExpirationInMinutes:-15}
       Jwt__RefreshTokenExpirationInDays: ${Jwt__RefreshTokenExpirationInDays:-7}
+      Webhooks__ApiKey: ${Webhooks__ApiKey}
       Email__Host: ${Email__Host:-mailpit}
       Email__Port: ${Email__Port:-1025}
       Email__SecureSocketOptions: ${Email__SecureSocketOptions:-Auto}
