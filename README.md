@@ -61,7 +61,7 @@ Regra de dependência: `Domain` não referencia nada; `Application` referencia `
 - **Veículos**: CRUD completo — criação com validação de placa (Mercosul e padrão antigo) vinculada a um cliente existente, consulta por id, listagem, atualização (placa imutável) e remoção (bloqueada com `400` se houver OS vinculada).
 - **Serviços** (catálogo): CRUD completo — criação, consulta por id, listagem, atualização (código imutável; desativar um serviço o impede de entrar em orçamentos novos) e remoção (bloqueada com `400` se o serviço já tiver sido usado em alguma OS). O tempo estimado de execução (`EstimatedDuration`) é uma média incremental que se autoatualiza a cada OS concluída, com `ExecutionCount` exposto para indicar quantas amostras embasam o número — é como o desafio pede o "monitoramento do tempo médio de execução dos serviços".
 - **Peças/Insumos** (catálogo + estoque): CRUD completo — criação, consulta por id, listagem, atualização (código e quantidades de estoque ficam de fora: estoque só muda pelo fluxo de reserva/orçamento) e remoção (bloqueada com `400` se a peça já tiver sido usada em alguma OS). Desativar uma peça a impede de entrar em orçamentos novos.
-- **Ordem de Serviço**: máquina de estados completa — `Recebida` → `Em diagnóstico` → `Aguardando aprovação` → (`Em execução` → `Finalizada` | `Cancelada`) → `Entregue`, com orçamento calculado automaticamente a partir dos serviços/peças informados, reserva e baixa real de estoque, e histórico de status registrado a cada transição. Listagem (`GET /api/v1/service-orders`) e detalhamento por id (`GET /api/v1/service-orders/{id}`) para gestão administrativa. Consulta pública e anônima da OS pelo cliente via CPF/CNPJ + placa (`GET /api/v1/service-orders/lookup`), sem vazar existência de cadastro.
+- **Ordem de Serviço**: máquina de estados completa — `Recebida` → `Em diagnóstico` → `Aguardando aprovação` → (`Em execução` → `Finalizada` | `Cancelada`) → `Entregue`, com orçamento calculado automaticamente a partir dos serviços/peças informados, reserva e baixa real de estoque, e histórico de status registrado a cada transição. A aprovação ou recusa do orçamento é decisão do cliente e chega por um webhook chamado por um sistema externo (`POST /api/v1/webhooks/budget-decisions`, ver "Webhook de decisão do orçamento"). Listagem (`GET /api/v1/service-orders`) e detalhamento por id (`GET /api/v1/service-orders/{id}`) para gestão administrativa. Consulta pública e anônima da OS pelo cliente via CPF/CNPJ + placa (`GET /api/v1/service-orders/lookup`), sem vazar existência de cadastro.
 - Schema de banco (`db/init.sql`) aplicado por um serviço de init do `docker-compose` antes da API subir — sem migration em runtime. Inclui seed idempotente do primeiro usuário Admin (bootstrap).
 - Testes unitários (Domain + Application) e projeto de testes de integração com SQL Server real via `docker-compose.tests.yml`, cobrindo os fluxos acima.
 
@@ -171,6 +171,28 @@ Fluxo:
 Trocar a senha (`PATCH /api/v1/users/{id}/password`) e remover o usuário encerram **todas** as sessões dele. Limitação conhecida: um access token já emitido continua válido até expirar (no máximo 15 min), mesmo após logout ou troca de senha — é o comportamento normal de JWT, que não consulta o banco a cada requisição.
 
 O `CorrelationId` esperado pela API vai no corpo da requisição (campo `correlationId`), não em um header — é um padrão presente em praticamente todos os Requests (criação e atualização de Clientes, Veículos, Serviços, Peças, Ordens de Serviço etc.), não só no cadastro de usuário.
+
+## Webhook de decisão do orçamento
+
+Quando a OS está em `Aguardando aprovação`, o sistema externo que fala com o cliente informa a decisão dele por este endpoint. Não há rota para o atendente aprovar ou recusar.
+
+```bash
+curl -X POST http://localhost:8080/api/v1/webhooks/budget-decisions \
+  -H "Content-Type: application/json" \
+  -H "X-Api-Key: CHANGE_THIS_WEBHOOK_API_KEY_IN_PRODUCTION" \
+  -d '{ "correlationId": "0b6d6f9e-1111-4c1a-9a55-0f5e2a7b9c01", "serviceOrderId": "<id da OS>", "decision": 0 }'
+```
+
+- **Autenticação**: header `X-Api-Key`, sem JWT. A chave vem de `Webhooks__ApiKey` (`.env`; no Kubernetes, um Secret). Troque o valor de exemplo fora do ambiente local.
+- **`decision`**: `0` = aprovado (baixa o estoque reservado, OS vai para `Em execução`) e `1` = recusado (libera a reserva, OS vai para `Cancelada`). O campo é obrigatório.
+- **Autor no histórico**: o usuário de sistema `webhook@system.local`, que não consegue fazer login.
+- **Repetir a mesma decisão é seguro**: responde `200` com a mensagem `Budget decision already applied`, sem mexer em estoque e sem enviar outro e-mail. Uma decisão contrária à já aplicada responde `400`.
+
+| Resposta | Quando |
+|---|---|
+| `200` | Decisão aplicada, ou repetição da mesma decisão |
+| `400` | Corpo inválido, OS inexistente, ou OS fora de `Aguardando aprovação` (fora o caso da repetição) |
+| `401` | `X-Api-Key` ausente ou errada |
 
 ## Estrutura do repositório
 
