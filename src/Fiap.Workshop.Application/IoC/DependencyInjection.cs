@@ -33,6 +33,7 @@ using Fiap.Workshop.Application.UseCases.ServiceOrders.DeliverServiceOrder;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.GetServiceOrder;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.GetServiceOrders;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.GetServiceOrderStatus;
+using Fiap.Workshop.Application.UseCases.ServiceOrders.ProcessBudgetDecision;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.RejectServiceOrder;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.StartDiagnosis;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.TrackServiceOrders;
@@ -95,6 +96,7 @@ public static class DependencyInjection
         services.AddScoped<IAddBudgetUseCase, AddBudgetUseCase>();
         services.AddScoped<IApproveServiceOrderUseCase, ApproveServiceOrderUseCase>();
         services.AddScoped<IRejectServiceOrderUseCase, RejectServiceOrderUseCase>();
+        services.AddScoped<IProcessBudgetDecisionUseCase, ProcessBudgetDecisionUseCase>();
         services.AddScoped<ICompleteServiceOrderUseCase, CompleteServiceOrderUseCase>();
         services.AddScoped<IDeliverServiceOrderUseCase, DeliverServiceOrderUseCase>();
         services.AddScoped<ITrackServiceOrdersUseCase, TrackServiceOrdersUseCase>();

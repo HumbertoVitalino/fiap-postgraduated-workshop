@@ -6,11 +6,10 @@ using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.Customers.CreateCustomer.Boundaries;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.AddBudget.Boundaries;
-using Fiap.Workshop.Application.UseCases.ServiceOrders.ApproveServiceOrder.Boundaries;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.CompleteServiceOrder.Boundaries;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.CreateServiceOrder.Boundaries;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.DeliverServiceOrder.Boundaries;
-using Fiap.Workshop.Application.UseCases.ServiceOrders.RejectServiceOrder.Boundaries;
+using Fiap.Workshop.Application.UseCases.ServiceOrders.ProcessBudgetDecision.Boundaries;
 using Fiap.Workshop.Application.UseCases.ServiceOrders.StartDiagnosis.Boundaries;
 using Fiap.Workshop.Application.UseCases.Vehicles.CreateVehicle.Boundaries;
 using Fiap.Workshop.Domain.Entities;
@@ -90,13 +89,12 @@ public sealed class DeliverServiceOrderUseCaseIntegrationTests(DatabaseFixture f
     private async Task<ServiceOrderResponse> CreateCompletedServiceOrderAsync()
     {
         var awaitingApproval = await CreateAwaitingApprovalServiceOrderAsync();
-        var attendantId = await CreateUserAsync(UserRole.Attendant);
 
         using var scope = fixture.Services.CreateScope();
 
-        var approveUseCase = scope.ServiceProvider.GetRequiredService<IApproveServiceOrderUseCase>();
-        var approveInput = new ApproveServiceOrderInput(Guid.NewGuid(), awaitingApproval.Id, attendantId);
-        var approveResult = await approveUseCase.Handle(approveInput, CancellationToken.None);
+        var budgetDecisionUseCase = scope.ServiceProvider.GetRequiredService<IProcessBudgetDecisionUseCase>();
+        var approveInput = new ProcessBudgetDecisionInput(Guid.NewGuid(), awaitingApproval.Id, BudgetDecision.Approved);
+        var approveResult = await budgetDecisionUseCase.Handle(approveInput, CancellationToken.None);
         var inProgress = approveResult.Result.Should().BeOfType<ServiceOrderResponse>().Subject;
 
         var completeUseCase = scope.ServiceProvider.GetRequiredService<ICompleteServiceOrderUseCase>();
@@ -108,13 +106,12 @@ public sealed class DeliverServiceOrderUseCaseIntegrationTests(DatabaseFixture f
     private async Task<ServiceOrderResponse> CreateCancelledServiceOrderAsync()
     {
         var awaitingApproval = await CreateAwaitingApprovalServiceOrderAsync();
-        var attendantId = await CreateUserAsync(UserRole.Attendant);
 
         using var scope = fixture.Services.CreateScope();
 
-        var rejectUseCase = scope.ServiceProvider.GetRequiredService<IRejectServiceOrderUseCase>();
-        var rejectInput = new RejectServiceOrderInput(Guid.NewGuid(), awaitingApproval.Id, attendantId);
-        var rejectResult = await rejectUseCase.Handle(rejectInput, CancellationToken.None);
+        var budgetDecisionUseCase = scope.ServiceProvider.GetRequiredService<IProcessBudgetDecisionUseCase>();
+        var rejectInput = new ProcessBudgetDecisionInput(Guid.NewGuid(), awaitingApproval.Id, BudgetDecision.Rejected);
+        var rejectResult = await budgetDecisionUseCase.Handle(rejectInput, CancellationToken.None);
         return rejectResult.Result.Should().BeOfType<ServiceOrderResponse>().Subject;
     }
 
