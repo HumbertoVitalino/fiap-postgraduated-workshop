@@ -15,7 +15,7 @@
 | 36 | Webhook de aprovação/recusa de orçamento | ✅ feito |
 | 37 | Notificação de status da OS por e-mail | ✅ feito |
 | 38 | Refatoração — dívida técnica e cobertura | ⏳ a fazer |
-| 39 | Manifestos Kubernetes (`/k8s`) | ⏳ a fazer |
+| 39 | Manifestos Kubernetes (`/k8s`) | ✅ feito |
 | 40 | Terraform (`/infra`) — Azure | ⏳ a fazer |
 | 41 | CI/CD com deploy no cluster | ⏳ a fazer |
 | 42 | Entrega — README, collection, carga, vídeo | ⏳ a fazer |
@@ -26,7 +26,7 @@
 - **E-mail: MailKit direto**, atrás de `IEmailService`. FluentEmail descartado: sem release desde 2022 (`FluentEmail.Razor` desde 2020, dependente de RazorLight beta), `FluentEmail.Smtp` usa `System.Net.Mail.SmtpClient` (não recomendado pela Microsoft para código novo), `FluentEmail.MailKit` resolve MailKit 2.10.1 (2020) sem pin manual. Mailpit como servidor SMTP em dev e no vídeo.
 - **Webhook autenticado por API key** no header `X-Api-Key` (segredo em Secret do K8s), idempotente.
 - **Listagem**: a OS `Cancelada` continua aparecendo (até o carro ser retirado, quando vira `Entregue`), por último na ordenação. Só `Finalizada` e `Entregue` saem.
-- **Infraestrutura: Azure** (Azure for Students, US$100). VM B2s (2 vCPU, 4 GB, x86) com k3s + **Azure SQL Database free offer** fora do cluster (mesmo motor do SQL Server, sem migração). Histórico: AWS Learner Lab testado e descartado (2026-10-14); VPS (Hetzner/DigitalOcean) e SQL Server como StatefulSet no cluster foram cogitados e substituídos por esta opção. AKS descartado: load balancer padrão + nós pagos consumiriam o crédito sem ganho para a entrega.
+- **Infraestrutura: Azure** (Azure for Students, US$100). VM B2s (2 vCPU, 4 GB, x86) com k3s + **Azure SQL Database free offer** fora do cluster (mesmo motor do SQL Server, sem migração). Histórico: AWS Learner Lab testado e descartado (2026-10-14); VPS (Hetzner/DigitalOcean) e SQL Server como StatefulSet no cluster foram cogitados e substituídos por esta opção. AKS descartado: load balancer padrão + nós pagos consumiriam o crédito sem ganho para a entrega. **Reavaliada em 2026-11-01**, depois de o ticket 39 funcionar no k3d: como o PDF aceita Terraform para cluster "local ou cloud", o assistente recomendou ficar no cluster local (Terraform criando o k3d, CD por runner self-hosted no PC), por menos risco e custo zero, com o prazo da fase ainda indefinido. **O usuário manteve a Azure "por enquanto"**. O cluster local continua sendo o ambiente de desenvolvimento e um plano B se a Azure atrasar.
 
 ## Ticket 32: Listagem de OS ordenada por prioridade de status
 
@@ -120,6 +120,10 @@
 
 **Probes (do ticket 34):** liveness e readiness em `/health/live`; startupProbe em `/health/ready`. Na startupProbe, `timeoutSeconds` precisa passar do padrão de 1 s (com o banco fora, o check leva ~15 s até o timeout de conexão) e `failureThreshold` × `periodSeconds` precisa cobrir ~1 min de retomada do Azure SQL após auto-pause.
 
+**Resultado (2026-11-01):** `k8s/base` + `k8s/overlays/local` (k3d, SQL Server no cluster, Job `db-init`, `deploy.sh`), Dockerfile rodando sem root, script de carga `tests/load/hpa-load.js`. Validado num cluster recriado do zero: fluxo de negócio, e-mail, escala 1 → 3 → 1 sem falhas e reposição de pod. O HPA ganhou janela de 60 s na subida e memória em valor absoluto (400Mi) depois do teste de carga. Decisões em `CONTEXT.md` §7 **Kubernetes**; passo a passo no README.
+
+**Fica para os tickets 40/41:** `k8s/overlays/azure` (sem SQL Server no cluster, imagem vinda do registry, connection string do Azure SQL no Secret).
+
 ## Ticket 40: Terraform (`/infra`) — Azure
 
 **Descrição:** provisionar resource group, rede/NSG, VM B2s com k3s instalado via cloud-init, Azure SQL Server + Database (free offer). Documentar no README o que é criado e como aplicar/destruir.
@@ -136,7 +140,7 @@
 
 - README: descrição da solução e objetivos da fase, desenho da arquitetura (componentes, infra provisionada, fluxo de deploy), instruções de execução local / deploy em K8s / Terraform
 - Collection completa das APIs (Postman ou Swagger)
-- Teste de carga para demonstrar o HPA escalando
+- Teste de carga para demonstrar o HPA escalando. Já existe `tests/load/hpa-load.js` (30 usuários sem pausa, satura a CPU de qualquer número de réplicas); para o vídeo, avaliar um cenário de taxa fixa, que mostra a latência estabilizando depois da escala
 - Vídeo de até 15 min (deploy, CI/CD, consumo das APIs, escalabilidade), no YouTube/Vimeo
 - PDF de entrega no portal, com o repositório compartilhado com o usuário GitHub `soat-architecture`
 - Antes de gravar: revalidar as decisões da listagem de OS (ticket 32, `CONTEXT.md` §9 item 18)
