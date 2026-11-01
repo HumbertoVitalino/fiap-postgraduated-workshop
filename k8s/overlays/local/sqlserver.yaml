@@ -1,0 +1,70 @@
+# Só no cluster local. Na Azure o banco é o Azure SQL Database, fora do cluster.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sqlserver
+  labels:
+    app: sqlserver
+spec:
+  serviceName: sqlserver
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sqlserver
+  template:
+    metadata:
+      labels:
+        app: sqlserver
+    spec:
+      securityContext:
+        fsGroup: 10001
+      containers:
+        - name: sqlserver
+          image: mcr.microsoft.com/mssql/server:2022-latest
+          ports:
+            - name: sql
+              containerPort: 1433
+          env:
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: MSSQL_SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sqlserver-secrets
+                  key: SA_PASSWORD
+          resources:
+            requests:
+              cpu: 250m
+              memory: 2Gi
+            limits:
+              memory: 2560Mi
+          readinessProbe:
+            tcpSocket:
+              port: sql
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /var/opt/mssql
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sqlserver
+  labels:
+    app: sqlserver
+spec:
+  type: ClusterIP
+  selector:
+    app: sqlserver
+  ports:
+    - name: sql
+      port: 1433
+      targetPort: sql

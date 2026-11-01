@@ -1,0 +1,32 @@
+# Recursos comuns a todos os ambientes. Cada overlay (local, azure) acrescenta o Secret
+# "api-secrets" e o que for específico do ambiente (banco no cluster, imagem do registry...).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: fiap-workshop
+
+resources:
+  - namespace.yaml
+  - api-deployment.yaml
+  - api-service.yaml
+  - api-hpa.yaml
+  - api-ingress.yaml
+  - mailpit-deployment.yaml
+  - mailpit-service.yaml
+
+# Configuração não sensível da api. O sufixo de hash que o Kustomize adiciona ao nome faz o
+# Deployment reiniciar os pods sempre que um valor muda.
+configMapGenerator:
+  - name: api-config
+    literals:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - TZ=America/Sao_Paulo
+      - Jwt__Issuer=Fiap.Workshop
+      - Jwt__Audience=Fiap.Workshop
+      - Jwt__ExpirationInMinutes=15
+      - Jwt__RefreshTokenExpirationInDays=7
+      - Email__Host=mailpit
+      - Email__Port=1025
+      - Email__SecureSocketOptions=Auto
+      - Email__FromAddress=nao-responda@oficina-fiap.local
+      - Email__FromName=Oficina FIAP
