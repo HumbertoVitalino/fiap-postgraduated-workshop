@@ -20,6 +20,7 @@ O desenvolvimento segue **Domain-Driven Design (DDD)**, com atenção a boas pr�
 - [O que já está implementado](#o-que-já-está-implementado)
 - [Qualidade e entrega](#qualidade-e-entrega)
 - [Como rodar localmente](#como-rodar-localmente)
+- [Rodando em Kubernetes (local, k3d)](#rodando-em-kubernetes-local-k3d)
 - [Rodando os testes](#rodando-os-testes)
 - [Documentação da API (Swagger)](#documentação-da-api-swagger)
 - [Autenticação](#autenticação)
@@ -124,6 +125,134 @@ dotnet restore Fiap.Workshop.slnx
 dotnet run --project src/Fiap.Workshop.Api
 ```
 
+## Rodando em Kubernetes (local, k3d)
+
+Os manifestos ficam em [`k8s/`](k8s/), organizados com Kustomize:
+
+```
+k8s/
+  base/            # comum a qualquer ambiente: namespace, api, Mailpit
+  overlays/local/  # cluster local: SQL Server dentro do cluster, Job que prepara o banco, Secrets, deploy.sh
+```
+
+| Recurso | Papel |
+|---|---|
+| `Deployment` `api` | A aplicação. Roda como usuário sem privilégio, reserva 100m de CPU / 256Mi de memória (limite 500m / 512Mi) |
+| `Service` `api` + `Ingress` | Distribui as requisições entre os pods da api; o Ingress (Traefik, embutido no k3s) é a porta de entrada do cluster |
+| `HorizontalPodAutoscaler` `api` | Mantém de 1 a 3 pods: escala quando a CPU média passa de 70% do reservado ou a memória média passa de 400Mi |
+| `ConfigMap` `api-config` / `Secret` `api-secrets` | Configuração da api; senha do banco, chave do JWT e chave do webhook ficam no Secret |
+| `Deployment` `mailpit` | Servidor SMTP de teste: captura os e-mails de mudança de status da OS |
+| `StatefulSet` `sqlserver` (só local) | Banco de dados com disco próprio: os dados sobrevivem a reinícios do pod |
+| `Job` `db-init` (só local) | Aplica `db/init.sql` e `db/seed-demo.sql`, os mesmos scripts do docker-compose |
+
+As verificações de saúde usam os endpoints de health check: `startupProbe` em `/health/ready` (consulta o banco, só enquanto o pod sobe), `livenessProbe` e `readinessProbe` em `/health/live`.
+
+**Pré-requisitos**: [Docker](https://www.docker.com/), [k3d](https://k3d.io/) v5+ e `kubectl` (já vem com o Docker Desktop). No Windows, rode os comandos abaixo no **Git Bash**, porque o `deploy.sh` é um script de shell.
+
+### 1. Subir o cluster e a aplicação
+
+1. Crie os arquivos de segredo a partir dos exemplos (ficam fora do git):
+
+   ```bash
+   cp k8s/overlays/local/api-secrets.env.example k8s/overlays/local/api-secrets.env
+   cp k8s/overlays/local/sqlserver-secrets.env.example k8s/overlays/local/sqlserver-secrets.env
+   ```
+
+2. Crie o cluster:
+
+   ```bash
+   k3d cluster create fiap-workshop -p "8081:80@loadbalancer" --api-port 127.0.0.1:6550
+   kubectl get nodes   # esperado: k3d-fiap-workshop-server-0   Ready
+   ```
+
+   - `-p "8081:80@loadbalancer"`: a api passa a responder em `http://localhost:8081`.
+   - `--api-port 127.0.0.1:6550`: porta por onde o `kubectl` fala com o cluster. Sem ela, no Windows o `kubectl` pode ficar sem conseguir conectar (`Unable to connect to the server`).
+
+3. Gere a imagem e aplique os manifestos:
+
+   ```bash
+   sh k8s/overlays/local/deploy.sh
+   ```
+
+   O script gera a imagem da api, copia a imagem para dentro do cluster, aplica os manifestos, roda o Job que prepara o banco e espera a api ficar pronta (`deployment "api" successfully rolled out`).
+
+   Na primeira vez, o cluster ainda precisa baixar a imagem do SQL Server (~2,3 GB), e o script pode encerrar por `timed out`. Acompanhe com `kubectl -n fiap-workshop get pods -w` até todos os pods ficarem `Running 1/1` e o `db-init` ficar `Completed`, e rode o script de novo.
+
+4. Confira que está tudo no ar, com **1** pod da api:
+
+   ```bash
+   kubectl -n fiap-workshop get all
+   curl http://localhost:8081/health/ready   # esperado: Healthy
+   ```
+
+   Swagger em `http://localhost:8081/swagger`. As credenciais são as mesmas do docker-compose (`admin@admin.com` / `Admin@123`, `atendente@oficina.com` e `mecanico@oficina.com` / `Demo@123`).
+
+5. Para ver os e-mails enviados pela api (o Mailpit não fica exposto fora do cluster):
+
+   ```bash
+   kubectl -n fiap-workshop port-forward svc/mailpit 8025:8025   # abra http://localhost:8025
+   ```
+
+### 2. Testar a escala automática (HPA)
+
+Deixe dois terminais abertos acompanhando o cluster (`-w` atualiza sozinho; `Ctrl+C` para sair):
+
+```bash
+kubectl -n fiap-workshop get hpa api -w            # uso atual/alvo e número de réplicas
+kubectl -n fiap-workshop get pods -l app=api -w    # pods da api nascendo e sendo removidos
+```
+
+Em um terceiro terminal, gere carga com o [k6](https://k6.io/) (via Docker, sem instalar). O script [`tests/load/hpa-load.js`](tests/load/hpa-load.js) simula 30 usuários consultando a listagem de OS sem pausa por ~4 minutos:
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm -t -p 5665:5665 -v "$(pwd -W)/tests/load:/scripts" \
+  -e K6_WEB_DASHBOARD=true -e K6_WEB_DASHBOARD_HOST=0.0.0.0 \
+  grafana/k6 run /scripts/hpa-load.js
+```
+
+No Linux/macOS, remova o `MSYS_NO_PATHCONV=1` e troque `$(pwd -W)` por `$(pwd)`. Esse ajuste só existe porque o Git Bash converte caminhos como `/scripts` para caminhos do Windows. Durante o teste, o painel do k6 fica em `http://localhost:5665`.
+
+O que deve acontecer:
+
+| Momento | HPA | Pods da api |
+|---|---|---|
+| Antes da carga | `cpu: ~1%/70%`, 1 réplica | 1 pod `Running 1/1` |
+| ~60–90 s de carga | CPU bem acima de 70%; réplicas → **3** | 2 pods novos: `Pending` → `ContainerCreating` → `Running 1/1` |
+| Fim da carga | CPU volta a ~1%, ainda 3 réplicas | 3 pods |
+| ~5 min depois | réplicas → **1** | 2 pods `Terminating` |
+
+- O HPA espera a CPU ficar acima do alvo por 60 s antes de criar pods, para não escalar com o pico de CPU do arranque da aplicação. Para remover pods, espera 5 minutos abaixo do alvo, para não ficar criando e destruindo pods a cada oscilação.
+- `kubectl -n fiap-workshop describe hpa api` mostra, em `Events`, o motivo de cada decisão (ex.: `New size: 3; reason: cpu resource utilization ... above target`).
+- No resumo final do k6, `http_req_failed` deve ficar em `0.00%`: nenhuma requisição falha enquanto os pods novos entram.
+
+### 3. Testar a reposição de um pod
+
+O Deployment garante que a quantidade de pods definida pelo HPA exista. Se um pod morre, outro é criado no lugar. Para ver o efeito do ponto de vista de quem usa a api, deixe este laço rodando (`000` = sem resposta):
+
+```bash
+while true; do echo "$(date +%T) $(curl -s -o /dev/null -m 2 -w '%{http_code}' http://localhost:8081/health/live)"; sleep 0.5; done
+```
+
+E, em outro terminal, remova um pod da api:
+
+```bash
+kubectl -n fiap-workshop get pods -l app=api
+kubectl -n fiap-workshop delete pod <nome-do-pod>
+```
+
+Um pod novo, com outro nome, aparece em seguida e fica `Running 1/1` em ~15–30 s.
+- **Com 1 pod**: o laço mostra algumas falhas até o substituto ficar pronto.
+- **Com 3 pods** (remova um durante o teste de carga): o laço continua em `200`, porque o Service manda as requisições para os pods restantes.
+
+Removendo o banco (`kubectl -n fiap-workshop delete pod sqlserver-0`), ele volta com o mesmo nome e com os dados intactos, porque o disco fica separado do pod.
+
+### 4. Desligar
+
+```bash
+k3d cluster stop fiap-workshop     # pausa, mantendo os dados (k3d cluster start fiap-workshop retoma)
+k3d cluster delete fiap-workshop   # apaga o cluster e os dados
+```
+
 ## Rodando os testes
 
 **Testes unitários** (Domain + Application, sem dependências externas):
@@ -206,6 +335,9 @@ tests/
   Fiap.Workshop.UnitTests           # Domain e Application isolados
   Fiap.Workshop.IntegrationTests    # EF Core real contra SQL Server
   Fiap.Workshop.FunctionalTests     # Scaffold, sem testes ainda
+  load/                             # Scripts de carga (k6)
+k8s/                                # Manifestos Kubernetes (Kustomize: base + overlays)
+db/                                 # Schema (init.sql) e dados de demonstração (seed-demo.sql)
 ```
 
 Documentação técnica viva (arquitetura, decisões de design, pendências): [`CONTEXT.md`](CONTEXT.md).

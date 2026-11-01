@@ -1,0 +1,27 @@
+# Cluster local (k3d). Diferenças em relação à Azure: o SQL Server roda dentro do cluster, um Job
+# aplica db/init.sql + db/seed-demo.sql, e a imagem da api é importada direto no k3d (sem registry).
+# Use deploy.sh, que também cria o ConfigMap "db-scripts" a partir de db/ (o Kustomize não lê
+# arquivos fora desta pasta, e copiar o schema para cá criaria uma segunda fonte de verdade).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: fiap-workshop
+
+resources:
+  - ../../base
+  - sqlserver.yaml
+  - db-init-job.yaml
+
+images:
+  - name: fiap-workshop-api
+    newName: fiap-workshop-api
+    newTag: local
+
+# Os .env ficam fora do git (*.env no .gitignore); copie dos .env.example.
+secretGenerator:
+  - name: api-secrets
+    envs:
+      - api-secrets.env
+  - name: sqlserver-secrets
+    envs:
+      - sqlserver-secrets.env

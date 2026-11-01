@@ -1,0 +1,37 @@
+# SMTP falso: captura todo e-mail da api e não entrega a ninguém. A caixa de entrada não é exposta
+# para fora do cluster; para ver os e-mails: kubectl -n fiap-workshop port-forward svc/mailpit 8025:8025
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailpit
+  labels:
+    app: mailpit
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mailpit
+  template:
+    metadata:
+      labels:
+        app: mailpit
+    spec:
+      containers:
+        - name: mailpit
+          image: axllent/mailpit:v1.31.6
+          ports:
+            - name: smtp
+              containerPort: 1025
+            - name: http
+              containerPort: 8025
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          readinessProbe:
+            tcpSocket:
+              port: smtp
+            periodSeconds: 10

@@ -1,0 +1,35 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api
+  # Teto pensado para a VM B2s (2 vCPU, 4 GB): 3 réplicas cabem com folga nos requests do Deployment.
+  minReplicas: 1
+  maxReplicas: 3
+  # O arranque do .NET (JIT, EF montando o modelo) passa de 70% do request de CPU por alguns segundos;
+  # sem esta janela, todo rollout escalava até o teto sem carga nenhuma. Só escala se a métrica ficar
+  # acima do alvo por 60 s seguidos. A descida mantém o padrão do Kubernetes (300 s).
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    # Memória como proteção, não como sinal de carga: o .NET não devolve ao sistema a memória que já
+    # usou, então depois de um pico cada pod fica com ~110 Mi mesmo ocioso. Com alvo em % do request
+    # (80% de 256 Mi), essa sobra impedia o HPA de voltar a 1 réplica. Valor absoluto perto do limit
+    # (512 Mi): só escala por memória quando os pods se aproximam do OOMKill.
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: AverageValue
+          averageValue: 400Mi

@@ -24,5 +24,6 @@ RUN dotnet publish src/Fiap.Workshop.Api/Fiap.Workshop.Api.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=publish /app/publish .
+USER $APP_UID
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "Fiap.Workshop.Api.dll"]
