@@ -22,6 +22,9 @@ echo "Aguardando o cloud-init (instalação do k3s)..."
 cloud-init status --wait > /dev/null
 sudo k3s kubectl get nodes
 
+# Pré-requisito do job de deploy: o sqlcmd é distribuído em .tar.bz2, e a imagem do Ubuntu não traz o bzip2.
+sudo apt-get install -y -qq bzip2 > /dev/null
+
 mkdir -p ~/actions-runner && cd ~/actions-runner
 if [ ! -f .runner ]; then
   curl -sSL "https://github.com/actions/runner/releases/download/v$VERSION/actions-runner-linux-x64-$VERSION.tar.gz" | tar -xz
