@@ -2,6 +2,7 @@ using Fiap.Workshop.Application.Commons;
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.Users.DeleteUser.Boundaries;
+using Fiap.Workshop.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace Fiap.Workshop.Application.UseCases.Users.DeleteUser;
@@ -27,6 +28,18 @@ public sealed class DeleteUserUseCase(
                 input.UserId
             );
 
+            return output;
+        }
+
+        if (user.Role == UserRole.System)
+        {
+            _logger.LogWarning(
+                "[{CorrelationId}] | Unable to delete system user [{UserId}].",
+                input.CorrelationId,
+                input.UserId
+            );
+
+            output.AddErrorMessage("System users cannot be deleted.");
             return output;
         }
 

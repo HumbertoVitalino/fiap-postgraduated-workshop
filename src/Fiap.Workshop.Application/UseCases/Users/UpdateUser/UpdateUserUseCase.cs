@@ -3,6 +3,7 @@ using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.Interfaces.UseCases;
 using Fiap.Workshop.Application.UseCases.Users.CreateUser.Mapper;
 using Fiap.Workshop.Application.UseCases.Users.UpdateUser.Boundaries;
+using Fiap.Workshop.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace Fiap.Workshop.Application.UseCases.Users.UpdateUser;
@@ -29,6 +30,18 @@ public sealed class UpdateUserUseCase(
             );
 
             output.AddErrorMessage("Unable to find user");
+            return output;
+        }
+
+        if (user.Role == UserRole.System)
+        {
+            _logger.LogWarning(
+                "[{CorrelationId}] | Unable to update system user [{UserId}].",
+                input.CorrelationId,
+                input.UserId
+            );
+
+            output.AddErrorMessage("System users cannot be updated.");
             return output;
         }
 
