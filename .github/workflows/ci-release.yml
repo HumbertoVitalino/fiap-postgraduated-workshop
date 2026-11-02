@@ -1,9 +1,14 @@
-name: CI - Release
+name: CI/CD - Release
 
 on:
   push:
     branches:
       - release
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/humbertovitalino/fiap-postgraduated-workshop
+  DATABASE_NAME: Fiap_Workshop
 
 jobs:
   build:
@@ -24,6 +29,89 @@ jobs:
 
       - name: Build
         run: dotnet build Fiap.Workshop.slnx --no-restore --configuration Release
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore
+        run: dotnet restore Fiap.Workshop.slnx
+
+      - name: Unit Tests
+        run: >
+          dotnet test
+          tests/Fiap.Workshop.UnitTests/Fiap.Workshop.UnitTests.csproj
+          --no-restore
+          --configuration Release
+          --logger "trx;LogFileName=unit-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: '**/*.trx'
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore
+        run: dotnet restore Fiap.Workshop.slnx
+
+      - name: Start SQL Server
+        run: docker compose -f docker-compose.tests.yml up -d
+
+      - name: Wait for SQL Server to be healthy
+        run: |
+          echo "Waiting for SQL Server..."
+          until [ "$(docker inspect integration-sql --format '{{.State.Health.Status}}')" = "healthy" ]; do
+            echo "  still waiting..."
+            sleep 5
+          done
+          echo "SQL Server is ready."
+
+      - name: Integration Tests
+        run: >
+          dotnet test
+          tests/Fiap.Workshop.IntegrationTests/Fiap.Workshop.IntegrationTests.csproj
+          --no-restore
+          --configuration Release
+          --logger "trx;LogFileName=integration-results.trx"
+        env:
+          ConnectionStrings__MasterConnection: "Server=localhost,14330;User Id=sa;Password=Integration@Test123;TrustServerCertificate=True;"
+          ConnectionStrings__DefaultConnection: "Server=localhost,14330;Database=IntegrationTestsDb;User Id=sa;Password=Integration@Test123;TrustServerCertificate=True;"
+
+      - name: Stop SQL Server
+        if: always()
+        run: docker compose -f docker-compose.tests.yml down
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: '**/*.trx'
 
   sonarqube-cloud:
     name: SonarQube Cloud Analysis
@@ -86,3 +174,95 @@ jobs:
 
       - name: End analysis
         run: dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+
+  docker-image:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+
+  # Roda no runner self-hosted instalado na VM do k3s (infra/scripts/register-runner.sh): o deploy usa o
+  # kubectl local, sem expor a API do Kubernetes nem logar na Azure. Só liga com a variável de repositório
+  # DEPLOY_ENABLED=true, porque a VM existe apenas enquanto a infraestrutura está provisionada.
+  deploy:
+    name: Deploy to Kubernetes (Azure)
+    runs-on: [self-hosted, azure-k3s]
+    needs: docker-image
+    if: vars.DEPLOY_ENABLED == 'true'
+    env:
+      SQL_SERVER: ${{ secrets.SQL_SERVER }}
+      SQL_USER: ${{ secrets.SQL_USER }}
+      SQLCMDPASSWORD: ${{ secrets.SQL_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install sqlcmd
+        run: |
+          if ! command -v sqlcmd > /dev/null; then
+            mkdir -p "$HOME/.local/bin"
+            curl -sSL https://github.com/microsoft/go-sqlcmd/releases/latest/download/sqlcmd-linux-amd64.tar.bz2 \
+              | tar -xj -C "$HOME/.local/bin" sqlcmd
+          fi
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # Os dois scripts são idempotentes: rodar a cada deploy não duplica nada.
+      - name: Deploy database schema and demo data
+        run: |
+          for script in db/init.sql db/seed-demo.sql; do
+            echo "Applying $script"
+            sqlcmd -S "tcp:$SQL_SERVER,1433" -d "$DATABASE_NAME" -U "$SQL_USER" -b \
+              -v DatabaseName="$DATABASE_NAME" -i "$script"
+          done
+
+      - name: Write api secrets
+        working-directory: k8s/overlays/azure
+        run: |
+          cat > api-secrets.env <<EOF
+          ConnectionStrings__DefaultConnection=Server=tcp:$SQL_SERVER,1433;Database=$DATABASE_NAME;User Id=$SQL_USER;Password=$SQLCMDPASSWORD;Encrypt=True;TrustServerCertificate=False;Connection Timeout=60;
+          Jwt__SecretKey=${{ secrets.JWT_SECRET_KEY }}
+          Webhooks__ApiKey=${{ secrets.WEBHOOK_API_KEY }}
+          Email__Username=
+          Email__Password=
+          EOF
+
+      - name: Apply manifests
+        run: |
+          sed -i "s|newTag: .*|newTag: $GITHUB_SHA|" k8s/overlays/azure/kustomization.yaml
+          kubectl apply -k k8s/overlays/azure
+          kubectl -n fiap-workshop rollout status deployment/api --timeout=10m
+
+      - name: Smoke test
+        run: |
+          curl -fsS http://localhost/health/ready
+          echo
+          curl -fsS -o /dev/null -w "login: %{http_code}\n" http://localhost/api/v1/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"correlationId":"7c1e9a52-3b4d-4f6e-8a1b-2c3d4e5f6a70","email":"admin@admin.com","password":"Admin@123"}'
+
+      - name: Remove api secrets file
+        if: always()
+        run: rm -f k8s/overlays/azure/api-secrets.env
