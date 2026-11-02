@@ -30,7 +30,9 @@ public static class DependencyInjection
         var connectionString = config.GetConnectionString("DefaultConnection");
         services.AddDbContext<AppDbContext>(options =>
         {
-            options.UseSqlServer(connectionString);
+            // Nova tentativa em erro transitório: o Azure SQL serverless recusa conexões enquanto retoma
+            // do auto-pause (~1 min). Seguro porque nenhum repositório abre transação manual.
+            options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure());
         });
 
         services.AddHealthChecks()
