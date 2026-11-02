@@ -11,13 +11,13 @@
 | 32 | Listagem de OS ordenada por prioridade de status | ✅ feito (revalidar antes da entrega) |
 | 33 | Consulta de status da OS | ✅ feito |
 | 34 | Health checks (liveness/readiness) | ✅ feito |
-| 35 | Testes E2E contra o ambiente no ar | ⏳ a fazer (junto do ticket 41) |
+| 35 | Testes E2E contra o ambiente no ar | ✂️ reduzido a smoke test no deploy (2026-11-02) |
 | 36 | Webhook de aprovação/recusa de orçamento | ✅ feito |
 | 37 | Notificação de status da OS por e-mail | ✅ feito |
-| 38 | Refatoração — dívida técnica e cobertura | ⏳ a fazer |
+| 38 | Refatoração — dívida técnica e cobertura | ⏸️ adiado para depois da gravação |
 | 39 | Manifestos Kubernetes (`/k8s`) | ✅ feito |
-| 40 | Terraform (`/infra`) — Azure | ⏳ a fazer |
-| 41 | CI/CD com deploy no cluster | ⏳ a fazer |
+| 40 | Terraform (`/infra`) — Azure | ✅ feito |
+| 41 | CI/CD com deploy no cluster | ✅ feito |
 | 42 | Entrega — README, collection, carga, vídeo | ⏳ a fazer |
 
 ## Decisões já fechadas
@@ -130,16 +130,20 @@
 
 **Cuidados:** `db/init.sql` precisa rodar sem `CREATE DATABASE`/`USE` (o banco passa a ser criado pelo Terraform); conexão com `EnableRetryOnFailure` para a primeira conexão após o auto-pause.
 
+**Resultado (2026-11-02):** `infra/` aplicado em `brazilsouth` — VM `Standard_D2s_v4` (a série B não está disponível para a assinatura no Brasil), Azure SQL gratuito via `azapi`, segredos gerados pelo Terraform. O `init.sql` **rodou sem mudança** no Azure SQL (o cuidado acima não se confirmou). `EnableRetryOnFailure` adicionado. Decisões em `CONTEXT.md` §7 **Azure**.
+
 ## Ticket 41: CI/CD com deploy no cluster
 
 **Descrição:** pipeline (GitHub Actions) com build, testes, build/push da imagem, deploy do schema do banco e `kubectl apply` dos manifestos. Depois do deploy, rodar os testes E2E do ticket 35 contra o ambiente no ar.
 
 **A decidir:** registry da imagem (proposta: GHCR) e como o CD alcança o cluster (runner self-hosted na VM, sem expor a porta 6443, vs. runner hospedado com kubeconfig em secret). Login na Azure via OIDC (o diretório da conta é pessoal, então permite registrar o app).
 
+**Resultado (2026-11-02):** GHCR (pacote público) e runner self-hosted na VM — com isso o pipeline não precisa logar na Azure e o OIDC saiu do plano. `ci-release.yml` virou o CI/CD completo; o deploy só roda com `DEPLOY_ENABLED=true`. Três falhas do primeiro deploy corrigidas no PR #86 (bzip2, banco em auto-pause, Traefik ainda sem rota). Os testes E2E do ticket 35 viraram um smoke test (`/health/ready` + login), por decisão do usuário para caber a gravação.
+
 ## Ticket 42: Entrega
 
-- README: descrição da solução e objetivos da fase, desenho da arquitetura (componentes, infra provisionada, fluxo de deploy), instruções de execução local / deploy em K8s / Terraform
-- Collection completa das APIs (Postman ou Swagger)
+- ✅ README: descrição da solução e objetivos da fase, desenho da arquitetura (componentes, infra provisionada, fluxo de deploy), instruções de execução local / deploy em K8s / Terraform
+- ✅ Collection completa das APIs: Swagger (`/swagger`, `/openapi/v1.json` importável no Postman), decisão de 2026-11-02 para caber a gravação
 - Teste de carga para demonstrar o HPA escalando. Já existe `tests/load/hpa-load.js` (30 usuários sem pausa, satura a CPU de qualquer número de réplicas); para o vídeo, avaliar um cenário de taxa fixa, que mostra a latência estabilizando depois da escala
 - Vídeo de até 15 min (deploy, CI/CD, consumo das APIs, escalabilidade), no YouTube/Vimeo
 - PDF de entrega no portal, com o repositório compartilhado com o usuário GitHub `soat-architecture`

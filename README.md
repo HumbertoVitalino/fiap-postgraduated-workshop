@@ -1,6 +1,6 @@
 # Fiap.Workshop — Sistema Integrado de Atendimento e Execução de Serviços
 
-Projeto do **Tech Challenge — Fase 1** da pós-graduação FIAP em Arquitetura de Software (SOAT).
+Projeto do **Tech Challenge — Fases 1 e 2** da pós-graduação FIAP em Arquitetura de Software (SOAT).
 
 ## O desafio
 
@@ -10,17 +10,28 @@ Este repositório é a primeira versão (MVP) do **back-end** de um Sistema Inte
 
 O desenvolvimento segue **Domain-Driven Design (DDD)**, com atenção a boas práticas de qualidade de software e segurança: arquitetura em camadas, testes automatizados, autenticação JWT e validação de dados sensíveis (CPF/CNPJ, placa de veículo).
 
-> **Estado atual do projeto**: entrega da Fase 1 completa — todas as funcionalidades obrigatórias do desafio estão implementadas, os quatro agregados de negócio da oficina (`Cliente`, `Veículo`, `Serviço`, `Peça/Insumo`) têm CRUD completo, a máquina de estados da Ordem de Serviço está fechada de ponta a ponta (`Recebida` → `Entregue`) com listagem e detalhamento administrativos, e o cliente já consegue acompanhar sua OS via API pública, sem autenticação. Cobertura de testes, relatório de SAST e documentação DDD também estão fechados — ver [Qualidade e entrega](#qualidade-e-entrega) abaixo e [`CONTEXT.md`](CONTEXT.md) para o detalhamento técnico completo.
+### Fase 2: objetivos
+
+Com o aumento da demanda, a oficina precisa de uma aplicação **escalável, com provisionamento e deploy automatizados**. A Fase 2 evolui o MVP em três frentes:
+
+- **APIs novas e alteradas**: consulta de status da OS, webhook para o sistema externo informar a aprovação ou recusa do orçamento pelo cliente, listagem de OS ordenada por prioridade de status (sem as finalizadas e entregues) e notificação por e-mail a cada mudança de status.
+- **Infraestrutura como código**: VM com Kubernetes (k3s) e banco Azure SQL provisionados com **Terraform** na Azure.
+- **Orquestração e entrega contínua**: manifestos Kubernetes com **HPA** (escala automática por CPU/memória) e pipeline de **CI/CD** que testa, gera a imagem e faz o deploy no cluster a cada merge na branch `release`.
+
+Detalhes técnicos e o histórico de decisões de cada ticket estão em [`CONTEXT.md`](CONTEXT.md).
 
 ## Sumário
 
 - [O desafio](#o-desafio)
 - [Arquitetura](#arquitetura)
+- [Arquitetura de implantação (Fase 2)](#arquitetura-de-implantação-fase-2)
 - [Stack técnica](#stack-técnica)
 - [O que já está implementado](#o-que-já-está-implementado)
 - [Qualidade e entrega](#qualidade-e-entrega)
 - [Como rodar localmente](#como-rodar-localmente)
 - [Rodando em Kubernetes (local, k3d)](#rodando-em-kubernetes-local-k3d)
+- [Infraestrutura na Azure (Terraform)](#infraestrutura-na-azure-terraform)
+- [CI/CD](#cicd)
 - [Rodando os testes](#rodando-os-testes)
 - [Documentação da API (Swagger)](#documentação-da-api-swagger)
 - [Autenticação](#autenticação)
@@ -38,6 +49,44 @@ Api             →  Minimal APIs, composição de DI, validadores, mapeadores H
 ```
 
 Regra de dependência: `Domain` não referencia nada; `Application` referencia `Domain`; `Infrastructure` referencia `Application`; `Api` referencia `Infrastructure` (e, transitivamente, todo o resto).
+
+## Arquitetura de implantação (Fase 2)
+
+```mermaid
+flowchart LR
+  dev["Desenvolvedor"] -->|"PR feature → develop → release"| gh["GitHub"]
+
+  subgraph actions["GitHub Actions: pipeline da release"]
+    build["Build"] --> unit["Testes unitários"] --> integ["Testes de integração"] --> image["Imagem Docker"]
+  end
+
+  gh --> actions
+  image -->|push| ghcr[("GHCR<br/>registry de imagens")]
+
+  subgraph azure["Azure: provisionada com Terraform (infra/)"]
+    subgraph vm["VM Standard_D2s_v4 com k3s"]
+      runner["Runner self-hosted<br/>do GitHub"]
+      subgraph ns["Namespace fiap-workshop"]
+        ingress["Ingress (Traefik) :80"] --> svc["Service api"] --> api["api: 1 a 3 pods<br/>(HPA por CPU/memória)"]
+        api --> mailpit["Mailpit<br/>(SMTP de teste)"]
+      end
+    end
+    sql[("Azure SQL Database<br/>oferta gratuita")]
+  end
+
+  actions -->|"job de deploy"| runner
+  runner -->|"sqlcmd: init.sql + seed"| sql
+  runner -->|"kubectl apply -k"| ns
+  ghcr -->|"pull da imagem"| api
+  api --> sql
+  client["Atendentes, mecânicos,<br/>sistema externo do orçamento"] -->|"HTTP"| ingress
+```
+
+**Componentes da aplicação**: a api (.NET 10, camadas acima) roda em 1 a 3 pods, conforme a carga; o Mailpit captura os e-mails de mudança de status da OS; o banco é o Azure SQL, fora do cluster.
+
+**Infraestrutura provisionada**: uma VM Linux com k3s (Kubernetes leve, que já traz o Ingress Traefik e o metrics-server usado pelo HPA), rede e firewall (HTTP aberto, SSH só para o IP do administrador) e o Azure SQL Database com pausa automática. Ver [Infraestrutura na Azure](#infraestrutura-na-azure-terraform).
+
+**Fluxo de deploy**: um merge na `release` dispara o pipeline. Build e testes rodam em máquinas do GitHub; a imagem vai para o GHCR; o job de deploy roda num runner instalado na própria VM, aplica o schema no banco, aplica os manifestos e confere a aplicação no ar. Ver [CI/CD](#cicd).
 
 ## Stack técnica
 
@@ -63,6 +112,13 @@ Regra de dependência: `Domain` não referencia nada; `Application` referencia `
 - **Serviços** (catálogo): CRUD completo — criação, consulta por id, listagem, atualização (código imutável; desativar um serviço o impede de entrar em orçamentos novos) e remoção (bloqueada com `400` se o serviço já tiver sido usado em alguma OS). O tempo estimado de execução (`EstimatedDuration`) é uma média incremental que se autoatualiza a cada OS concluída, com `ExecutionCount` exposto para indicar quantas amostras embasam o número — é como o desafio pede o "monitoramento do tempo médio de execução dos serviços".
 - **Peças/Insumos** (catálogo + estoque): CRUD completo — criação, consulta por id, listagem, atualização (código e quantidades de estoque ficam de fora: estoque só muda pelo fluxo de reserva/orçamento) e remoção (bloqueada com `400` se a peça já tiver sido usada em alguma OS). Desativar uma peça a impede de entrar em orçamentos novos.
 - **Ordem de Serviço**: máquina de estados completa — `Recebida` → `Em diagnóstico` → `Aguardando aprovação` → (`Em execução` → `Finalizada` | `Cancelada`) → `Entregue`, com orçamento calculado automaticamente a partir dos serviços/peças informados, reserva e baixa real de estoque, e histórico de status registrado a cada transição. A aprovação ou recusa do orçamento é decisão do cliente e chega por um webhook chamado por um sistema externo (`POST /api/v1/webhooks/budget-decisions`, ver "Webhook de decisão do orçamento"). Listagem (`GET /api/v1/service-orders`) e detalhamento por id (`GET /api/v1/service-orders/{id}`) para gestão administrativa. Consulta pública e anônima da OS pelo cliente via CPF/CNPJ + placa (`GET /api/v1/service-orders/lookup`), sem vazar existência de cadastro.
+- **Fase 2**:
+  - Consulta de status da OS: `GET /api/v1/service-orders/{id}/status`.
+  - Listagem de OS (`GET /api/v1/service-orders`) ordenada por prioridade (`Em execução` > `Aguardando aprovação` > `Em diagnóstico` > `Recebida`, mais antigas primeiro), sem as OS `Finalizada` e `Entregue`. A `Cancelada` aparece por último até o carro ser retirado.
+  - Webhook de aprovação/recusa do orçamento, autenticado por API key (ver "Webhook de decisão do orçamento").
+  - E-mail ao cliente a cada mudança de status da OS (evento de domínio + MailKit; em dev e no cluster, capturado pelo Mailpit).
+  - Health checks `GET /health/live` e `GET /health/ready` (este consulta o banco), usados pelas probes do Kubernetes.
+  - **Abertura de OS mantida com `CustomerId` + `VehicleId`**: serviços e peças entram no orçamento, durante o diagnóstico, e não na abertura. Decisão de negócio: o orçamento reserva estoque, e só depois do diagnóstico do mecânico se sabe o que será usado; cliente e veículo já têm cadastro próprio.
 - Schema de banco (`db/init.sql`) aplicado por um serviço de init do `docker-compose` antes da API subir — sem migration em runtime. Inclui seed idempotente do primeiro usuário Admin (bootstrap).
 - Testes unitários (Domain + Application) e projeto de testes de integração com SQL Server real via `docker-compose.tests.yml`, cobrindo os fluxos acima.
 
@@ -133,6 +189,7 @@ Os manifestos ficam em [`k8s/`](k8s/), organizados com Kustomize:
 k8s/
   base/            # comum a qualquer ambiente: namespace, api, Mailpit
   overlays/local/  # cluster local: SQL Server dentro do cluster, Job que prepara o banco, Secrets, deploy.sh
+  overlays/azure/  # VM na Azure: banco no Azure SQL, imagem do GHCR; aplicado pelo pipeline (ver CI/CD)
 ```
 
 | Recurso | Papel |
@@ -253,6 +310,111 @@ k3d cluster stop fiap-workshop     # pausa, mantendo os dados (k3d cluster start
 k3d cluster delete fiap-workshop   # apaga o cluster e os dados
 ```
 
+## Infraestrutura na Azure (Terraform)
+
+Os scripts ficam em [`infra/`](infra/). O estado do Terraform fica na máquina de quem aplica (fora do git): a infraestrutura é criada para a demonstração e destruída depois.
+
+### O que é criado
+
+| Recurso | Detalhe |
+|---|---|
+| Resource group `fiap-workshop-rg` | Agrupa tudo; apagar o grupo apaga todos os recursos |
+| Rede virtual + sub-rede | `10.0.0.0/16` / `10.0.1.0/24` |
+| Network security group | Porta 80 aberta para a internet; porta 22 (SSH) só para o IP do administrador. A API do Kubernetes (6443) **não** é exposta |
+| IP público estático | Endereço da aplicação: `http://<ip>/` |
+| VM `Standard_D2s_v4` (2 vCPU, 8 GB, Ubuntu 24.04) | k3s instalado pelo cloud-init no primeiro boot, mesma versão do k3d local |
+| Azure SQL Server + database `Fiap_Workshop` | **Oferta gratuita** (serverless, pausa sozinho quando ocioso; se a cota mensal acabar, pausa em vez de cobrar). Firewall libera só a VM e o IP do administrador |
+| Senhas (`random_password`) | Senha do banco, chave do JWT e chave do webhook, geradas pelo Terraform e lidas com `terraform output` |
+
+**Por que essas escolhas**: a assinatura Azure for Students só permite algumas regiões (`brazilsouth` é uma delas) e não oferece a série B no Brasil, por isso a `D2s_v4`. O banco é criado pelo provider `azapi`, porque o `azurerm` não expõe a oferta gratuita do Azure SQL.
+
+### Como aplicar
+
+Pré-requisitos: [Terraform](https://developer.hashicorp.com/terraform/install) ≥ 1.6, [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), [GitHub CLI](https://cli.github.com/) e uma assinatura Azure.
+
+1. Entre na Azure e, se a assinatura for nova, registre os serviços usados (uma vez só):
+
+   ```bash
+   az login
+   az provider register -n Microsoft.Compute --wait
+   az provider register -n Microsoft.Network --wait
+   az provider register -n Microsoft.Sql --wait
+   ```
+
+2. Crie a chave SSH da VM e o arquivo de variáveis:
+
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/fiap-workshop-azure -N ""
+   cd infra
+   cp terraform.tfvars.example terraform.tfvars   # preencha subscription_id, admin_ip (seu IP público) e vm_size
+   ```
+
+3. Provisione (~5 min):
+
+   ```bash
+   terraform init
+   terraform plan -out=tfplan     # mostra o que será criado, sem criar nada
+   terraform apply tfplan
+   terraform output               # IP da VM, comando SSH, endereço do banco
+   ```
+
+4. Registre a VM como runner do GitHub Actions (instala o runner como serviço e os pré-requisitos do deploy):
+
+   ```bash
+   sh scripts/register-runner.sh
+   ```
+
+5. Grave os segredos do pipeline no repositório e ligue o deploy (PowerShell, na pasta `infra`):
+
+   ```powershell
+   $repo = "HumbertoVitalino/fiap-postgraduated-workshop"
+   $map = @{ SQL_SERVER = "sql_server_fqdn"; SQL_USER = "sql_admin_login"; SQL_PASSWORD = "sql_admin_password"; JWT_SECRET_KEY = "jwt_secret_key"; WEBHOOK_API_KEY = "webhook_api_key" }
+   foreach ($k in $map.Keys) { gh secret set $k --repo $repo --body (terraform output -raw $map[$k]) }
+   gh variable set DEPLOY_ENABLED --repo $repo --body "true"
+   ```
+
+6. Faça o deploy: um merge na `release`, ou *Actions → CI/CD - Release → Run workflow*. Depois:
+   - API: `http://<ip>/swagger`
+   - Chave do webhook (header `X-Api-Key`): `terraform output -raw webhook_api_key`
+   - E-mails (Mailpit, não exposto): `ssh -i ~/.ssh/fiap-workshop-azure -L 8025:localhost:8025 azureuser@<ip> kubectl -n fiap-workshop port-forward svc/mailpit 8025:8025` e abrir `http://localhost:8025`
+
+### Como destruir
+
+```bash
+gh variable set DEPLOY_ENABLED --body "false"   # o pipeline para de tentar o deploy
+terraform destroy
+```
+
+O runner fica *offline* no GitHub depois do `destroy`; remova-o em *Settings → Actions → Runners*.
+
+Custo: só a VM e o IP público cobram (~US$ 3–4 por dia ligados); o banco fica na cota gratuita. Para pausar sem destruir: `az vm deallocate -g fiap-workshop-rg -n fiap-workshop-vm` (e `az vm start` para voltar; o IP não muda).
+
+## CI/CD
+
+Pipelines em [`.github/workflows/`](.github/workflows/):
+
+| Workflow | Quando roda | O que faz |
+|---|---|---|
+| `ci-feature.yml` | push em `feature/**` | Build, testes unitários, de integração e funcionais |
+| `ci-develop.yml` | push na `develop` | O mesmo + abre o PR `develop → release` |
+| **`ci-release.yml`** | push na `release` (ou manual) | **CI/CD completo**, abaixo |
+| `codeql.yml` | PR para a `release` e semanal | Análise de segurança (SAST) |
+
+Jobs do `ci-release.yml`:
+
+1. **Build** da solução.
+2. **Testes unitários** e **testes de integração** (SQL Server em container, na própria máquina do GitHub). Em paralelo, análise no **SonarQube Cloud**.
+3. **Imagem Docker**: build e push para o GHCR (`ghcr.io/humbertovitalino/fiap-postgraduated-workshop`), com a tag do commit e `latest`.
+4. **Deploy**, no runner self-hosted da VM:
+   - espera o Azure SQL sair da pausa e aplica `db/init.sql` + `db/seed-demo.sql` (idempotentes) com `sqlcmd`: **deploy do banco**;
+   - monta o Secret da api a partir dos GitHub Secrets e troca a tag da imagem pela do commit;
+   - `kubectl apply -k k8s/overlays/azure` e espera o rollout: **aplicação dos manifestos**;
+   - smoke test: `/health/ready` e login.
+
+O job de deploy só roda com a variável de repositório `DEPLOY_ENABLED=true`, porque a VM só existe enquanto a infraestrutura está provisionada. Segredos usados: `SQL_SERVER`, `SQL_USER`, `SQL_PASSWORD`, `JWT_SECRET_KEY`, `WEBHOOK_API_KEY` (ver passo 5 acima).
+
+**Por que um runner na VM**: o deploy roda dentro do cluster, sem expor a API do Kubernetes na internet e sem credenciais da Azure no GitHub. O Terraform não roda no pipeline: provisionar a infraestrutura (uma vez) e fazer deploy da aplicação (a cada merge) são ciclos diferentes.
+
 ## Rodando os testes
 
 **Testes unitários** (Domain + Application, sem dependências externas):
@@ -272,13 +434,15 @@ dotnet test tests/Fiap.Workshop.IntegrationTests
 
 ## Documentação da API (Swagger)
 
-Com a aplicação em execução, acesse:
+O Swagger é a collection completa das APIs: lista todas as rotas, com os corpos de requisição e as respostas, e permite chamá-las direto do navegador (botão *Authorize* para o token JWT). Com a aplicação em execução:
 
-```
-http://localhost:8080/swagger
-```
+| Ambiente | Swagger |
+|---|---|
+| docker-compose | `http://localhost:8080/swagger` |
+| k3d local | `http://localhost:8081/swagger` |
+| Azure | `http://<ip da VM>/swagger` (`terraform output vm_public_ip`) |
 
-O documento OpenAPI puro fica em `/openapi/v1.json`.
+O documento OpenAPI puro fica em `/openapi/v1.json` e pode ser importado no Postman (*Import → Link*).
 
 ## Autenticação
 
@@ -336,7 +500,8 @@ tests/
   Fiap.Workshop.IntegrationTests    # EF Core real contra SQL Server
   Fiap.Workshop.FunctionalTests     # Scaffold, sem testes ainda
   load/                             # Scripts de carga (k6)
-k8s/                                # Manifestos Kubernetes (Kustomize: base + overlays)
+k8s/                                # Manifestos Kubernetes (Kustomize: base + overlays local e azure)
+infra/                              # Terraform da Azure (VM com k3s, Azure SQL) e script do runner
 db/                                 # Schema (init.sql) e dados de demonstração (seed-demo.sql)
 ```
 
