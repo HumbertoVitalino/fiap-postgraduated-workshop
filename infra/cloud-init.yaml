@@ -1,0 +1,7 @@
+#cloud-config
+# Roda uma vez, no primeiro boot da VM. Acompanhar: ssh na VM e `cloud-init status --wait`.
+package_update: true
+
+runcmd:
+  # --write-kubeconfig-mode 644: o runner do GitHub (usuário comum) consegue ler o kubeconfig do k3s.
+  - curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="${k3s_version}" sh -s - --write-kubeconfig-mode 644
