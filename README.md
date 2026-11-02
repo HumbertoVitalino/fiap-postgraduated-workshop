@@ -100,7 +100,7 @@ flowchart LR
 | Persistência | EF Core 10 + **SQL Server** |
 | Validação | FluentValidation |
 | Logging | Serilog (console + request logging) |
-| Testes | xUnit, FluentAssertions, Moq/NSubstitute, AutoFixture |
+| Testes | xUnit, FluentAssertions, Moq, AutoFixture |
 
 **Por que SQL Server?** O domínio da oficina é fortemente relacional (OS ⇄ cliente ⇄ veículo ⇄ itens de serviço/peça, com integridade referencial e transações que precisam ser consistentes — ex.: baixa de estoque ao aprovar uma OS). SQL Server foi escolhido por ser um banco relacional maduro, com bom suporte a migrations via EF Core e por já estar configurado no ambiente de containers do time.
 
@@ -128,9 +128,18 @@ Ver [`CONTEXT.md`](CONTEXT.md) para o desenho técnico completo (camada por cama
 
 Itens de qualidade/entrega exigidos pelo desafio, todos fechados:
 
-- **Cobertura de testes**: confirmado via SonarQube Cloud — **97,3%** de cobertura em `Domain`/`Application`, acima da meta mínima de 80%.
+- **Cobertura de testes**: confirmado via SonarQube Cloud — **97,5%** de cobertura em `Domain`/`Application` (Fase 1: 97,3%), acima da meta mínima de 80%. Na Fase 2 o SonarQube Cloud mostra **0 bugs, 0 vulnerabilidades e 0% de duplicação**.
 - **Relatório de análise de vulnerabilidades (SAST)**: CodeQL + SonarQube Cloud rodam no CI; os achados de severidade `medium` (log forging e exposição de dado sensível em log) foram corrigidos — ver [`docs/entrega-fase-1/entrega-fase-1.pdf`](docs/entrega-fase-1/entrega-fase-1.pdf) para o relatório completo.
 - **Documentação DDD** (Event Storming, diagramas, linguagem ubíqua) dos fluxos de OS e de gestão de peças/insumos — feita no Miro, [link no fim deste documento](#estrutura-do-repositório).
+
+### Refatoração (Fase 2)
+
+- **Camadas revisadas**: `Domain` não depende de nada externo; `Application` não usa EF Core nem ASP.NET; a `Api` só usa a `Infrastructure` na composição de dependências.
+- **Transições da Ordem de Serviço**: a validação do status de origem, repetida nas seis transições, virou uma guarda única (`EnsureCanTransitionTo`); cada transição declara de quais status pode partir.
+- **Usuário de sistema protegido**: o usuário que registra as decisões do webhook não pode ser removido nem editado pela gestão de usuários.
+- **Erros de requisição**: JSON malformado responde `400` (antes `500`), e o log de requisições passou a registrar o status final da resposta (falhas de regra de negócio apareciam como `500` no log).
+- **Code smells**: 10 dos 17 apontados pelo SonarQube Cloud corrigidos; os 7 restantes são mantidos de propósito (construtores de entidades que reconstroem o estado vindo do banco, e a igualdade por valor dos Value Objects) — justificativa em [`CONTEXT.md`](CONTEXT.md) §8.
+- **Testes**: um único framework de mock (Moq); testes unitários e de integração para cada regra nova.
 
 O histórico de decisões e o desenho detalhado do que já existe estão em [`CONTEXT.md`](CONTEXT.md).
 

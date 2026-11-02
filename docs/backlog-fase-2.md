@@ -14,7 +14,7 @@
 | 35 | Testes E2E contra o ambiente no ar | ✂️ reduzido a smoke test no deploy (2026-11-02) |
 | 36 | Webhook de aprovação/recusa de orçamento | ✅ feito |
 | 37 | Notificação de status da OS por e-mail | ✅ feito |
-| 38 | Refatoração — dívida técnica e cobertura | ⏸️ adiado para depois da gravação |
+| 38 | Refatoração — dívida técnica e cobertura | ✅ feito |
 | 39 | Manifestos Kubernetes (`/k8s`) | ✅ feito |
 | 40 | Terraform (`/infra`) — Azure | ✅ feito |
 | 41 | CI/CD com deploy no cluster | ✅ feito |
@@ -105,6 +105,8 @@
 - Revisão de dependências entre camadas, a fazer antes de listar outros itens
 - Extrair a validação de status de origem repetida nas 6 transições de `ServiceOrder` (o bloco de mudança de status já foi extraído para `ChangeStatus` no ticket 37)
 - Proteger o usuário de sistema `webhook@system.local` contra remoção e troca de papel em `DeleteUser`/`UpdateUser` (item 21; sem ele, todo webhook falha)
+
+**Resultado (2026-11-02):** feito em 5 etapas na branch `feature/38-refactoring`, depois de a VM da Azure ser desligada. Mock único (o `NSubstitute` não tinha uso); `GetUsers` já estava corrigido (o `if` ficou, por consistência com as 7 listagens); guarda única de transição em `ServiceOrder`; usuário de sistema protegido; JSON malformado → 400; e, achado no caminho, o request logging registrava `500` em toda falha de regra de negócio (ordem dos middlewares). Camadas revisadas, sem dependência indevida. Sonar: 10 dos 17 code smells corrigidos, 7 mantidos com justificativa. Detalhes em `CONTEXT.md` §3/§4/§6/§8/§9.
 
 ## Ticket 39: Manifestos Kubernetes (`/k8s`)
 
