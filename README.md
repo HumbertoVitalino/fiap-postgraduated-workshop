@@ -337,11 +337,30 @@ Os scripts ficam em [`infra/`](infra/). O estado do Terraform fica na máquina d
 |---|---|
 | Resource group `fiap-workshop-rg` | Agrupa tudo; apagar o grupo apaga todos os recursos |
 | Rede virtual + sub-rede | `10.0.0.0/16` / `10.0.1.0/24` |
-| Network security group | Porta 80 aberta para a internet; porta 22 (SSH) só para o IP do administrador. A API do Kubernetes (6443) **não** é exposta |
-| IP público estático | Endereço da aplicação: `http://<ip>/` |
+| Network security group (associado à sub-rede) | Porta 80 aberta para a internet; porta 22 (SSH) só para o IP do administrador. A API do Kubernetes (6443) **não** é exposta |
+| IP público estático + interface de rede | Endereço da aplicação: `http://<ip>/` |
 | VM `Standard_D2s_v4` (2 vCPU, 8 GB, Ubuntu 24.04) | k3s instalado pelo cloud-init no primeiro boot, mesma versão do k3d local |
-| Azure SQL Server + database `Fiap_Workshop` | **Oferta gratuita** (serverless, pausa sozinho quando ocioso; se a cota mensal acabar, pausa em vez de cobrar). Firewall libera só a VM e o IP do administrador |
+| Azure SQL Server + database `Fiap_Workshop` | **Oferta gratuita** (serverless, pausa sozinho quando ocioso; se a cota mensal acabar, pausa em vez de cobrar) |
+| Duas regras de firewall do Azure SQL | Liberam só o IP público da VM e o IP do administrador |
 | Senhas (`random_password`) | Senha do banco, chave do JWT e chave do webhook, geradas pelo Terraform e lidas com `terraform output` |
+
+Arquivos: [`main.tf`](infra/main.tf) (rede e VM), [`database.tf`](infra/database.tf) (Azure SQL), [`secrets.tf`](infra/secrets.tf) (chaves da aplicação), [`cloud-init.yaml`](infra/cloud-init.yaml) (instalação do k3s), [`variables.tf`](infra/variables.tf), [`outputs.tf`](infra/outputs.tf) e [`versions.tf`](infra/versions.tf) (providers `azurerm`, `azapi` e `random`).
+
+**Variáveis** (em `terraform.tfvars`, fora do git; modelo em [`terraform.tfvars.example`](infra/terraform.tfvars.example)):
+
+| Variável | Obrigatória | Padrão | Uso |
+|---|---|---|---|
+| `subscription_id` | sim | — | Assinatura Azure (`az account show --query id -o tsv`) |
+| `admin_ip` | sim | — | Seu IP público: único liberado para SSH e para o banco |
+| `vm_size` | sim | — | `Standard_D2s_v4`; precisa de ≥ 4 GB e cota na família |
+| `location` | não | `brazilsouth` | Região |
+| `prefix` | não | `fiap-workshop` | Prefixo do nome dos recursos |
+| `admin_username` | não | `azureuser` | Usuário Linux da VM |
+| `ssh_public_key_path` | não | `~/.ssh/fiap-workshop-azure.pub` | Chave pública instalada na VM |
+| `k3s_version` | não | `v1.35.5+k3s1` | Mesma versão do k3d local |
+| `database_name` | não | `Fiap_Workshop` | Nome do banco |
+
+**Saídas** (`terraform output`; as sensíveis só com `-raw <nome>`): `vm_public_ip`, `ssh_command`, `sql_server_fqdn`, `sql_admin_login`, `sql_admin_password` (sensível), `connection_string` (sensível), `jwt_secret_key` (sensível) e `webhook_api_key` (sensível).
 
 **Por que essas escolhas**: a assinatura Azure for Students só permite algumas regiões (`brazilsouth` é uma delas) e não oferece a série B no Brasil, por isso a `D2s_v4`. O banco é criado pelo provider `azapi`, porque o `azurerm` não expõe a oferta gratuita do Azure SQL.
 
