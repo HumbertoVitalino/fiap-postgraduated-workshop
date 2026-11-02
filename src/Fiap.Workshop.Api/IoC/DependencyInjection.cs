@@ -102,6 +102,7 @@ public static class DependencyInjection
         });
 
         services.AddExceptionHandler<DomainExceptionHandler>();
+        services.AddExceptionHandler<BadHttpRequestExceptionHandler>();
         services.AddProblemDetails();
 
         services.AddOpenApi(options =>
