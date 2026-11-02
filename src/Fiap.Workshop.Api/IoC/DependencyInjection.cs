@@ -36,7 +36,7 @@ public static class DependencyInjection
         return services;
     }
 
-    private static IServiceCollection AddValidators(this IServiceCollection services)
+    private static void AddValidators(this IServiceCollection services)
     {
         services.AddScoped<IValidator<CreateUserRequest>, CreateUserRequestValidator>();
         services.AddScoped<IValidator<UpdateUserRequest>, UpdateUserRequestValidator>();
@@ -59,21 +59,17 @@ public static class DependencyInjection
         services.AddScoped<IValidator<DeliverServiceOrderRequest>, DeliverServiceOrderRequestValidator>();
         services.AddScoped<IValidator<TrackServiceOrdersRequest>, TrackServiceOrdersRequestValidator>();
         services.AddScoped<IValidator<BudgetDecisionWebhookRequest>, BudgetDecisionWebhookRequestValidator>();
-
-        return services;
     }
 
-    private static IServiceCollection AddRoles(this IServiceCollection services)
+    private static void AddRoles(this IServiceCollection services)
     {
         services.AddAuthorizationBuilder()
             .AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"))
             .AddPolicy("AttendantOnly", policy => policy.RequireRole("Attendant", "Admin"))
             .AddPolicy("MechanicOnly", policy => policy.RequireRole("Mechanic", "Admin"));
-
-        return services;
     }
 
-    private static IServiceCollection AddJwtConfig(this IServiceCollection services, IConfiguration configuration)
+    private static void AddJwtConfig(this IServiceCollection services, IConfiguration configuration)
     {
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -150,7 +146,5 @@ public static class DependencyInjection
                 return Task.CompletedTask;
             });
         });
-
-        return services;
     }
 }
