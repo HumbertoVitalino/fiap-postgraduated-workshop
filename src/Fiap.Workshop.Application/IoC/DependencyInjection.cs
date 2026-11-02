@@ -56,7 +56,7 @@ public static class DependencyInjection
         return services;
     }
 
-    private static IServiceCollection AddUseCases(this IServiceCollection services)
+    private static void AddUseCases(this IServiceCollection services)
     {
         services.AddScoped<ICreateUserUseCase, CreateUserUseCase>();
         services.AddScoped<ILoginUserUseCase, LoginUserUseCase>();
@@ -96,14 +96,10 @@ public static class DependencyInjection
         services.AddScoped<ICompleteServiceOrderUseCase, CompleteServiceOrderUseCase>();
         services.AddScoped<IDeliverServiceOrderUseCase, DeliverServiceOrderUseCase>();
         services.AddScoped<ITrackServiceOrdersUseCase, TrackServiceOrdersUseCase>();
-
-        return services;
     }
 
-    private static IServiceCollection AddEvents(this IServiceCollection services)
+    private static void AddEvents(this IServiceCollection services)
     {
         services.AddScoped<IDomainEventHandler<ServiceOrderStatusChangedEvent>, SendStatusChangedEmailHandler>();
-
-        return services;
     }
 }

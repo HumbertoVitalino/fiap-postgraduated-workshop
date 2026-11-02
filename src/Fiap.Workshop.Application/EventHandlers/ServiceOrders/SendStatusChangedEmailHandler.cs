@@ -18,7 +18,7 @@ public sealed class SendStatusChangedEmailHandler(
     private readonly IEmailService _emailService = emailService;
     private readonly ILogger<SendStatusChangedEmailHandler> _logger = logger;
 
-    public async Task HandleAsync(ServiceOrderStatusChangedEvent domainEvent, CancellationToken cancellationToken)
+    public async Task HandleAsync(ServiceOrderStatusChangedEvent domainEvent, CancellationToken cancellationToken = default)
     {
         var customer = await _customerRepository.GetByIdAsync(domainEvent.CustomerId, cancellationToken);
         if (customer is null)

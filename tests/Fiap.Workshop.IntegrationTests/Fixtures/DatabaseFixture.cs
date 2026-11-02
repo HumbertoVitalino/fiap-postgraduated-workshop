@@ -9,7 +9,7 @@ using Xunit;
 
 namespace Fiap.Workshop.IntegrationTests.Fixtures;
 
-public sealed class DatabaseFixture : IAsyncLifetime
+public sealed partial class DatabaseFixture : IAsyncLifetime
 {
     private const string DefaultMasterConnectionString =
         "Server=localhost,14330;User Id=sa;Password=Integration@Test123;TrustServerCertificate=True;";
@@ -57,12 +57,15 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     private const string TestDatabaseName = "IntegrationTestsDb";
 
+    [GeneratedRegex(@"^\s*GO\s*$", RegexOptions.Multiline | RegexOptions.IgnoreCase)]
+    private static partial Regex GoBatchSeparator();
+
     private static async Task ExecuteInitScriptAsync(string connectionString)
     {
         var sqlPath = Path.Combine(AppContext.BaseDirectory, "sql", "init.sql");
         var sql = await File.ReadAllTextAsync(sqlPath);
         sql = sql.Replace("$(DatabaseName)", TestDatabaseName);
-        var batches = Regex.Split(sql, @"^\s*GO\s*$", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        var batches = GoBatchSeparator().Split(sql);
 
         await using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync();

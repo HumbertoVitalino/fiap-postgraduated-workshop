@@ -25,7 +25,7 @@ public static class DependencyInjection
         return services;
     }
 
-    private static IServiceCollection AddRepositories(this IServiceCollection services, IConfiguration config)
+    private static void AddRepositories(this IServiceCollection services, IConfiguration config)
     {
         var connectionString = config.GetConnectionString("DefaultConnection");
         services.AddDbContext<AppDbContext>(options =>
@@ -45,18 +45,14 @@ public static class DependencyInjection
         services.AddScoped<IServiceRepository, ServiceRepository>();
         services.AddScoped<IServiceOrderRepository, ServiceOrderRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-
-        return services;
     }
 
-    private static IServiceCollection AddServices(this IServiceCollection services)
+    private static void AddServices(this IServiceCollection services)
     {
         services.AddSingleton<IPasswordService, PasswordService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<IEmailService, SmtpEmailService>();
-
-        return services;
     }
 }
