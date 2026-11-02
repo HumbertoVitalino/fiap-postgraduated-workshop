@@ -229,6 +229,21 @@ jobs:
           fi
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      # O Azure SQL serverless pausa quando ocioso: a primeira conexão o acorda, mas é recusada até ele
+      # retomar (~1 min). Mesmo papel do "until ... SELECT 1" do Job db-init no cluster local.
+      - name: Wait for database
+        run: |
+          for attempt in $(seq 1 30); do
+            if sqlcmd -S "tcp:$SQL_SERVER,1433" -d "$DATABASE_NAME" -U "$SQL_USER" -b -Q "SELECT 1" > /dev/null 2>&1; then
+              echo "Database is online."
+              exit 0
+            fi
+            echo "Database not available yet (attempt $attempt), retrying in 10s..."
+            sleep 10
+          done
+          echo "Database did not come online in 5 minutes." >&2
+          exit 1
+
       # Os dois scripts são idempotentes: rodar a cada deploy não duplica nada.
       - name: Deploy database schema and demo data
         run: |
@@ -255,9 +270,11 @@ jobs:
           kubectl apply -k k8s/overlays/azure
           kubectl -n fiap-workshop rollout status deployment/api --timeout=10m
 
+      # Com retry: logo depois do rollout o Traefik pode levar alguns segundos para rotear para o Ingress
+      # (no primeiro deploy, respondeu 503 com o pod já pronto).
       - name: Smoke test
         run: |
-          curl -fsS http://localhost/health/ready
+          curl -fsS --retry 12 --retry-delay 5 --retry-all-errors http://localhost/health/ready
           echo
           curl -fsS -o /dev/null -w "login: %{http_code}\n" http://localhost/api/v1/auth/login \
             -H "Content-Type: application/json" \
