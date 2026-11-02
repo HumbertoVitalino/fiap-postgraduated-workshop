@@ -480,6 +480,8 @@ O Swagger é a collection completa das APIs: lista todas as rotas, com os corpos
 
 O documento OpenAPI puro fica em `/openapi/v1.json` e pode ser importado no Postman (*Import → Link*).
 
+**Collection sem precisar da aplicação no ar**: cópia do mesmo documento em [`docs/api/openapi.json`](docs/api/openapi.json). Para importar no Postman: *Import → Link* com o endereço *raw* do arquivo no GitHub (`https://raw.githubusercontent.com/HumbertoVitalino/fiap-postgraduated-workshop/release/docs/api/openapi.json`), ou *Import → File*. O servidor configurado é o do docker-compose (`http://localhost:8080`). Ao mudar uma rota, gere a cópia de novo com a api do docker-compose no ar: `curl -s http://localhost:8080/openapi/v1.json -o docs/api/openapi.json`.
+
 ## Autenticação
 
 `POST /api/v1/users` exige um token JWT com role `Admin` (policy `AdminOnly`). Obtenha um token via `POST /api/v1/auth/login`, usando o usuário Admin de bootstrap (`admin@admin.com` / `Admin@123`, ver "Como rodar localmente") — troque essa senha em qualquer ambiente que não seja local/dev.
