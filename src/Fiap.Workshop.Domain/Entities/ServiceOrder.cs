@@ -53,16 +53,7 @@ public class ServiceOrder(
 
     public void StartDiagnosis(string diagnoseDescription, Guid changedBy)
     {
-        if (Status != ServiceOrderStatus.Received)
-        {
-            throw new DomainException(
-                string.Format(
-                    ServiceOrderErrors.InvalidStatusTransition,
-                    Status,
-                    ServiceOrderStatus.Diagnosing
-                )
-            );
-        }
+        EnsureCanTransitionTo(ServiceOrderStatus.Diagnosing, ServiceOrderStatus.Received);
 
         DiagnoseDescription = diagnoseDescription;
 
@@ -71,76 +62,38 @@ public class ServiceOrder(
 
     public void AddBudget(IEnumerable<ServiceOrderService> services, IEnumerable<ServiceOrderPart> parts, Guid changedBy)
     {
-        if (Status != ServiceOrderStatus.Diagnosing)
-        {
-            throw new DomainException(
-                string.Format(
-                    ServiceOrderErrors.InvalidStatusTransition,
-                    Status,
-                    ServiceOrderStatus.AwaitingApproval
-                )
-            );
-        }
+        EnsureCanTransitionTo(ServiceOrderStatus.AwaitingApproval, ServiceOrderStatus.Diagnosing);
 
         var servicesList = services.ToList();
         var partsList = parts.ToList();
 
-        var subtotal = servicesList.Sum(service => service.UnitPrice * service.Quantity)
-            + partsList.Sum(part => part.UnitPrice * part.Quantity);
-
         AddServices(servicesList);
         AddParts(partsList);
 
-        Subtotal = subtotal;
-        Total = subtotal;
+        Subtotal = servicesList.Sum(service => service.UnitPrice * service.Quantity)
+            + partsList.Sum(part => part.UnitPrice * part.Quantity);
+        Total = Subtotal;
 
         ChangeStatus(ServiceOrderStatus.AwaitingApproval, changedBy);
     }
 
     public void Approve(Guid changedBy)
     {
-        if (Status != ServiceOrderStatus.AwaitingApproval)
-        {
-            throw new DomainException(
-                string.Format(
-                    ServiceOrderErrors.InvalidStatusTransition,
-                    Status,
-                    ServiceOrderStatus.InProgress
-                )
-            );
-        }
+        EnsureCanTransitionTo(ServiceOrderStatus.InProgress, ServiceOrderStatus.AwaitingApproval);
 
         ChangeStatus(ServiceOrderStatus.InProgress, changedBy);
     }
 
     public void Reject(Guid changedBy)
     {
-        if (Status != ServiceOrderStatus.AwaitingApproval)
-        {
-            throw new DomainException(
-                string.Format(
-                    ServiceOrderErrors.InvalidStatusTransition,
-                    Status,
-                    ServiceOrderStatus.Cancelled
-                )
-            );
-        }
+        EnsureCanTransitionTo(ServiceOrderStatus.Cancelled, ServiceOrderStatus.AwaitingApproval);
 
         ChangeStatus(ServiceOrderStatus.Cancelled, changedBy);
     }
 
     public void Complete(IReadOnlyCollection<(Guid ServiceOrderServiceId, short ActualDuration)> durations, Guid changedBy)
     {
-        if (Status != ServiceOrderStatus.InProgress)
-        {
-            throw new DomainException(
-                string.Format(
-                    ServiceOrderErrors.InvalidStatusTransition,
-                    Status,
-                    ServiceOrderStatus.Completed
-                )
-            );
-        }
+        EnsureCanTransitionTo(ServiceOrderStatus.Completed, ServiceOrderStatus.InProgress);
 
         var serviceIds = _services.Select(service => service.Id).ToHashSet();
         var durationIds = durations.Select(duration => duration.ServiceOrderServiceId).ToHashSet();
@@ -158,20 +111,17 @@ public class ServiceOrder(
 
     public void Deliver(Guid changedBy)
     {
-        if (Status != ServiceOrderStatus.Completed && Status != ServiceOrderStatus.Cancelled)
-        {
-            throw new DomainException(
-                string.Format(
-                    ServiceOrderErrors.InvalidStatusTransition,
-                    Status,
-                    ServiceOrderStatus.Delivered
-                )
-            );
-        }
+        EnsureCanTransitionTo(ServiceOrderStatus.Delivered, ServiceOrderStatus.Completed, ServiceOrderStatus.Cancelled);
 
         ClosedAt = DateTime.Now;
 
         ChangeStatus(ServiceOrderStatus.Delivered, changedBy);
+    }
+
+    private void EnsureCanTransitionTo(ServiceOrderStatus newStatus, params ReadOnlySpan<ServiceOrderStatus> allowedCurrentStatuses)
+    {
+        if (!allowedCurrentStatuses.Contains(Status))
+            throw new DomainException(string.Format(ServiceOrderErrors.InvalidStatusTransition, Status, newStatus));
     }
 
     private void ChangeStatus(ServiceOrderStatus newStatus, Guid changedBy)
