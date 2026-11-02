@@ -18,7 +18,7 @@
 | 39 | Manifestos Kubernetes (`/k8s`) | ✅ feito |
 | 40 | Terraform (`/infra`) — Azure | ✅ feito |
 | 41 | CI/CD com deploy no cluster | ✅ feito |
-| 42 | Entrega — README, collection, carga, vídeo | ⏳ a fazer |
+| 42 | Entrega — README, collection, carga, vídeo | 🟡 só falta o vídeo |
 
 ## Decisões já fechadas
 
@@ -144,10 +144,9 @@
 
 ## Ticket 42: Entrega
 
-- ✅ README: descrição da solução e objetivos da fase, desenho da arquitetura (componentes, infra provisionada, fluxo de deploy), instruções de execução local / deploy em K8s / Terraform
+- ✅ README: descrição da solução e objetivos da fase, desenho da arquitetura (componentes, infra provisionada, fluxo de deploy), instruções de execução local / deploy em K8s / Terraform, seção do vídeo (link a preencher)
 - ✅ Collection completa das APIs: Swagger (`/swagger`, `/openapi/v1.json` importável no Postman), decisão de 2026-11-02 para caber a gravação
-- Teste de carga para demonstrar o HPA escalando. Já existe `tests/load/hpa-load.js` (30 usuários sem pausa, satura a CPU de qualquer número de réplicas); para o vídeo, avaliar um cenário de taxa fixa, que mostra a latência estabilizando depois da escala
-- Vídeo de até 15 min (deploy, CI/CD, consumo das APIs, escalabilidade), no YouTube/Vimeo
-- PDF de entrega no portal, com o repositório compartilhado com o usuário GitHub `soat-architecture`
-- Antes de gravar: revalidar as decisões da listagem de OS (ticket 32, `CONTEXT.md` §9 item 18)
-- `terraform destroy` depois da gravação
+- ✅ Teste de carga para o HPA: `tests/load/hpa-load.js` (30 usuários na listagem) e, como plano B se o Azure SQL gratuito segurar a CPU da api, `tests/load/hpa-login-load.js` (10 usuários no login, CPU-bound pelo BCrypt). O cenário de taxa fixa não foi feito: o vídeo precisa mostrar a escala acontecendo, não medir capacidade
+- ✅ PDF do portal: `docs/entrega-fase-2/entrega-fase-2.pdf` (gerado de `entrega-fase-2.html`, diagrama em `arquitetura.svg`), com o link do vídeo a preencher. O repositório é público, e os professores confirmaram que isso dispensa o convite ao `soat-architecture` (2026-11-02)
+- ✅ CodeQL voltando a rodar (`CONTEXT.md` §9 item 22)
+- ⏳ Vídeo de até 15 min (deploy, CI/CD, consumo das APIs, escalabilidade), no YouTube/Vimeo: roteiro em `docs/entrega-fase-2/roteiro-video.md`, que inclui revalidar a listagem de OS antes de gravar (ticket 32, `CONTEXT.md` §9 item 18) e, depois, preencher o link, enviar o PDF e rodar o `terraform destroy`

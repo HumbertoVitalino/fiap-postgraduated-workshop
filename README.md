@@ -20,9 +20,16 @@ Com o aumento da demanda, a oficina precisa de uma aplicação **escalável, com
 
 Detalhes técnicos e o histórico de decisões de cada ticket estão em [`CONTEXT.md`](CONTEXT.md).
 
+## Vídeo demonstrativo (Fase 2)
+
+**Link: _a publicar_**
+
+Até 15 minutos, com a aplicação no ar na Azure: arquitetura, infraestrutura com Terraform, execução do pipeline de CI/CD até o deploy no cluster, consumo das APIs pelo Swagger e escala automática do HPA sob carga. O roteiro está em [`docs/entrega-fase-2/roteiro-video.md`](docs/entrega-fase-2/roteiro-video.md).
+
 ## Sumário
 
 - [O desafio](#o-desafio)
+- [Vídeo demonstrativo (Fase 2)](#vídeo-demonstrativo-fase-2)
 - [Arquitetura](#arquitetura)
 - [Arquitetura de implantação (Fase 2)](#arquitetura-de-implantação-fase-2)
 - [Stack técnica](#stack-técnica)
@@ -290,6 +297,7 @@ O que deve acontecer:
 - O HPA espera a CPU ficar acima do alvo por 60 s antes de criar pods, para não escalar com o pico de CPU do arranque da aplicação. Para remover pods, espera 5 minutos abaixo do alvo, para não ficar criando e destruindo pods a cada oscilação.
 - `kubectl -n fiap-workshop describe hpa api` mostra, em `Events`, o motivo de cada decisão (ex.: `New size: 3; reason: cpu resource utilization ... above target`).
 - No resumo final do k6, `http_req_failed` deve ficar em `0.00%`: nenhuma requisição falha enquanto os pods novos entram.
+- Se a CPU não subir (a api passa o tempo esperando o banco, caso do Azure SQL gratuito), use [`tests/load/hpa-login-load.js`](tests/load/hpa-login-load.js) no lugar do `hpa-load.js`: 10 usuários fazendo login sem pausa. A conferência da senha com BCrypt gasta CPU na api e quase não usa o banco.
 
 ### 3. Testar a reposição de um pod
 
@@ -407,7 +415,7 @@ Pipelines em [`.github/workflows/`](.github/workflows/):
 | `ci-feature.yml` | push em `feature/**` | Build, testes unitários, de integração e funcionais |
 | `ci-develop.yml` | push na `develop` | O mesmo + abre o PR `develop → release` |
 | **`ci-release.yml`** | push na `release` (ou manual) | **CI/CD completo**, abaixo |
-| `codeql.yml` | PR para a `release` e semanal | Análise de segurança (SAST) |
+| `codeql.yml` | push e PR para a `release`, e semanal | Análise de segurança (SAST) |
 
 Jobs do `ci-release.yml`:
 
@@ -512,6 +520,7 @@ tests/
 k8s/                                # Manifestos Kubernetes (Kustomize: base + overlays local e azure)
 infra/                              # Terraform da Azure (VM com k3s, Azure SQL) e script do runner
 db/                                 # Schema (init.sql) e dados de demonstração (seed-demo.sql)
+docs/                               # Material de entrega de cada fase e padrões do time (standards/)
 ```
 
 Documentação técnica viva (arquitetura, decisões de design, pendências): [`CONTEXT.md`](CONTEXT.md).
