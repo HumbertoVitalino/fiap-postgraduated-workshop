@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Tech Challenge — Fase 2 — Documento de Entrega</title>
+<style>
+  @page { size: A4; margin: 22mm 18mm; }
+  @page paisagem { size: A4 landscape; margin: 14mm 14mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Calibri, Arial, sans-serif;
+    color: #1a1a1a;
+    line-height: 1.5;
+    font-size: 12pt;
+    margin: 0;
+  }
+  h1 {
+    font-size: 20pt;
+    margin: 0 0 4pt 0;
+    color: #111;
+  }
+  .subtitle {
+    font-size: 11pt;
+    color: #555;
+    margin: 0 0 20pt 0;
+  }
+  h2 {
+    font-size: 14pt;
+    margin: 22pt 0 8pt 0;
+    padding-bottom: 4pt;
+    border-bottom: 1.5pt solid #c0392b;
+    color: #111;
+  }
+  h3 {
+    font-size: 11.5pt;
+    margin: 14pt 0 4pt 0;
+    color: #222;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8pt 0 4pt 0;
+    font-size: 10.5pt;
+  }
+  th, td {
+    border: 1pt solid #ccc;
+    padding: 5pt 8pt;
+    text-align: left;
+    vertical-align: top;
+  }
+  tr { break-inside: avoid; }
+  th {
+    background: #f2f2f2;
+    font-weight: 600;
+  }
+  .label {
+    font-weight: 600;
+    display: inline-block;
+    min-width: 150pt;
+  }
+  .field-row {
+    margin: 4pt 0;
+  }
+  .note {
+    margin: 2pt 0 10pt 0;
+    font-size: 10pt;
+    color: #555;
+  }
+  code {
+    background: #f2f2f2;
+    padding: 1pt 4pt;
+    border-radius: 3pt;
+    font-family: Consolas, monospace;
+    font-size: 10pt;
+  }
+  a {
+    color: #1a4fa0;
+    word-break: break-all;
+  }
+  ul { margin: 4pt 0; padding-left: 18pt; }
+  li { margin: 2pt 0; }
+  .diagrama {
+    page: paisagem;
+    break-before: page;
+    break-after: page;
+  }
+  .diagrama h2 { margin-top: 0; }
+  .diagrama img { width: 100%; display: block; }
+  .diagrama .note { margin-top: 6pt; }
+  .footer-note {
+    margin-top: 24pt;
+    font-size: 9.5pt;
+    color: #666;
+    border-top: 0.75pt solid #ddd;
+    padding-top: 8pt;
+  }
+  .no-break { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<h1>Sistema Integrado de Atendimento e Execução de Serviços</h1>
+<p class="subtitle">Tech Challenge — Fase 2 · Pós-graduação FIAP em Arquitetura de Software (SOAT)</p>
+
+<h2>Identificação</h2>
+
+<div class="field-row"><span class="label">Nome do grupo:</span> Humberto Vitalino (projeto individual)</div>
+<div class="field-row"><span class="label">Participantes:</span></div>
+<table>
+  <tr><th>Nome</th><th>Username Discord</th></tr>
+  <tr><td>Humberto Vitalino</td><td><code>hbrto.</code></td></tr>
+</table>
+
+<h2>Links</h2>
+
+<div class="field-row"><span class="label">Repositório (GitHub):</span> <a href="https://github.com/HumbertoVitalino/fiap-postgraduated-workshop">https://github.com/HumbertoVitalino/fiap-postgraduated-workshop</a></div>
+<p class="note">Repositório público, o mesmo da Fase 1. Conforme orientação dos professores, a visibilidade pública dispensa o convite ao usuário <code>soat-architecture</code>.</p>
+
+<div class="field-row"><span class="label">Vídeo demonstrativo:</span> <strong>a publicar</strong></div>
+<p class="note">Até 15 minutos: deploy da aplicação, execução do CI/CD, consumo das APIs e escalabilidade automática sob carga.</p>
+
+<div class="field-row"><span class="label">Collection das APIs:</span> <a href="https://github.com/HumbertoVitalino/fiap-postgraduated-workshop/blob/release/docs/api/openapi.json">docs/api/openapi.json</a> (OpenAPI 3.1, importável no Postman)</div>
+<p class="note">Com a aplicação no ar, o mesmo documento é servido no Swagger (<code>/swagger</code>), que permite chamar as rotas pelo navegador. Endereços de cada ambiente na seção <a href="https://github.com/HumbertoVitalino/fiap-postgraduated-workshop#documentação-da-api-swagger">Documentação da API</a> do README.</p>
+
+<h2>Resumo da solução entregue</h2>
+
+<p>A Fase 2 evolui o back-end da Fase 1 (.NET 10, Clean Architecture e DDD) para suportar maior demanda, com infraestrutura escalável, provisionamento e deploy automatizados.</p>
+
+<table>
+  <tr><th style="width:28%">Requisito</th><th>O que foi entregue</th></tr>
+  <tr>
+    <td>Refatoração</td>
+    <td>Dependências entre camadas revisadas; validação de transição de status da OS concentrada numa guarda única; usuário de sistema protegido; JSON malformado responde <code>400</code>; um único framework de mock. SonarQube Cloud: 97,5% de cobertura em Domain/Application, 0 bugs e 0 vulnerabilidades.</td>
+  </tr>
+  <tr>
+    <td>Consulta de status da OS</td>
+    <td><code>GET /api/v1/service-orders/{id}/status</code>: status atual e data da última mudança.</td>
+  </tr>
+  <tr>
+    <td>Aprovação de orçamento</td>
+    <td>Webhook <code>POST /api/v1/webhooks/budget-decisions</code> para o sistema externo informar aprovação ou recusa. Autenticado por API key (<code>X-Api-Key</code>) e idempotente: uma notificação repetida não tem efeito colateral.</td>
+  </tr>
+  <tr>
+    <td>Listagem de OS</td>
+    <td>Em execução &gt; Aguardando aprovação &gt; Em diagnóstico &gt; Recebida, mais antigas primeiro. Finalizadas e entregues ficam fora da listagem, sem exclusão física.</td>
+  </tr>
+  <tr>
+    <td>Atualização de status por e-mail</td>
+    <td>Evento de domínio a cada mudança de status; o cliente recebe um e-mail (MailKit). Mailpit como servidor SMTP de teste.</td>
+  </tr>
+  <tr>
+    <td>Abertura de OS</td>
+    <td>Recebe cliente e veículo já cadastrados e devolve o identificador da OS. Serviços e peças entram no orçamento, depois do diagnóstico, porque o orçamento reserva estoque e só o mecânico sabe o que será usado. Decisão de negócio, registrada no <code>CONTEXT.md</code>.</td>
+  </tr>
+  <tr>
+    <td>Docker</td>
+    <td>Dockerfile multi-stage e docker-compose com api, SQL Server, Mailpit e carga do schema e dos dados de demonstração.</td>
+  </tr>
+  <tr>
+    <td>Kubernetes (<code>/k8s</code>)</td>
+    <td>Deployment e Service da api e do Mailpit, Ingress, ConfigMap, Secret, probes de saúde e HPA de 1 a 3 réplicas por CPU e memória. Kustomize com overlays para o cluster local (k3d) e para a Azure.</td>
+  </tr>
+  <tr>
+    <td>Terraform (<code>/infra</code>)</td>
+    <td>Rede, firewall, IP público, VM com k3s instalado no primeiro boot, Azure SQL Database e os segredos da aplicação (senha do banco, chave do JWT e chave do webhook).</td>
+  </tr>
+  <tr>
+    <td>CI/CD (GitHub Actions)</td>
+    <td>A cada merge na <code>release</code>: build, testes unitários e de integração, SonarQube Cloud, imagem Docker no GHCR, deploy do banco (<code>sqlcmd</code>), aplicação dos manifestos (<code>kubectl apply -k</code>) e smoke test. CodeQL (SAST) em todo merge e semanalmente.</td>
+  </tr>
+</table>
+
+<section class="diagrama">
+  <h2>Desenho da arquitetura</h2>
+  <img src="arquitetura.svg" alt="Arquitetura de implantação: pipeline no GitHub Actions publica a imagem no GHCR e aciona o runner na VM da Azure, que aplica o schema no Azure SQL e os manifestos no k3s; o Ingress recebe o tráfego e encaminha para a api, escalada pelo HPA.">
+  <p class="note">Componentes da aplicação (namespace <code>fiap-workshop</code>), infraestrutura provisionada pelo Terraform (caixa da Azure) e fluxo de deploy (do PR até o runner na VM). O mesmo desenho está no README, na seção "Arquitetura de implantação".</p>
+</section>
+
+<h2>Recursos escolhidos</h2>
+
+<table class="no-break">
+  <tr><th style="width:30%">Recurso</th><th>Por que</th></tr>
+  <tr>
+    <td>VM Azure <code>Standard_D2s_v4</code> (2 vCPU, 8 GB, Ubuntu 24.04) com <strong>k3s</strong></td>
+    <td>Kubernetes leve que já inclui o Ingress (Traefik) e o metrics-server usado pelo HPA. O AKS foi descartado porque os nós pagos e o load balancer padrão consumiriam o crédito de estudante sem ganho para a solução. A série B, mais barata, não está disponível no Brasil na assinatura de estudante.</td>
+  </tr>
+  <tr>
+    <td><strong>Azure SQL Database</strong> (oferta gratuita)</td>
+    <td>O mesmo motor SQL Server usado desde a Fase 1, sem migração. Fica fora do cluster e pausa sozinho quando ocioso. As probes periódicas não consultam o banco, para não esgotar a cota mensal.</td>
+  </tr>
+  <tr>
+    <td><strong>GitHub Actions</strong> + runner self-hosted na VM</td>
+    <td>O deploy roda dentro da própria VM: a API do Kubernetes não fica exposta na internet e nenhuma credencial da Azure fica guardada no GitHub.</td>
+  </tr>
+  <tr>
+    <td><strong>GHCR</strong> (GitHub Container Registry)</td>
+    <td>Registry integrado ao repositório; cada imagem leva a tag do commit, que é a mesma aplicada no cluster.</td>
+  </tr>
+  <tr>
+    <td><strong>Terraform</strong> (providers <code>azurerm</code> e <code>azapi</code>)</td>
+    <td>O <code>azapi</code> cria o banco porque o <code>azurerm</code> não expõe a oferta gratuita do Azure SQL. O provisionamento roda fora do pipeline: a infraestrutura é criada uma vez, e o deploy da aplicação acontece a cada merge.</td>
+  </tr>
+  <tr>
+    <td><strong>Mailpit</strong></td>
+    <td>Servidor SMTP de teste que captura os e-mails de mudança de status. A configuração de e-mail fica em ConfigMap e Secret, pronta para um provedor real.</td>
+  </tr>
+</table>
+
+<div class="footer-note">
+  Documento gerado em apoio à entrega da Fase 2 do Tech Challenge — Pós-graduação FIAP em Arquitetura de Software (SOAT). Instruções de execução local, deploy em Kubernetes e provisionamento com Terraform no README do repositório.
+</div>
+
+</body>
+</html>

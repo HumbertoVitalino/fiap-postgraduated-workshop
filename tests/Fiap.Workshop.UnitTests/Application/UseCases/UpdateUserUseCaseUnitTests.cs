@@ -36,12 +36,12 @@ public class UpdateUserUseCaseUnitTests : LoggerTestBase<UpdateUserUseCase>
         UserRole.Attendant
     );
 
-    private static User CreateUser(Guid id, string email) => new(
+    private static User CreateUser(Guid id, string email, UserRole role = UserRole.Admin) => new(
         id,
         email,
         "John Doe",
         "hashed-password",
-        UserRole.Admin,
+        role,
         DateTime.Now,
         DateTime.Now
     );
@@ -122,6 +122,35 @@ public class UpdateUserUseCaseUnitTests : LoggerTestBase<UpdateUserUseCase>
             $"[{input.CorrelationId}] | Unable to find user by [{input.UserId}].",
             Times.Once()
         );
+    }
+
+    [Fact(DisplayName = "Handle >> Should Fail >> When user is a system user")]
+    public async Task Handle_ShouldFail_WhenUserIsSystemUser()
+    {
+        // Arrange
+        var user = CreateUser(_fixture.Create<Guid>(), "webhook@system.local", UserRole.System);
+        var input = CreateInput(user.Id, "webhook@system.local");
+
+        _userRepositoryMock.Setup(x => x.GetByIdAsync(input.UserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _useCase.Handle(input, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsValid.Should().BeFalse();
+        result.ErrorMessages.Should().ContainSingle().Which.Should().Be("System users cannot be updated.");
+        result.Result.Should().BeNull();
+        user.Role.Should().Be(UserRole.System);
+
+        VerifyLog(
+            LogLevel.Warning,
+            $"[{input.CorrelationId}] | Unable to update system user [{input.UserId}].",
+            Times.Once()
+        );
+        _userRepositoryMock.Verify(x => x.Update(It.IsAny<User>()), Times.Never());
+        _userRepositoryMock.Verify(x => x.UnitOfWork.CommitAsync(It.IsAny<CancellationToken>()), Times.Never());
     }
 
     [Fact(DisplayName = "Handle >> Should Fail >> When new email already belongs to another user")]

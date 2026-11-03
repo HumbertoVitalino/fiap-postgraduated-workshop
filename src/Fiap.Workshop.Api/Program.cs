@@ -31,10 +31,6 @@ app.UseSwaggerUI(options =>
 {
     options.SwaggerEndpoint("/openapi/v1.json", "Fiap.Workshop API v1");
 });
-app.UseExceptionHandler();
-app.UseHttpsRedirection();
-app.UseAuthentication();
-app.UseAuthorization();
 app.UseSerilogRequestLogging(options =>
 {
     options.GetLevel = (httpContext, _, exception) =>
@@ -42,6 +38,10 @@ app.UseSerilogRequestLogging(options =>
         : httpContext.Request.Path.StartsWithSegments("/health") ? LogEventLevel.Verbose
         : LogEventLevel.Information;
 });
+app.UseExceptionHandler();
+app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapMinimalApisV1();
 app.MapHealthEndpoints();

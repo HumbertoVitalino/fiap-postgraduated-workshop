@@ -2,6 +2,7 @@ using Fiap.Workshop.Application.Commons;
 using Fiap.Workshop.Application.DTOs.Users;
 using Fiap.Workshop.Application.Interfaces.Repositories;
 using Fiap.Workshop.Application.Interfaces.UseCases;
+using Fiap.Workshop.Application.UseCases.ServiceOrders.ProcessBudgetDecision;
 using Fiap.Workshop.Application.UseCases.Users.CreateUser.Boundaries;
 using Fiap.Workshop.Application.UseCases.Users.UpdateUser.Boundaries;
 using Fiap.Workshop.Domain.Enums;
@@ -78,6 +79,33 @@ public sealed class UpdateUserUseCaseIntegrationTests(DatabaseFixture fixture)
         // Assert
         result.ErrorMessages.Should().ContainSingle().Which.Should().Be("Unable to find user");
         result.Result.Should().BeNull();
+    }
+
+    [Fact(DisplayName = "UpdateUserUseCase >> Should fail and keep user unchanged >> When user is the system user")]
+    public async Task Handle_ShouldFailAndKeepUserUnchanged_WhenUserIsSystemUser()
+    {
+        // Arrange (usuário de sistema semeado pelo db/init.sql)
+        var input = new UpdateUserInput(
+            Guid.NewGuid(),
+            ProcessBudgetDecisionUseCase.SystemUserId,
+            "Renamed System User",
+            TestData.Email(),
+            UserRole.Admin
+        );
+
+        // Act
+        var result = await HandleAsync(input);
+
+        // Assert
+        result.ErrorMessages.Should().ContainSingle().Which.Should().Be("System users cannot be updated.");
+        result.Result.Should().BeNull();
+
+        using var scope = fixture.Services.CreateScope();
+        var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+        var found = await userRepository.GetByIdAsync(ProcessBudgetDecisionUseCase.SystemUserId, CancellationToken.None);
+        found.Should().NotBeNull();
+        found!.Email.Should().Be("webhook@system.local");
+        found.Role.Should().Be(UserRole.System);
     }
 
     [Fact(DisplayName = "UpdateUserUseCase >> Should fail >> When new email already belongs to another user")]

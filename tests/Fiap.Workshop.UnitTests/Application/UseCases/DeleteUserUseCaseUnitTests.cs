@@ -31,12 +31,12 @@ public class DeleteUserUseCaseUnitTests : LoggerTestBase<DeleteUserUseCase>
         userId
     );
 
-    private static User CreateUser(Guid id) => new(
+    private static User CreateUser(Guid id, UserRole role = UserRole.Admin) => new(
         id,
         "john.doe@example.com",
         "John Doe",
         "hashed-password",
-        UserRole.Admin,
+        role,
         DateTime.Now,
         DateTime.Now
     );
@@ -90,6 +90,34 @@ public class DeleteUserUseCaseUnitTests : LoggerTestBase<DeleteUserUseCase>
             Times.Once()
         );
         _userRepositoryMock.Verify(x => x.Remove(It.IsAny<User>()), Times.Never());
+    }
+
+    [Fact(DisplayName = "Handle >> Should Fail >> When user is a system user")]
+    public async Task Handle_ShouldFail_WhenUserIsSystemUser()
+    {
+        // Arrange
+        var user = CreateUser(_fixture.Create<Guid>(), UserRole.System);
+        var input = CreateInput(user.Id);
+
+        _userRepositoryMock.Setup(x => x.GetByIdAsync(input.UserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _useCase.Handle(input, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsValid.Should().BeFalse();
+        result.ErrorMessages.Should().ContainSingle().Which.Should().Be("System users cannot be deleted.");
+        result.Result.Should().BeNull();
+
+        VerifyLog(
+            LogLevel.Warning,
+            $"[{input.CorrelationId}] | Unable to delete system user [{input.UserId}].",
+            Times.Once()
+        );
+        _userRepositoryMock.Verify(x => x.Remove(It.IsAny<User>()), Times.Never());
+        _userRepositoryMock.Verify(x => x.UnitOfWork.CommitAsync(It.IsAny<CancellationToken>()), Times.Never());
     }
 
     [Fact(DisplayName = "Handle >> Should Fail >> When error deleting user")]
