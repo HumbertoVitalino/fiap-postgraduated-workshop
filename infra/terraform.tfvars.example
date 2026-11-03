@@ -1,4 +1,4 @@
 # Copie para terraform.tfvars (fora do git) e preencha.
 subscription_id = "00000000-0000-0000-0000-000000000000" # az account show --query id -o tsv
 admin_ip        = "203.0.113.10"                         # seu IP público: curl https://api.ipify.org
-vm_size         = "Standard_B2s"
+vm_size         = "Standard_D2s_v4"                      # a série B não está disponível no Brasil no Azure for Students
