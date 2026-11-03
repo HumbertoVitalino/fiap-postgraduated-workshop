@@ -20,7 +20,6 @@ export const options = {
   ],
 };
 
-// Login uma vez só (usuária do seed-demo): o token vale 15 min, mais que a duração do teste.
 export function setup() {
   const res = http.post(`${BASE}/api/v1/auth/login`, JSON.stringify({
     correlationId: '3f2b1c4e-8a9d-4e6f-b1a2-c3d4e5f60718',

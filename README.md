@@ -22,7 +22,7 @@ Detalhes técnicos e o histórico de decisões de cada ticket estão em [`CONTEX
 
 ## Vídeo demonstrativo (Fase 2)
 
-**Link: _a publicar_**
+**Link: <https://youtu.be/8Ne0b6VGG2g>**
 
 Até 15 minutos, com a aplicação no ar na Azure: arquitetura, infraestrutura com Terraform, execução do pipeline de CI/CD até o deploy no cluster, consumo das APIs pelo Swagger e escala automática do HPA sob carga. O roteiro está em [`docs/entrega-fase-2/roteiro-video.md`](docs/entrega-fase-2/roteiro-video.md).
 
